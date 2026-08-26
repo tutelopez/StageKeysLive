@@ -23,10 +23,21 @@ actual class PlatformAudioSynth actual constructor() {
 
     init {
         try {
+            System.loadLibrary("c++_shared")
+            System.loadLibrary("oboe")
+            System.loadLibrary("FLAC")
+            System.loadLibrary("ogg")
+            System.loadLibrary("opus")
+            System.loadLibrary("vorbis")
+            System.loadLibrary("vorbisenc")
+            System.loadLibrary("vorbisfile")
+            System.loadLibrary("sndfile")
+            System.loadLibrary("fluidsynth")
+            System.loadLibrary("fluidsynth-assetloader")
             System.loadLibrary("mainstage_audio")
             nativeInit()
         } catch (e: UnsatisfiedLinkError) {
-            Log.e(TAG, "Failed to load native audio library: ${e.message}")
+            Log.e(TAG, "Failed to load native audio library: ${e.message}", e)
         }
     }
 
@@ -108,6 +119,10 @@ actual class PlatformAudioSynth actual constructor() {
     actual fun cancelMidiLearn() {
         cancelLearnTimeout()
         midiManager?.onLearnModeCcReceived = null
+    }
+
+    actual fun syncMidiMappings(mappings: Map<Int, String>) {
+        midiManager?.ccMappings = mappings.toMap()
     }
 
     private fun cancelLearnTimeout() {

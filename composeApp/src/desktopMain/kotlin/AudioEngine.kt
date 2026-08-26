@@ -67,10 +67,11 @@ actual class PlatformAudioSynth actual constructor() {
     // [POINT 2 FIX] Desktop has no physical MIDI Learn (no hardware MIDI in this target).
     // Immediately invoke onTimeout so the UI exits "ESCUCHANDO..." without hanging.
     actual fun startMidiLearn(target: String, onCaptured: (cc: Int) -> Unit, onTimeout: () -> Unit) {
+        // Desktop doesn't have MidiManager hooked up yet; immediately timeout
         onTimeout()
     }
-
-    actual fun cancelMidiLearn() {
+    actual fun cancelMidiLearn() { }
+    actual fun syncMidiMappings(mappings: Map<Int, String>) {
         // No-op on Desktop
     }
 }

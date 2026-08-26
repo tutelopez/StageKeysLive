@@ -19,3 +19,9 @@ Thumbs.db
 
 # Log files
 *.log
+
+# FluidSynth prebuilt Android binaries (downloaded separately from GitHub releases)
+# Run: Invoke-WebRequest https://github.com/FluidSynth/fluidsynth/releases/download/v2.6.0/fluidsynth-v2.6.0-android24.zip -OutFile fluidsynth_android.zip
+# Then extract to: composeApp/src/androidMain/cpp/libs/fluidsynth/
+composeApp/src/androidMain/cpp/libs/
+fluidsynth_android.zip

@@ -20,11 +20,12 @@ kotlin {
     if (!disableAndroid) {
         androidTarget()
     }
-    
+
     jvm("desktop")
-    
+
     sourceSets {
-        val commonMain by getting {
+        // Use getByName() instead of deprecated 'by getting' delegation
+        getByName("commonMain") {
             dependencies {
                 implementation(compose.runtime)
                 implementation(compose.foundation)
@@ -34,19 +35,20 @@ kotlin {
                 implementation(compose.components.uiToolingPreview)
             }
         }
-        
+
         if (!disableAndroid) {
-            val androidMain by getting {
+            getByName("androidMain") {
                 dependencies {
                     implementation("androidx.activity:activity-compose:1.8.2")
                     implementation("androidx.appcompat:appcompat:1.6.1")
                     implementation("androidx.core:core-ktx:1.12.0")
-                    implementation("google.oboe:oboe:1.8.0")
+                    // Oboe headers come from cpp/include/oboe/ (downloaded from GitHub 1.8.0).
+                    // liboboe.so at runtime comes from FluidSynth v2.6.0 bundle — no Prefab needed.
                 }
             }
         }
-        
-        val desktopMain by getting {
+
+        getByName("desktopMain") {
             dependencies {
                 implementation(compose.desktop.currentOs)
             }
@@ -60,7 +62,7 @@ if (!disableAndroid) {
         compileSdk = 34
 
         buildFeatures {
-            prefab = true
+            // prefab not needed: Oboe is now provided as local headers + FluidSynth-bundled .so
         }
 
         externalNativeBuild {
@@ -76,7 +78,20 @@ if (!disableAndroid) {
             targetSdk = 34
             versionCode = 1
             versionName = "1.0"
+
+            // [POINT 1 FIX] Enable FluidSynth SF2 rendering in native code
+            externalNativeBuild {
+                cmake {
+                    arguments("-DUSE_FLUIDSYNTH=ON", "-DANDROID_STL=c++_shared")
+                }
+            }
+
+            // FluidSynth v2.6.0 bundle includes all 4 ABIs
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            }
         }
+
         packaging {
             resources {
                 excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -99,7 +114,7 @@ compose.desktop {
         mainClass = "MainKt"
         nativeDistributions {
             targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi, org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb)
-            packageName = "MainstageAndroid"
+            packageName = "StageKeysLive"
             packageVersion = "1.0.0"
         }
     }

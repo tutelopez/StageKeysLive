@@ -1,6 +1,6 @@
 package com.midi.mainstage
 
-import App
+import com.midi.mainstage.App
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -24,6 +24,25 @@ class MainActivity : ComponentActivity() {
         // [POINT 2 FIX] Wire the midiManager reference into PlatformAudioSynth's companion
         // so that App.kt can call synth.startMidiLearn() without knowing about Android.
         PlatformAudioSynth.midiManager = midiManager
+
+        // Load default SoundFont from assets so that FluidSynth can produce sound!
+        Thread {
+            try {
+                val sf2Name = "PianoDefault.sf2"
+                val outFile = java.io.File(cacheDir, sf2Name)
+                if (!outFile.exists()) {
+                    assets.open(sf2Name).use { input ->
+                        java.io.FileOutputStream(outFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
+                synth.loadSoundFont(outFile.absolutePath)
+                Log.i(TAG, "Successfully loaded SoundFont: ${outFile.absolutePath}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load SoundFont from assets", e)
+            }
+        }.start()
 
         // [POINT 2 FIX] Wire the dynamic CC→target mapping callback.
         // When a mapped CC arrives during performance, apply it to the correct synth parameter.

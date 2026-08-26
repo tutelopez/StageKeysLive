@@ -124,6 +124,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
     // Load initial concerts database on startup
     LaunchedEffect(Unit) {
+        synth.syncMidiMappings(midiCcMappings)
         val json = readTextFromFile("concerts.json")
         if (json != null) {
             val list = ConcertSerializer.deserialize(json)
@@ -756,6 +757,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                                 target = target,
                                                 onCaptured = { cc ->
                                                     midiCcMappings[cc] = target
+                                                    synth.syncMidiMappings(midiCcMappings)
                                                     mappingTarget = null
                                                 },
                                                 onTimeout = {

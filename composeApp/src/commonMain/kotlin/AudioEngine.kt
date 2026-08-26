@@ -24,4 +24,5 @@ expect class PlatformAudioSynth() {
     // Desktop actual is a no-op since there is no hardware MIDI in that target
     fun startMidiLearn(target: String, onCaptured: (cc: Int) -> Unit, onTimeout: () -> Unit)
     fun cancelMidiLearn()
+    fun syncMidiMappings(mappings: Map<Int, String>)
 }
