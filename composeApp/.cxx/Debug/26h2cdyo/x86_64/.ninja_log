@@ -1,0 +1,9 @@
+# ninja log v5
+1	1984	8094512601393970	CMakeFiles/mainstage_audio.dir/mainstage_audio.cpp.o	cb26e7fda2b5f6fc
+1990	2240	8094512603935053	C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/build/intermediates/cxx/Debug/26h2cdyo/obj/x86_64/libmainstage_audio.so	7567b7072fbfe41e
+0	11	0	clean	7abde394771a3d7c
+10	1045	8094532524638580	CMakeFiles/mainstage_audio.dir/mainstage_audio.cpp.o	cb26e7fda2b5f6fc
+1046	1283	8094532527017428	C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/build/intermediates/cxx/Debug/26h2cdyo/obj/x86_64/libmainstage_audio.so	7567b7072fbfe41e
+1	10	0	clean	7abde394771a3d7c
+7	1123	8094534204246026	CMakeFiles/mainstage_audio.dir/mainstage_audio.cpp.o	cb26e7fda2b5f6fc
+1124	1234	8094534205391768	C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/build/intermediates/cxx/Debug/26h2cdyo/obj/x86_64/libmainstage_audio.so	7567b7072fbfe41e

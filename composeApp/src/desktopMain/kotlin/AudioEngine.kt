@@ -24,32 +24,36 @@ actual class PlatformAudioSynth actual constructor() {
         }.start()
     }
 
-    actual fun noteOn(note: Int, velocity: Int) {
-        channel?.noteOn(note, velocity)
+    actual fun noteOn(note: Int, velocity: Int, channel: Int) {
+        synthesizer?.channels?.getOrNull(channel)?.noteOn(note, velocity)
     }
 
-    actual fun noteOff(note: Int) {
-        channel?.noteOff(note)
+    actual fun noteOff(note: Int, channel: Int) {
+        synthesizer?.channels?.getOrNull(channel)?.noteOff(note)
     }
 
     actual fun setVolume(volume: Float) {
-        channel?.controlChange(7, (volume * 127).toInt())
+        synthesizer?.channels?.getOrNull(0)?.controlChange(7, (volume * 127).toInt())
+    }
+
+    actual fun setChannelVolume(volume: Float, channel: Int) {
+        synthesizer?.channels?.getOrNull(channel)?.controlChange(7, (volume * 127).toInt())
     }
 
     actual fun setReverb(reverb: Float) {
-        channel?.controlChange(91, (reverb * 127).toInt())
+        synthesizer?.channels?.getOrNull(0)?.controlChange(91, (reverb * 127).toInt())
     }
 
-    actual fun setFilterCutoff(cutoff: Float) {
-        channel?.controlChange(74, (cutoff * 127).toInt())
+    actual fun setFilterCutoff(cutoff: Float, channel: Int) {
+        synthesizer?.channels?.getOrNull(channel)?.controlChange(74, (cutoff * 127).toInt())
     }
 
-    actual fun setPatch(programNumber: Int) {
+    actual fun setPatch(programNumber: Int, channel: Int) {
         currentProgram = programNumber
-        channel?.programChange(programNumber)
+        synthesizer?.channels?.getOrNull(channel)?.programChange(programNumber)
     }
 
-    actual fun loadSoundFont(path: String) {
+    actual fun loadSoundFont(path: String, channel: Int) {
         // Desktop uses system default wavetable synth; SF2 loading not applicable here
     }
 
@@ -66,12 +70,21 @@ actual class PlatformAudioSynth actual constructor() {
 
     // [POINT 2 FIX] Desktop has no physical MIDI Learn (no hardware MIDI in this target).
     // Immediately invoke onTimeout so the UI exits "ESCUCHANDO..." without hanging.
-    actual fun startMidiLearn(target: String, onCaptured: (cc: Int) -> Unit, onTimeout: () -> Unit) {
+    actual fun startMidiLearn(target: MidiTarget, onCaptured: (cc: Int) -> Unit, onTimeout: () -> Unit) {
         // Desktop doesn't have MidiManager hooked up yet; immediately timeout
         onTimeout()
     }
     actual fun cancelMidiLearn() { }
-    actual fun syncMidiMappings(mappings: Map<Int, String>) {
+    actual fun syncMidiMappings(mappings: Map<Int, MidiTarget>) {
         // No-op on Desktop
+    }
+    
+    actual fun setMidiListener(
+        onMappedCc: (target: MidiTarget, floatValue: Float) -> Unit,
+        onNote: (note: Int, velocity: Int, isNoteOn: Boolean) -> Unit,
+        onPitchBend: (pitchBend: Float) -> Unit,
+        onDeviceConnectionChanged: (deviceName: String?) -> Unit
+    ) {
+        // No hardware MIDI on desktop yet
     }
 }

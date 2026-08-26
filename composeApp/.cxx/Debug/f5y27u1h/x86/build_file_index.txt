@@ -1,0 +1,1 @@
+C:\Users\thefi\.gemini\antigravity\scratch\mainstage_android\composeApp\src\androidMain\cpp\CMakeLists.txt

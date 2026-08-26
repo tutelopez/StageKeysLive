@@ -21,23 +21,24 @@ class AndroidMidiManager(
 
     // ---------------------------------------------------------------
     // [POINT 2 FIX] MIDI Learn callback.
-    // When non-null, the next CC message received will be delivered here
-    // instead of being processed as a normal control change.
-    // Set to null after the first CC is captured or when the timeout fires.
-    // ---------------------------------------------------------------
     var onLearnModeCcReceived: ((cc: Int) -> Unit)? = null
 
     // ---------------------------------------------------------------
     // [POINT 2 FIX] Dynamic CC → target mapping.
-    // Maps a CC number (0-127) to a named target string (e.g. "volume_ch1",
-    // "reverb", "master"). Applied during normal CC processing when Learn
-    // mode is off, and fed into the Kotlin state through onMappedCcReceived.
-    // ---------------------------------------------------------------
-    var ccMappings: Map<Int, String> = emptyMap()
+    var ccMappings: Map<Int, MidiTarget> = emptyMap()
 
     // Called on main thread when a mapped CC arrives during normal play.
-    // Kotlin UI (App.kt) subscribes here to apply the change to the correct state.
-    var onMappedCcReceived: ((cc: Int, target: String, floatValue: Float) -> Unit)? = null
+    var onMappedCcReceived: ((cc: Int, target: MidiTarget, floatValue: Float) -> Unit)? = null
+
+    // [POINT 2 FIX] Routing note events back to Compose UI
+    var onNoteReceived: ((note: Int, velocity: Int, isNoteOn: Boolean) -> Unit)? = null
+
+    // [POINT 4 FIX] Pitch Bend event routing
+    var onPitchBendReceived: ((pitchBend: Float) -> Unit)? = null
+
+    // Tracking currently connected device name for mappings
+    var currentDeviceName: String? = null
+    var onDeviceConnectionChanged: ((deviceName: String?) -> Unit)? = null
 
     fun startListening() {
         if (midiManager == null) {
@@ -54,12 +55,17 @@ class AndroidMidiManager(
 
             override fun onDeviceRemoved(deviceInfo: MidiDeviceInfo) {
                 Log.i(TAG, "MIDI device removed: ${deviceInfo.properties}")
-                // Remove all open handles for this specific device so we don't
-                // leak stale MidiDevice references after hot-unplug.
                 val toClose = openDevices.filter { it.info == deviceInfo }
                 toClose.forEach { device ->
                     try { device.close() } catch (e: Exception) { /* ignore */ }
                     openDevices.remove(device)
+                }
+                if (openDevices.isEmpty()) {
+                    currentDeviceName = null
+                    handler.post { onDeviceConnectionChanged?.invoke(null) }
+                } else {
+                    currentDeviceName = openDevices.first().info.properties.getString(MidiDeviceInfo.PROPERTY_NAME)
+                    handler.post { onDeviceConnectionChanged?.invoke(currentDeviceName) }
                 }
             }
         }, handler)
@@ -74,7 +80,10 @@ class AndroidMidiManager(
         midiManager?.openDevice(deviceInfo, { device ->
             if (device != null) {
                 openDevices.add(device)
-                
+                if (currentDeviceName == null) {
+                    currentDeviceName = deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)
+                    handler.post { onDeviceConnectionChanged?.invoke(currentDeviceName) }
+                }
                 // Open output ports of the device to receive MIDI messages
                 for (portInfo in deviceInfo.ports) {
                     if (portInfo.type == MidiDeviceInfo.PortInfo.TYPE_OUTPUT) {
@@ -95,6 +104,8 @@ class AndroidMidiManager(
             }
         }
         openDevices.clear()
+        currentDeviceName = null
+        onDeviceConnectionChanged?.invoke(null)
     }
 
     // Custom MidiReceiver parsing binary MIDI streams
@@ -109,19 +120,37 @@ class AndroidMidiManager(
                 if (currentByte >= 0x80) {
                     val status = currentByte and 0xF0
 
+                    val channel = currentByte and 0x0F
+
                     if (status == 0x90 && i + 2 < end) { // Note On
                         val note = data[i + 1].toInt() and 0x7F
                         val velocity = data[i + 2].toInt() and 0x7F
-                        if (velocity > 0) {
-                            synth.noteOn(note, velocity)
-                        } else {
-                            synth.noteOff(note)
+                        
+                        handler.post {
+                            if (velocity > 0) {
+                                onNoteReceived?.invoke(note, velocity, true)
+                            } else {
+                                onNoteReceived?.invoke(note, 0, false)
+                            }
                         }
                         i += 3
 
                     } else if (status == 0x80 && i + 2 < end) { // Note Off
                         val note = data[i + 1].toInt() and 0x7F
-                        synth.noteOff(note)
+                        handler.post {
+                            onNoteReceived?.invoke(note, 0, false)
+                        }
+                        i += 3
+
+                    } else if (status == 0xE0 && i + 2 < end) { // Pitch Bend
+                        val lsb = data[i + 1].toInt() and 0x7F
+                        val msb = data[i + 2].toInt() and 0x7F
+                        val pitchVal = (msb shl 7) or lsb
+                        // Normalize 0..16383 to -1.0..1.0 (center is 8192)
+                        val floatVal = (pitchVal - 8192) / 8192.0f
+                        handler.post {
+                            onPitchBendReceived?.invoke(floatVal)
+                        }
                         i += 3
 
                     } else if (status == 0xB0 && i + 2 < end) { // Control Change (CC)
@@ -130,8 +159,6 @@ class AndroidMidiManager(
                         val floatValue = value / 127.0f
 
                         // [POINT 2 FIX] — MIDI Learn intercept:
-                        // If Learn mode is active, capture this CC and deliver it
-                        // to the UI instead of processing it as a normal control.
                         val learnCallback = onLearnModeCcReceived
                         if (learnCallback != null) {
                             Log.i(TAG, "MIDI Learn captured CC $controller → mapping target")
@@ -144,8 +171,6 @@ class AndroidMidiManager(
                         }
 
                         // [POINT 2 FIX] — Dynamic mapping lookup:
-                        // If this CC has a user-defined mapping, notify App.kt to apply
-                        // the change to the correct channel/parameter state.
                         val mappedTarget = ccMappings[controller]
                         if (mappedTarget != null) {
                             Log.d(TAG, "Mapped CC $controller → '$mappedTarget' = $floatValue")
@@ -156,13 +181,6 @@ class AndroidMidiManager(
                             continue
                         }
 
-                        // Default built-in CC handling (unmapped CCs)
-                        when (controller) {
-                            7  -> synth.setVolume(floatValue)       // CC 7:  Volume fader
-                            74 -> synth.setFilterCutoff(floatValue) // CC 74: Filter cutoff
-                            91 -> synth.setReverb(floatValue)       // CC 91: Reverb mix
-                            else -> Log.v(TAG, "Unhandled CC $controller = $value")
-                        }
                         i += 3
                     } else {
                         i++

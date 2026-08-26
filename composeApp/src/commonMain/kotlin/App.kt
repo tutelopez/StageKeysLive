@@ -63,6 +63,12 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var concerts by remember { mutableStateOf<List<Concert>>(emptyList()) }
     var activeConcert by remember { mutableStateOf<Concert?>(null) }
     var selectedPatchIndex by remember { mutableStateOf(0) }
+    var currentConnectedDeviceName by remember { mutableStateOf<String?>(null) }
+
+    // File Picker and Snackbar State
+    var showSf2Picker by remember { mutableStateOf(false) }
+    var isLoadingSf2 by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Dialog flags
     var showCreateConcertDialog by remember { mutableStateOf(false) }
@@ -109,8 +115,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     val vuLevels = remember { List(8) { Animatable(0f) } }
 
     // MIDI mapping state (Mapea CC a Controladores)
-    val midiCcMappings = remember { mutableStateMapOf(7 to "Volume", 74 to "Filter Cutoff", 91 to "Reverb Mix", 20 to "Master Volume") }
-    var mappingTarget by remember { mutableStateOf<String?>(null) }
+    val midiCcMappings = remember { mutableStateMapOf<Int, MidiTarget>(
+        7 to MidiTarget.ChannelVolume(0),
+        74 to MidiTarget.FilterCutoff,
+        91 to MidiTarget.ReverbMix,
+        20 to MidiTarget.MasterVolume,
+        64 to MidiTarget.Sustain
+    )}
+    var mappingTarget by remember { mutableStateOf<MidiTarget?>(null) }
 
     // Trigger visual MIDI indicator
     var midiActivityIndicator by remember { mutableStateOf(false) }
@@ -123,8 +135,176 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     }
 
     // Load initial concerts database on startup
+    LaunchedEffect(activeConcert?.id) {
+        val concert = activeConcert
+        if (concert != null) {
+            concert.channels.forEach { ch ->
+                if (ch.sf2Path != null) {
+                    synth.loadSoundFont(ch.sf2Path, ch.id)
+                }
+            }
+        }
+    }
+
+    // Play Note On triggers individual VU meters and Master VU meter
+    val playNoteOn: (Int, Int) -> Unit = { note, velocity ->
+        activeNote = note
+        triggerMidiFlash()
+        heldKeys[note] = true
+
+        activeConcert?.let { concert ->
+            val pitchOffset = (pitchBend.value * 2).toInt()
+            val playedNote = note + pitchOffset
+
+            var noteTriggered = false
+            concert.channels.forEachIndexed { idx, ch ->
+                if (!ch.isMuted && playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
+                    synth.noteOn(playedNote, (ch.volume * velocity).toInt(), ch.id)
+                    noteTriggered = true
+                    
+                    coroutineScope.launch {
+                        vuLevels[idx].animateTo(ch.volume * (velocity / 127f), tween(50))
+                    }
+                }
+            }
+
+            if (noteTriggered) {
+                coroutineScope.launch {
+                    masterVuLevel.animateTo(masterVolume * (velocity / 127f), tween(50))
+                }
+            }
+
+            // Record MIDI event
+            if (isRecording) {
+                val elapsed = System.currentTimeMillis() - recordingStartTimestamp
+                recordedEvents.add(RecordingEvent(elapsed, note, velocity, true))
+            }
+        }
+    }
+
+    val playNoteOff: (Int) -> Unit = { note ->
+        heldKeys.remove(note)
+        triggerMidiFlash()
+
+        if (sustainActive) {
+            sustainedKeys[note] = true
+        } else {
+            activeNote = if (activeNote == note) null else activeNote
+            activeConcert?.let { concert ->
+                val pitchOffset = (pitchBend.value * 2).toInt()
+                val playedNote = note + pitchOffset
+
+                concert.channels.forEachIndexed { idx, ch ->
+                    if (playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
+                        synth.noteOff(playedNote, ch.id)
+                        coroutineScope.launch {
+                            vuLevels[idx].animateTo(0f, tween(250))
+                        }
+                    }
+                }
+
+                coroutineScope.launch {
+                    masterVuLevel.animateTo(0f, tween(250))
+                }
+
+                // Record MIDI event
+                if (isRecording) {
+                    val elapsed = System.currentTimeMillis() - recordingStartTimestamp
+                    recordedEvents.add(RecordingEvent(elapsed, note, 0, false))
+                }
+            }
+        }
+    }
+
+    // Handle Sustain release
+    LaunchedEffect(sustainActive) {
+        if (!sustainActive) {
+            val notesToRelease = sustainedKeys.keys.filter { !heldKeys.containsKey(it) }
+            activeConcert?.let { concert ->
+                val pitchOffset = (pitchBend.value * 2).toInt()
+                notesToRelease.forEach { note ->
+                    val playedNote = note + pitchOffset
+                    concert.channels.forEachIndexed { idx, ch ->
+                        if (playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
+                            synth.noteOff(playedNote, ch.id)
+                            coroutineScope.launch {
+                                vuLevels[idx].animateTo(0f, tween(250))
+                            }
+                        }
+                    }
+                    if (activeNote == note) activeNote = null
+                }
+                coroutineScope.launch {
+                    masterVuLevel.animateTo(0f, tween(250))
+                }
+            }
+            sustainedKeys.clear()
+        }
+    }
+
     LaunchedEffect(Unit) {
         synth.syncMidiMappings(midiCcMappings)
+        
+        synth.setMidiListener(
+            onMappedCc = { target, floatValue ->
+                when (target) {
+                    is MidiTarget.ChannelVolume -> {
+                        activeConcert?.let { concert ->
+                            if (target.channelIndex < concert.channels.size) {
+                                val updatedChannels = concert.channels.toMutableList()
+                                val ch = updatedChannels[target.channelIndex]
+                                updatedChannels[target.channelIndex] = ch.copy(volume = floatValue)
+                                activeConcert = concert.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
+                            }
+                        }
+                    }
+                    is MidiTarget.ChannelMute -> {
+                        // Optional implementation
+                    }
+                    is MidiTarget.ChannelSolo -> {
+                        // Optional implementation
+                    }
+                    is MidiTarget.Pad -> {
+                        val padNote = 36 + target.padIndex
+                        if (floatValue > 0f) {
+                            playNoteOn(padNote, (floatValue * 127).toInt())
+                        } else {
+                            playNoteOff(padNote)
+                        }
+                    }
+                    is MidiTarget.Pot -> {
+                        // Pot implementation
+                    }
+                    is MidiTarget.MasterVolume -> masterVolume = floatValue
+                    is MidiTarget.FilterCutoff -> {
+                        // Optional filter implementation
+                    }
+                    is MidiTarget.ReverbMix -> {
+                        // Optional reverb implementation
+                    }
+                    is MidiTarget.Sustain -> sustainActive = floatValue > 0.5f
+                    is MidiTarget.Modulation -> {}
+                    is MidiTarget.OctaveUp -> {}
+                    is MidiTarget.OctaveDown -> {}
+                }
+            },
+            onNote = { note, velocity, isNoteOn ->
+                if (isNoteOn) {
+                    playNoteOn(note, velocity)
+                } else {
+                    playNoteOff(note)
+                }
+            },
+            onPitchBend = { bend ->
+                coroutineScope.launch {
+                    pitchBend.animateTo(bend, tween(20))
+                }
+            },
+            onDeviceConnectionChanged = { name ->
+                currentConnectedDeviceName = name
+            }
+        )
+
         val json = readTextFromFile("concerts.json")
         if (json != null) {
             val list = ConcertSerializer.deserialize(json)
@@ -143,10 +323,10 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         PatchState("Deep Synth Bass", "Synths", 38, "Warm analog bass with low filter cutoff")
                     ),
                     channels = listOf(
-                        ChannelStripState(1, "Piano.sf2", 0.8f, false, false, 0, 127, "#00D2FF"),
-                        ChannelStripState(2, "RhodesEP.sf2", 0.7f, false, false, 0, 127, "#FFFF8C00"),
-                        ChannelStripState(3, "BassSynth.sf2", 0.6f, false, false, 0, 59, "#FF39FF14"),
-                        ChannelStripState(4, "BrassPoly.sf2", 0.75f, false, false, 60, 127, "#FFFF0055")
+                        ChannelStripState(1, "Piano.sf2", null, 0.8f, false, false, 0, 127, "#00D2FF"),
+                        ChannelStripState(2, "RhodesEP.sf2", null, 0.7f, false, false, 0, 127, "#FFFF8C00"),
+                        ChannelStripState(3, "BassSynth.sf2", null, 0.6f, false, false, 0, 59, "#FF39FF14"),
+                        ChannelStripState(4, "BrassPoly.sf2", null, 0.75f, false, false, 60, 127, "#FFFF0055")
                     )
                 ),
                 Concert(
@@ -159,9 +339,9 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         PatchState("Warm Strings Pad", "Strings", 49, "Slow attack pad for jazz ballads")
                     ),
                     channels = listOf(
-                        ChannelStripState(1, "TonewheelOrgan.sf2", 0.8f, false, false, 0, 127, "#00D2FF"),
-                        ChannelStripState(2, "VibeMallets.sf2", 0.65f, false, false, 0, 127, "#FFFF8C00"),
-                        ChannelStripState(3, "AmbientStrings.sf2", 0.7f, false, false, 0, 127, "#FF39FF14")
+                        ChannelStripState(1, "TonewheelOrgan.sf2", null, 0.8f, false, false, 0, 127, "#00D2FF"),
+                        ChannelStripState(2, "VibeMallets.sf2", null, 0.65f, false, false, 0, 127, "#FFFF8C00"),
+                        ChannelStripState(3, "AmbientStrings.sf2", null, 0.7f, false, false, 0, 127, "#FF39FF14")
                     )
                 )
             )
@@ -196,104 +376,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         synth.setVolume(masterVolume)
     }
 
-    // Play Note On triggers individual VU meters and Master VU meter
-    val playNoteOn: (Int) -> Unit = { note ->
-        activeNote = note
-        triggerMidiFlash()
-        heldKeys[note] = true
-
-        activeConcert?.let { concert ->
-            val pitchOffset = (pitchBend.value * 2).toInt()
-            val playedNote = note + pitchOffset
-
-            var noteTriggered = false
-            concert.channels.forEachIndexed { idx, ch ->
-                if (!ch.isMuted && playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
-                    synth.noteOn(playedNote, (ch.volume * 90).toInt())
-                    noteTriggered = true
-                    
-                    coroutineScope.launch {
-                        vuLevels[idx].animateTo(ch.volume * 0.9f, tween(50))
-                    }
-                }
-            }
-
-            if (noteTriggered) {
-                coroutineScope.launch {
-                    masterVuLevel.animateTo(masterVolume * 0.9f, tween(50))
-                }
-            }
-
-            // Record MIDI event
-            if (isRecording) {
-                val elapsed = System.currentTimeMillis() - recordingStartTimestamp
-                recordedEvents.add(RecordingEvent(elapsed, note, 90, true))
-            }
-        }
-    }
-
-    val playNoteOff: (Int) -> Unit = { note ->
-        heldKeys.remove(note)
-        triggerMidiFlash()
-
-        if (sustainActive) {
-            sustainedKeys[note] = true
-        } else {
-            activeNote = if (activeNote == note) null else activeNote
-            activeConcert?.let { concert ->
-                val pitchOffset = (pitchBend.value * 2).toInt()
-                val playedNote = note + pitchOffset
-
-                concert.channels.forEachIndexed { idx, ch ->
-                    if (playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
-                        synth.noteOff(playedNote)
-                        coroutineScope.launch {
-                            vuLevels[idx].animateTo(0f, tween(250))
-                        }
-                    }
-                }
-
-                coroutineScope.launch {
-                    masterVuLevel.animateTo(0f, tween(250))
-                }
-
-                // Record MIDI event
-                if (isRecording) {
-                    val elapsed = System.currentTimeMillis() - recordingStartTimestamp
-                    recordedEvents.add(RecordingEvent(elapsed, note, 0, false))
-                }
-            }
-        }
-    }
-
-    // Handle Sustain release
-    LaunchedEffect(sustainActive) {
-        if (!sustainActive) {
-            val notesToRelease = sustainedKeys.keys.filter { !heldKeys.containsKey(it) }
-            activeConcert?.let { concert ->
-                val pitchOffset = (pitchBend.value * 2).toInt()
-                notesToRelease.forEach { note ->
-                    val playedNote = note + pitchOffset
-                    concert.channels.forEachIndexed { idx, ch ->
-                        if (playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
-                            synth.noteOff(playedNote)
-                            coroutineScope.launch {
-                                vuLevels[idx].animateTo(0f, tween(250))
-                            }
-                        }
-                    }
-                    if (activeNote == note) activeNote = null
-                }
-                coroutineScope.launch {
-                    masterVuLevel.animateTo(0f, tween(250))
-                }
-            }
-            sustainedKeys.clear()
-        }
+    // Keep Master Volume updated on Audio Synth
+    LaunchedEffect(masterVolume) {
+        synth.setVolume(masterVolume)
     }
 
     // UI SCREEN CONTROLLER
-    when (currentScreen) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (currentScreen) {
         ScreenState.DASHBOARD -> {
             DashboardScreen(
                 concerts = concerts,
@@ -353,9 +443,9 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         delay(sleepTime)
                                     }
                                     if (ev.isNoteOn) {
-                                        synth.noteOn(ev.note, ev.velocity)
+                                        playNoteOn(ev.note, ev.velocity)
                                     } else {
-                                        synth.noteOff(ev.note)
+                                        playNoteOff(ev.note)
                                     }
                                     elapsed = ev.deltaMs
                                 }
@@ -395,6 +485,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             val newChannel = ChannelStripState(
                                 id = nextId,
                                 sf2Name = "SynthPreset_${nextId}.sf2",
+                                sf2Path = null,
                                 volume = 0.8f,
                                 isMuted = false,
                                 isSoloed = false,
@@ -417,7 +508,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
                     // Key events
                     activeNote = activeNote,
-                    onNoteDown = playNoteOn,
+                    onNoteDown = { playNoteOn(it, 90) },
                     onNoteUp = playNoteOff,
                     pitchBend = pitchBend,
                     sustainActive = sustainActive,
@@ -428,6 +519,44 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         }
         ScreenState.SETTINGS -> {
             // Handled as dialog overlay
+        }
+    }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
+        )
+        
+        Sf2FilePicker(showSf2Picker) { path ->
+            showSf2Picker = false
+            if (path != null) {
+                val channel = showChannelSettingsDialog
+                val active = activeConcert
+                if (channel != null && active != null) {
+                    isLoadingSf2 = true
+                    coroutineScope.launch {
+                        val success = synth.loadSoundFont(path, channel.id)
+                        if (success) {
+                            val sf2Name = path.substringAfterLast("/")
+                            if (channel.sf2Path != null && channel.sf2Path != path) {
+                                deleteLocalFile(channel.sf2Path)
+                            }
+                            val updatedChannels = active.channels.map {
+                                if (it.id == channel.id) it.copy(sf2Name = sf2Name, sf2Path = path) else it
+                            }
+                            val updatedConcert = active.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
+                            val newList = concerts.map { if (it.id == active.id) updatedConcert else it }
+                            saveConcertsList(newList)
+                            activeConcert = updatedConcert
+                            showChannelSettingsDialog = updatedConcert.channels.find { it.id == channel.id }
+                        } else {
+                            deleteLocalFile(path)
+                            snackbarHostState.showSnackbar("Error al cargar el archivo .sf2")
+                        }
+                        isLoadingSf2 = false
+                    }
+                }
+            }
         }
     }
 
@@ -457,14 +586,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     onClick = {
                         if (newConcertName.isNotBlank()) {
                             val newConcert = Concert(
-                                id = System.currentTimeMillis().toString(),
+                                id = "concert_${System.currentTimeMillis()}",
                                 name = newConcertName,
                                 lastModified = System.currentTimeMillis(),
                                 patches = listOf(
                                     PatchState("Default Piano", "Keyboards", 0, "Acoustic Grand Piano")
                                 ),
                                 channels = listOf(
-                                    ChannelStripState(1, "PianoDefault.sf2", 0.8f, false, false, 0, 127, "#00D2FF")
+                                    ChannelStripState(1, "PianoDefault.sf2", null, 0.8f, false, false, 0, 127, "#00D2FF")
                                 )
                             )
                             val newList = concerts + newConcert
@@ -571,29 +700,22 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 Column {
                     Text("SoundFont Actual: ${chState.sf2Name}", color = TextDark, fontSize = 12.sp, modifier = Modifier.padding(bottom = 12.dp))
                     
-                    // Options List
-                    Button(
-                        onClick = {
-                            val active = activeConcert
-                            if (active != null) {
-                                val sf2List = listOf("PianoGrand.sf2", "StringsClassic.sf2", "SynthLeadFat.sf2", "MidiDrums.sf2", "HammondOrgan.sf2")
-                                val currentIdx = sf2List.indexOf(chState.sf2Name)
-                                val nextSf2 = sf2List[(currentIdx + 1) % sf2List.size]
-                                
-                                val updatedChannels = active.channels.map {
-                                    if (it.id == chState.id) it.copy(sf2Name = nextSf2) else it
-                                }
-                                val updatedConcert = active.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
-                                val newList = concerts.map { if (it.id == active.id) updatedConcert else it }
-                                saveConcertsList(newList)
-                                activeConcert = updatedConcert
-                                showChannelSettingsDialog = updatedConcert.channels.find { it.id == chState.id }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = LightPanel),
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
-                    ) {
-                        Text("Cambiar SF2 Preset", color = TextLight)
+                    if (isLoadingSf2) {
+                        CircularProgressIndicator(
+                            color = MainstageBlue,
+                            modifier = Modifier.padding(bottom = 12.dp).align(Alignment.CenterHorizontally).size(32.dp)
+                        )
+                    } else {
+                        // Options List
+                        Button(
+                            onClick = {
+                                showSf2Picker = true
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = LightPanel),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                        ) {
+                            Text("Cambiar SF2 Preset", color = TextLight)
+                        }
                     }
 
                     // Dynamic Vibrant Color grid
@@ -759,10 +881,16 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                                     midiCcMappings[cc] = target
                                                     synth.syncMidiMappings(midiCcMappings)
                                                     mappingTarget = null
+                                                    // Save mappings to disk for current device
+                                                    try {
+                                                        val jsonStr = MidiMappingSerializer.serialize(midiCcMappings.toMap())
+                                                        val fileName = currentConnectedDeviceName?.let { "mappings_$it.json" } ?: "mappings_default.json"
+                                                        saveTextToFile(fileName, jsonStr)
+                                                    } catch (e: Exception) {
+                                                    }
                                                 },
                                                 onTimeout = {
-                                                    // Desktop or no MIDI device: silently cancel
-                                                    if (mappingTarget == target) mappingTarget = null
+                                                    mappingTarget = null
                                                 }
                                             )
                                         }
@@ -1690,11 +1818,11 @@ fun ScrollablePianoKeyboard(
 
 @Composable
 fun MidiMappingSettingsScreen(
-    mappings: Map<Int, String>,
-    mappingTarget: String?,
-    onStartMapping: (String) -> Unit
+    mappings: Map<Int, MidiTarget>,
+    mappingTarget: MidiTarget?,
+    onStartMapping: (MidiTarget) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Text("ASIGNACION DE CONTROLADORES MIDI CC (MIDI LEARN)", color = TextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Text(
             "Haz clic en \"Mapear\" al lado del control correspondiente y mueve el potenciómetro o fader de tu teclado físico para enlazarlo.",
@@ -1705,9 +1833,34 @@ fun MidiMappingSettingsScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        val controllers = listOf("Volume", "Filter Cutoff", "Reverb Mix", "Master Volume")
+        val controllers = listOf(
+            MidiTarget.MasterVolume,
+            MidiTarget.FilterCutoff,
+            MidiTarget.ReverbMix,
+            MidiTarget.Sustain,
+            MidiTarget.Modulation,
+            MidiTarget.OctaveUp,
+            MidiTarget.OctaveDown
+        ) + (0 until 8).map { MidiTarget.ChannelVolume(it) }
+
         controllers.forEach { target ->
             val mappedCc = mappings.entries.find { it.value == target }?.key
+            
+            val targetName = when (target) {
+                is MidiTarget.ChannelVolume -> "Volumen Canal ${target.channelIndex + 1}"
+                is MidiTarget.ChannelMute -> "Mute Canal ${target.channelIndex + 1}"
+                is MidiTarget.ChannelSolo -> "Solo Canal ${target.channelIndex + 1}"
+                is MidiTarget.Pad -> "Pad ${target.padIndex + 1}"
+                is MidiTarget.Pot -> "Perilla ${target.potIndex + 1}"
+                is MidiTarget.MasterVolume -> "Volumen Maestro"
+                is MidiTarget.FilterCutoff -> "Filtro (Cutoff)"
+                is MidiTarget.ReverbMix -> "Mezcla de Reverb"
+                is MidiTarget.Sustain -> "Pedal Sustain"
+                is MidiTarget.Modulation -> "Rueda de Modulación"
+                is MidiTarget.OctaveUp -> "Octava Arriba"
+                is MidiTarget.OctaveDown -> "Octava Abajo"
+            }
+            
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1718,7 +1871,7 @@ fun MidiMappingSettingsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(target.uppercase(), color = TextLight, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(targetName.uppercase(), color = TextLight, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Text(
                         text = if (mappedCc != null) "Mapeado a MIDI CC $mappedCc" else "Sin mapear",
                         color = if (mappedCc != null) NeonGreen else TextDark,
@@ -2007,11 +2160,20 @@ fun LevelMeter(level: Float, modifier: Modifier = Modifier) {
 
 fun parseColorHex(hex: String): Color {
     val clean = hex.removePrefix("#")
-    if (clean.length == 6) {
-        val r = clean.substring(0, 2).toInt(16)
-        val g = clean.substring(2, 4).toInt(16)
-        val b = clean.substring(4, 6).toInt(16)
-        return Color(r, g, b)
+    return when (clean.length) {
+        6 -> {
+            val r = clean.substring(0, 2).toInt(16)
+            val g = clean.substring(2, 4).toInt(16)
+            val b = clean.substring(4, 6).toInt(16)
+            Color(r, g, b)
+        }
+        8 -> {
+            val a = clean.substring(0, 2).toInt(16)
+            val r = clean.substring(2, 4).toInt(16)
+            val g = clean.substring(4, 6).toInt(16)
+            val b = clean.substring(6, 8).toInt(16)
+            Color(r, g, b, a)
+        }
+        else -> Color.White
     }
-    return Color.White
 }

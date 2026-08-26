@@ -8,21 +8,27 @@ package com.midi.mainstage
 // - applyMappedCc(): called when a mapped CC arrives, routes to correct synth parameter
 
 expect class PlatformAudioSynth() {
-    fun noteOn(note: Int, velocity: Int)
-    fun noteOff(note: Int)
+    fun noteOn(note: Int, velocity: Int, channel: Int = 0)
+    fun noteOff(note: Int, channel: Int = 0)
     fun setVolume(volume: Float)
+    fun setChannelVolume(volume: Float, channel: Int)
     fun setReverb(reverb: Float)
-    fun setFilterCutoff(cutoff: Float)
-    fun setPatch(programNumber: Int)
-    fun loadSoundFont(path: String)
+    fun setFilterCutoff(cutoff: Float, channel: Int = 0)
+    fun setPatch(programNumber: Int, channel: Int = 0)
+    fun loadSoundFont(path: String, channel: Int = 0): Boolean
     fun close()
 
     // [POINT 3 FIX] Returns true only when the Oboe audio stream opened successfully
     fun isAudioReady(): Boolean
 
-    // [POINT 2 FIX] MIDI Learn bridge — implemented by Android actual only
-    // Desktop actual is a no-op since there is no hardware MIDI in that target
-    fun startMidiLearn(target: String, onCaptured: (cc: Int) -> Unit, onTimeout: () -> Unit)
+    fun startMidiLearn(target: MidiTarget, onCaptured: (cc: Int) -> Unit, onTimeout: () -> Unit)
     fun cancelMidiLearn()
-    fun syncMidiMappings(mappings: Map<Int, String>)
+    fun syncMidiMappings(mappings: Map<Int, MidiTarget>)
+    
+    fun setMidiListener(
+        onMappedCc: (target: MidiTarget, floatValue: Float) -> Unit,
+        onNote: (note: Int, velocity: Int, isNoteOn: Boolean) -> Unit,
+        onPitchBend: (pitchBend: Float) -> Unit,
+        onDeviceConnectionChanged: (deviceName: String?) -> Unit
+    )
 }

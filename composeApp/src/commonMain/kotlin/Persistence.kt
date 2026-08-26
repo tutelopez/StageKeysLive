@@ -2,10 +2,12 @@ package com.midi.mainstage
 
 expect fun saveTextToFile(filename: String, text: String)
 expect fun readTextFromFile(filename: String): String?
+expect fun deleteLocalFile(path: String)
 
 data class ChannelStripState(
     val id: Int,
     val sf2Name: String,
+    val sf2Path: String?,
     val volume: Float,
     val isMuted: Boolean,
     val isSoloed: Boolean,
@@ -61,6 +63,9 @@ object ConcertSerializer {
                 sb.append("{")
                 sb.append("\"id\":${ch.id},")
                 sb.append("\"sf2Name\":\"${escape(ch.sf2Name)}\",")
+                if (ch.sf2Path != null) {
+                    sb.append("\"sf2Path\":\"${escape(ch.sf2Path)}\",")
+                }
                 sb.append("\"volume\":${ch.volume},")
                 sb.append("\"isMuted\":${ch.isMuted},")
                 sb.append("\"isSoloed\":${ch.isSoloed},")
@@ -208,6 +213,7 @@ class SimpleJsonParser(private val src: String) {
         pos++ // skip '{'
         var id = 0
         var sf2Name = ""
+        var sf2Path: String? = null
         var volume = 1f
         var isMuted = false
         var isSoloed = false
@@ -228,6 +234,7 @@ class SimpleJsonParser(private val src: String) {
             when (key) {
                 "id" -> id = parseInt()
                 "sf2Name" -> sf2Name = parseString()
+                "sf2Path" -> sf2Path = parseString()
                 "volume" -> volume = parseFloat()
                 "isMuted" -> isMuted = parseBoolean()
                 "isSoloed" -> isSoloed = parseBoolean()
@@ -239,7 +246,7 @@ class SimpleJsonParser(private val src: String) {
             skipWhitespace()
             if (pos < src.length && src[pos] == ',') pos++
         }
-        return ChannelStripState(id, sf2Name, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex)
+        return ChannelStripState(id, sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex)
     }
 
     private fun parseString(): String {
@@ -337,6 +344,64 @@ class SimpleJsonParser(private val src: String) {
     private fun skipWhitespace() {
         while (pos < src.length && src[pos].isWhitespace()) {
             pos++
+        }
+    }
+}
+
+object MidiMappingSerializer {
+    fun serialize(mappings: Map<Int, MidiTarget>): String {
+        return mappings.entries.joinToString(",") { "${it.key}:" }
+    }
+    
+    fun deserialize(str: String): Map<Int, MidiTarget> {
+        val map = mutableMapOf<Int, MidiTarget>()
+        if (str.isBlank()) return map
+        str.split(",").forEach { pair ->
+            val parts = pair.split(":")
+            if (parts.size == 2) {
+                val cc = parts[0].toIntOrNull()
+                val target = deserializeTarget(parts[1])
+                if (cc != null && target != null) {
+                    map[cc] = target
+                }
+            }
+        }
+        return map
+    }
+    
+    private fun serializeTarget(target: MidiTarget): String {
+        return when (target) {
+            is MidiTarget.ChannelVolume -> "ChannelVolume-${target.channelIndex}"
+            is MidiTarget.ChannelMute -> "ChannelMute-${target.channelIndex}"
+            is MidiTarget.ChannelSolo -> "ChannelSolo-${target.channelIndex}"
+            is MidiTarget.Pad -> "Pad-${target.padIndex}"
+            is MidiTarget.Pot -> "Pot-${target.potIndex}"
+            is MidiTarget.MasterVolume -> "MasterVolume"
+            is MidiTarget.FilterCutoff -> "FilterCutoff"
+            is MidiTarget.ReverbMix -> "ReverbMix"
+            is MidiTarget.Sustain -> "Sustain"
+            is MidiTarget.Modulation -> "Modulation"
+            is MidiTarget.OctaveUp -> "OctaveUp"
+            is MidiTarget.OctaveDown -> "OctaveDown"
+        }
+    }
+    
+    private fun deserializeTarget(str: String): MidiTarget? {
+        val parts = str.split("-")
+        return when (parts[0]) {
+            "ChannelVolume" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.ChannelVolume(it) }
+            "ChannelMute" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.ChannelMute(it) }
+            "ChannelSolo" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.ChannelSolo(it) }
+            "Pad" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.Pad(it) }
+            "Pot" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.Pot(it) }
+            "MasterVolume" -> MidiTarget.MasterVolume
+            "FilterCutoff" -> MidiTarget.FilterCutoff
+            "ReverbMix" -> MidiTarget.ReverbMix
+            "Sustain" -> MidiTarget.Sustain
+            "Modulation" -> MidiTarget.Modulation
+            "OctaveUp" -> MidiTarget.OctaveUp
+            "OctaveDown" -> MidiTarget.OctaveDown
+            else -> null
         }
     }
 }

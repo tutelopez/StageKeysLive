@@ -1,0 +1,3 @@
+C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/.cxx/Debug/26h2cdyo/x86/CMakeFiles/mainstage_audio.dir
+C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/.cxx/Debug/26h2cdyo/x86/CMakeFiles/edit_cache.dir
+C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/.cxx/Debug/26h2cdyo/x86/CMakeFiles/rebuild_cache.dir

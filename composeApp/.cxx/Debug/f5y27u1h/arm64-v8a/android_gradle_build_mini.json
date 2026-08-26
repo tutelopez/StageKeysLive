@@ -1,0 +1,38 @@
+{
+  "buildFiles": [
+    "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\Users\\thefi\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\.cxx\\Debug\\f5y27u1h\\arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\Users\\thefi\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\.cxx\\Debug\\f5y27u1h\\arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "mainstage_audio::@6890427a1f51a3e7e1df": {
+      "artifactName": "mainstage_audio",
+      "abi": "arm64-v8a",
+      "output": "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\build\\intermediates\\cxx\\Debug\\f5y27u1h\\obj\\arm64-v8a\\libmainstage_audio.so",
+      "runtimeFiles": [
+        "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\arm64-v8a\\libfluidsynth.so",
+        "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\arm64-v8a\\libfluidsynth-assetloader.so",
+        "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\arm64-v8a\\liboboe.so",
+        "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\arm64-v8a\\libFLAC.so",
+        "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\arm64-v8a\\libogg.so",
+        "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\arm64-v8a\\libopus.so",
+        "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\arm64-v8a\\libsndfile.so",
+        "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\arm64-v8a\\libvorbis.so",
+        "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\arm64-v8a\\libvorbisenc.so",
+        "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\arm64-v8a\\libvorbisfile.so"
+      ]
+    }
+  }
+}

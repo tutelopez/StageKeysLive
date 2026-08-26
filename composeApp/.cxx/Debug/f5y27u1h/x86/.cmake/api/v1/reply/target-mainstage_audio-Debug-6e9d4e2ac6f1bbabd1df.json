@@ -1,0 +1,215 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/build/intermediates/cxx/Debug/f5y27u1h/obj/x86/libmainstage_audio.so"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"target_link_libraries",
+			"add_definitions",
+			"include_directories"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 52,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 56,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 50,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 17,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 22,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 3,
+					"define" : "USE_FLUIDSYNTH"
+				},
+				{
+					"define" : "mainstage_audio_EXPORTS"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 4,
+					"path" : "C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/src/androidMain/cpp/libs/fluidsynth/include"
+				},
+				{
+					"backtrace" : 5,
+					"path" : "C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/src/androidMain/cpp/include"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					1
+				],
+				"standard" : "17"
+			},
+			"sourceIndexes" : 
+			[
+				0
+			],
+			"sysroot" : 
+			{
+				"path" : "C:/Users/thefi/AppData/Local/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
+			}
+		}
+	],
+	"id" : "mainstage_audio::@6890427a1f51a3e7e1df",
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "-Wl,--build-id=sha1 -Wl,--no-rosegment -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments",
+				"role" : "flags"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-llog",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "-landroid",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\x86\\libfluidsynth.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\x86\\libfluidsynth-assetloader.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\x86\\liboboe.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\x86\\libFLAC.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\x86\\libogg.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\x86\\libopus.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\x86\\libsndfile.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\x86\\libvorbis.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\x86\\libvorbisenc.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "C:\\Users\\thefi\\.gemini\\antigravity\\scratch\\mainstage_android\\composeApp\\src\\androidMain\\cpp\\libs\\fluidsynth\\lib\\x86\\libvorbisfile.so",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "-latomic -lm",
+				"role" : "libraries"
+			}
+		],
+		"language" : "CXX",
+		"sysroot" : 
+		{
+			"path" : "C:/Users/thefi/AppData/Local/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
+		}
+	},
+	"name" : "mainstage_audio",
+	"nameOnDisk" : "libmainstage_audio.so",
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "mainstage_audio.cpp",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "SHARED_LIBRARY"
+}

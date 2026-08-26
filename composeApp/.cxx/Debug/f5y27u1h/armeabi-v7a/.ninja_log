@@ -1,0 +1,22 @@
+# ninja log v5
+1	1013	8094542045293401	CMakeFiles/mainstage_audio.dir/mainstage_audio.cpp.o	c7219323bd75eace
+1018	1136	8094542046546542	C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/build/intermediates/cxx/Debug/f5y27u1h/obj/armeabi-v7a/libmainstage_audio.so	3e6d07270f4a07f6
+0	10	0	clean	7abde394771a3d7c
+7	1021	8094543979352176	CMakeFiles/mainstage_audio.dir/mainstage_audio.cpp.o	c7219323bd75eace
+1022	1201	8094543981238477	C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/build/intermediates/cxx/Debug/f5y27u1h/obj/armeabi-v7a/libmainstage_audio.so	3e6d07270f4a07f6
+0	10	0	clean	7abde394771a3d7c
+7	1028	8094551546462775	CMakeFiles/mainstage_audio.dir/mainstage_audio.cpp.o	c7219323bd75eace
+1029	1147	8094551547819064	C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/build/intermediates/cxx/Debug/f5y27u1h/obj/armeabi-v7a/libmainstage_audio.so	3e6d07270f4a07f6
+0	10	0	clean	7abde394771a3d7c
+5	1049	8094554527326384	CMakeFiles/mainstage_audio.dir/mainstage_audio.cpp.o	c7219323bd75eace
+1050	1156	8094554529570833	C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/build/intermediates/cxx/Debug/f5y27u1h/obj/armeabi-v7a/libmainstage_audio.so	3e6d07270f4a07f6
+0	10	0	clean	7abde394771a3d7c
+5	1035	8094555703259464	CMakeFiles/mainstage_audio.dir/mainstage_audio.cpp.o	c7219323bd75eace
+1036	1143	8094555706513402	C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/build/intermediates/cxx/Debug/f5y27u1h/obj/armeabi-v7a/libmainstage_audio.so	3e6d07270f4a07f6
+0	10	0	clean	7abde394771a3d7c
+5	1213	8094558302118345	CMakeFiles/mainstage_audio.dir/mainstage_audio.cpp.o	c7219323bd75eace
+1213	1356	8094558303662798	C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/build/intermediates/cxx/Debug/f5y27u1h/obj/armeabi-v7a/libmainstage_audio.so	3e6d07270f4a07f6
+8	1741	8094728179105496	CMakeFiles/mainstage_audio.dir/mainstage_audio.cpp.o	c7219323bd75eace
+1741	1891	8094728180649373	C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/build/intermediates/cxx/Debug/f5y27u1h/obj/armeabi-v7a/libmainstage_audio.so	3e6d07270f4a07f6
+6	867	8094753206368532	CMakeFiles/mainstage_audio.dir/mainstage_audio.cpp.o	c7219323bd75eace
+867	1052	8094753208204089	C:/Users/thefi/.gemini/antigravity/scratch/mainstage_android/composeApp/build/intermediates/cxx/Debug/f5y27u1h/obj/armeabi-v7a/libmainstage_audio.so	3e6d07270f4a07f6

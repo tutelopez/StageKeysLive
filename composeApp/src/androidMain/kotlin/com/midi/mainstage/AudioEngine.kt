@@ -41,32 +41,36 @@ actual class PlatformAudioSynth actual constructor() {
         }
     }
 
-    actual fun noteOn(note: Int, velocity: Int) {
-        nativeNoteOn(note, velocity)
+    actual fun noteOn(note: Int, velocity: Int, channel: Int) {
+        nativeNoteOn(note, velocity, channel)
     }
 
-    actual fun noteOff(note: Int) {
-        nativeNoteOff(note)
+    actual fun noteOff(note: Int, channel: Int) {
+        nativeNoteOff(note, channel)
     }
 
     actual fun setVolume(volume: Float) {
         nativeSetVolume(volume)
     }
 
+    actual fun setChannelVolume(volume: Float, channel: Int) {
+        nativeSetChannelVolume(volume, channel)
+    }
+
     actual fun setReverb(reverb: Float) {
         nativeSetReverb(reverb)
     }
 
-    actual fun setFilterCutoff(cutoff: Float) {
-        nativeSetFilterCutoff(cutoff)
+    actual fun setFilterCutoff(cutoff: Float, channel: Int) {
+        nativeSetFilterCutoff(cutoff, channel)
     }
 
-    actual fun setPatch(programNumber: Int) {
-        nativeSetPatch(programNumber)
+    actual fun setPatch(programNumber: Int, channel: Int) {
+        nativeSetPatch(programNumber, channel)
     }
 
-    actual fun loadSoundFont(path: String) {
-        nativeLoadSoundFont(path)
+    actual fun loadSoundFont(path: String, channel: Int): Boolean {
+        return nativeLoadSoundFont(path, channel)
     }
 
     actual fun close() {
@@ -81,7 +85,7 @@ actual class PlatformAudioSynth actual constructor() {
     // - Sets the learn callback on AndroidMidiManager so the next physical CC
     //   from a connected keyboard/controller gets captured and returned via onCaptured.
     // - Starts a 7-second timeout; if no CC arrives, calls onTimeout and clears the callback.
-    actual fun startMidiLearn(target: String, onCaptured: (cc: Int) -> Unit, onTimeout: () -> Unit) {
+    actual fun startMidiLearn(target: MidiTarget, onCaptured: (cc: Int) -> Unit, onTimeout: () -> Unit) {
         val manager = midiManager
         if (manager == null) {
             Log.w(TAG, "startMidiLearn: no MIDI manager available (no hardware connected?)")
@@ -121,8 +125,20 @@ actual class PlatformAudioSynth actual constructor() {
         midiManager?.onLearnModeCcReceived = null
     }
 
-    actual fun syncMidiMappings(mappings: Map<Int, String>) {
+    actual fun syncMidiMappings(mappings: Map<Int, MidiTarget>) {
         midiManager?.ccMappings = mappings.toMap()
+    }
+    
+    actual fun setMidiListener(
+        onMappedCc: (target: MidiTarget, floatValue: Float) -> Unit,
+        onNote: (note: Int, velocity: Int, isNoteOn: Boolean) -> Unit,
+        onPitchBend: (pitchBend: Float) -> Unit,
+        onDeviceConnectionChanged: (deviceName: String?) -> Unit
+    ) {
+        midiManager?.onMappedCcReceived = { _, target, floatValue -> onMappedCc(target, floatValue) }
+        midiManager?.onNoteReceived = onNote
+        midiManager?.onPitchBendReceived = onPitchBend
+        midiManager?.onDeviceConnectionChanged = onDeviceConnectionChanged
     }
 
     private fun cancelLearnTimeout() {
@@ -133,12 +149,13 @@ actual class PlatformAudioSynth actual constructor() {
     // Native JNI bindings to C++ Audio/FluidSynth engine
     private external fun nativeInit()
     private external fun nativeClose()
-    private external fun nativeNoteOn(note: Int, velocity: Int)
-    private external fun nativeNoteOff(note: Int)
+    private external fun nativeNoteOn(note: Int, velocity: Int, channel: Int)
+    private external fun nativeNoteOff(note: Int, channel: Int)
     private external fun nativeSetVolume(volume: Float)
+    private external fun nativeSetChannelVolume(volume: Float, channel: Int)
     private external fun nativeSetReverb(reverb: Float)
-    private external fun nativeSetFilterCutoff(cutoff: Float)
-    private external fun nativeSetPatch(programNumber: Int)
-    private external fun nativeLoadSoundFont(path: String)
+    private external fun nativeSetFilterCutoff(cutoff: Float, channel: Int)
+    private external fun nativeSetPatch(programNumber: Int, channel: Int)
+    private external fun nativeLoadSoundFont(path: String, channel: Int): Boolean
     private external fun nativeIsAudioReady(): Boolean
 }

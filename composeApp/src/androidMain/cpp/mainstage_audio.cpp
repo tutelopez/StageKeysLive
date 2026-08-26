@@ -12,20 +12,25 @@ class MainstageAudioEngine {
 private:
     std::mutex synthMutex;
     
-    // Internal synth settings
+    // Internal synth settings per channel
+    int sfids[16];
+    int currentPrograms[16];
     float masterVolume = 0.8f;
     float reverbMix = 0.3f;
     float filterCutoff = 0.5f;
-    int currentProgram = 0;
     bool audioReady = false;
 
     fluid_settings_t* fluidSettings = nullptr;
     fluid_synth_t* fluidSynth = nullptr;
     fluid_audio_driver_t* fluidAudioDriver = nullptr;
-    int sfid = -1;
 
 public:
-    MainstageAudioEngine() {}
+    MainstageAudioEngine() {
+        for (int i = 0; i < 16; i++) {
+            sfids[i] = -1;
+            currentPrograms[i] = 0;
+        }
+    }
 
     ~MainstageAudioEngine() {
         stop();
@@ -88,36 +93,39 @@ public:
         }
     }
 
-    void loadSoundFont(const char* sf2Path) {
+    bool loadSoundFont(const char* sf2Path, int channel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr) {
-            LOGI("FluidSynth: loading SF2 from path: %s", sf2Path);
-            if (sfid != -1) {
-                fluid_synth_sfunload(fluidSynth, sfid, 1);
-                sfid = -1;
+        if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
+            LOGI("FluidSynth: loading SF2 from path: %s for channel: %d", sf2Path, channel);
+            if (sfids[channel] != -1) {
+                fluid_synth_sfunload(fluidSynth, sfids[channel], 1);
+                sfids[channel] = -1;
             }
-            sfid = fluid_synth_sfload(fluidSynth, sf2Path, 1);
-            if (sfid != -1) {
-                LOGI("FluidSynth: SF2 loaded OK — sfid=%d", sfid);
-                // Program select bank 0, program 0
-                fluid_synth_program_select(fluidSynth, 0, sfid, 0, 0);
+            sfids[channel] = fluid_synth_sfload(fluidSynth, sf2Path, 1);
+            if (sfids[channel] != -1) {
+                LOGI("FluidSynth: SF2 loaded OK — sfid=%d for channel=%d", sfids[channel], channel);
+                // Program select bank 0, program 0 on this channel
+                fluid_synth_program_select(fluidSynth, channel, sfids[channel], 0, currentPrograms[channel]);
+                return true;
             } else {
                 LOGE("FluidSynth: fluid_synth_sfload FAILED for path: %s", sf2Path);
+                return false;
             }
         }
+        return false;
     }
 
-    void noteOn(int note, int velocity) {
+    void noteOn(int note, int velocity, int channel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr) {
-            fluid_synth_noteon(fluidSynth, 0, note, velocity);
+        if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
+            fluid_synth_noteon(fluidSynth, channel, note, velocity);
         }
     }
 
-    void noteOff(int note) {
+    void noteOff(int note, int channel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr) {
-            fluid_synth_noteoff(fluidSynth, 0, note);
+        if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
+            fluid_synth_noteoff(fluidSynth, channel, note);
         }
     }
 
@@ -126,6 +134,13 @@ public:
         masterVolume = volume;
         if (fluidSynth != nullptr) {
             fluid_synth_set_gain(fluidSynth, volume);
+        }
+    }
+    
+    void setChannelVolume(float volume, int channel) {
+        std::lock_guard<std::mutex> lock(synthMutex);
+        if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
+             fluid_synth_cc(fluidSynth, channel, 7, (int)(volume * 127.0f));
         }
     }
 
@@ -140,19 +155,21 @@ public:
         }
     }
 
-    void setFilterCutoff(float cutoff) {
+    void setFilterCutoff(float cutoff, int channel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        filterCutoff = cutoff;
-        if (fluidSynth != nullptr) {
-            fluid_synth_cc(fluidSynth, 0, 74, (int)(cutoff * 127.0f));
+        filterCutoff = cutoff; // We can track per channel if needed, global variable for now
+        if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
+            fluid_synth_cc(fluidSynth, channel, 74, (int)(cutoff * 127.0f));
         }
     }
 
-    void setPatch(int programNumber) {
+    void setPatch(int programNumber, int channel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        currentProgram = programNumber;
-        if (fluidSynth != nullptr && sfid != -1) {
-            fluid_synth_program_select(fluidSynth, 0, sfid, 0, programNumber);
+        if (channel >= 0 && channel < 16) {
+            currentPrograms[channel] = programNumber;
+            if (fluidSynth != nullptr && sfids[channel] != -1) {
+                fluid_synth_program_select(fluidSynth, channel, sfids[channel], 0, programNumber);
+            }
         }
     }
 };
@@ -162,16 +179,16 @@ static MainstageAudioEngine* gEngine = nullptr;
 extern "C" {
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeNoteOn(JNIEnv *env, jobject thiz, jint note, jint velocity) {
+Java_com_midi_mainstage_PlatformAudioSynth_nativeNoteOn(JNIEnv *env, jobject thiz, jint note, jint velocity, jint channel) {
     if (gEngine != nullptr) {
-        gEngine->noteOn(note, velocity);
+        gEngine->noteOn(note, velocity, channel);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeNoteOff(JNIEnv *env, jobject thiz, jint note) {
+Java_com_midi_mainstage_PlatformAudioSynth_nativeNoteOff(JNIEnv *env, jobject thiz, jint note, jint channel) {
     if (gEngine != nullptr) {
-        gEngine->noteOff(note);
+        gEngine->noteOff(note, channel);
     }
 }
 
@@ -183,6 +200,13 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeSetVolume(JNIEnv *env, jobject 
 }
 
 JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeSetChannelVolume(JNIEnv *env, jobject thiz, jfloat volume, jint channel) {
+    if (gEngine != nullptr) {
+        gEngine->setChannelVolume(volume, channel);
+    }
+}
+
+JNIEXPORT void JNICALL
 Java_com_midi_mainstage_PlatformAudioSynth_nativeSetReverb(JNIEnv *env, jobject thiz, jfloat reverb) {
     if (gEngine != nullptr) {
         gEngine->setReverb(reverb);
@@ -190,16 +214,16 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeSetReverb(JNIEnv *env, jobject 
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetFilterCutoff(JNIEnv *env, jobject thiz, jfloat cutoff) {
+Java_com_midi_mainstage_PlatformAudioSynth_nativeSetFilterCutoff(JNIEnv *env, jobject thiz, jfloat cutoff, jint channel) {
     if (gEngine != nullptr) {
-        gEngine->setFilterCutoff(cutoff);
+        gEngine->setFilterCutoff(cutoff, channel);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetPatch(JNIEnv *env, jobject thiz, jint program_number) {
+Java_com_midi_mainstage_PlatformAudioSynth_nativeSetPatch(JNIEnv *env, jobject thiz, jint program_number, jint channel) {
     if (gEngine != nullptr) {
-        gEngine->setPatch(program_number);
+        gEngine->setPatch(program_number, channel);
     }
 }
 
@@ -220,13 +244,15 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeClose(JNIEnv *env, jobject thiz
     }
 }
 
-JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeLoadSoundFont(JNIEnv *env, jobject thiz, jstring path) {
+JNIEXPORT jboolean JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeLoadSoundFont(JNIEnv *env, jobject thiz, jstring path, jint channel) {
     if (gEngine != nullptr && path != nullptr) {
         const char *sf2Path = env->GetStringUTFChars(path, nullptr);
-        gEngine->loadSoundFont(sf2Path);
+        bool success = gEngine->loadSoundFont(sf2Path, channel);
         env->ReleaseStringUTFChars(path, sf2Path);
+        return success ? JNI_TRUE : JNI_FALSE;
     }
+    return JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL

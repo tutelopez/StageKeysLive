@@ -44,18 +44,7 @@ class MainActivity : ComponentActivity() {
             }
         }.start()
 
-        // [POINT 2 FIX] Wire the dynamic CC→target mapping callback.
-        // When a mapped CC arrives during performance, apply it to the correct synth parameter.
-        // Targets follow the naming convention used in App.kt's midiCcMappings state.
-        midiManager.onMappedCcReceived = { cc, target, floatValue ->
-            Log.d(TAG, "Applying mapped CC $cc → '$target' = $floatValue")
-            when {
-                target.contains("Volume", ignoreCase = true) -> synth.setVolume(floatValue)
-                target.contains("Filter", ignoreCase = true) -> synth.setFilterCutoff(floatValue)
-                target.contains("Reverb", ignoreCase = true) -> synth.setReverb(floatValue)
-                // Future: route "volume_ch1", "volume_ch2", etc. to per-channel gain
-            }
-        }
+        // Handled by App.kt via setMidiListener
 
         midiManager.startListening()
 

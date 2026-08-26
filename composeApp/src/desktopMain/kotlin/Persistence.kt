@@ -22,3 +22,14 @@ actual fun readTextFromFile(filename: String): String? {
     }
     return null
 }
+
+actual fun deleteLocalFile(path: String) {
+    try {
+        val file = java.io.File(path)
+        if (file.exists()) {
+            file.delete()
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
