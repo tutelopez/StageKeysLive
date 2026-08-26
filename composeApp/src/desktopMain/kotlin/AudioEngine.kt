@@ -50,7 +50,7 @@ actual class PlatformAudioSynth actual constructor() {
     }
 
     actual fun loadSoundFont(path: String) {
-        // Desktop uses system default wavetable synth, ignore custom sf2 for now
+        // Desktop uses system default wavetable synth; SF2 loading not applicable here
     }
 
     actual fun close() {
@@ -59,5 +59,18 @@ actual class PlatformAudioSynth actual constructor() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    // [POINT 3 FIX] Desktop always reports audio as ready (javax.sound.midi opens synchronously)
+    actual fun isAudioReady(): Boolean = synthesizer?.isOpen == true
+
+    // [POINT 2 FIX] Desktop has no physical MIDI Learn (no hardware MIDI in this target).
+    // Immediately invoke onTimeout so the UI exits "ESCUCHANDO..." without hanging.
+    actual fun startMidiLearn(target: String, onCaptured: (cc: Int) -> Unit, onTimeout: () -> Unit) {
+        onTimeout()
+    }
+
+    actual fun cancelMidiLearn() {
+        // No-op on Desktop
     }
 }

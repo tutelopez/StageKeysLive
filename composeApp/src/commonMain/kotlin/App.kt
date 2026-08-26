@@ -750,14 +750,19 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         mappingTarget = mappingTarget,
                                         onStartMapping = { target ->
                                             mappingTarget = target
-                                            coroutineScope.launch {
-                                                delay(1500)
-                                                if (mappingTarget == target) {
-                                                    val randomCc = (10..95).random()
-                                                    midiCcMappings[randomCc] = target
+                                            // [POINT 2 FIX] Real MIDI Learn — listens for the
+                                            // next CC from a physical controller (7-second window)
+                                            synth.startMidiLearn(
+                                                target = target,
+                                                onCaptured = { cc ->
+                                                    midiCcMappings[cc] = target
                                                     mappingTarget = null
+                                                },
+                                                onTimeout = {
+                                                    // Desktop or no MIDI device: silently cancel
+                                                    if (mappingTarget == target) mappingTarget = null
                                                 }
-                                            }
+                                            )
                                         }
                                     )
                                 }
