@@ -38,7 +38,7 @@ class AndroidMidiManager(
 
     // Tracking currently connected device name for mappings
     var currentDeviceName: String? = null
-    var onDeviceConnectionChanged: ((deviceName: String?) -> Unit)? = null
+    var onDeviceConnectionChanged: ((deviceNames: List<String>) -> Unit)? = null
 
     fun startListening() {
         if (midiManager == null) {
@@ -62,10 +62,11 @@ class AndroidMidiManager(
                 }
                 if (openDevices.isEmpty()) {
                     currentDeviceName = null
-                    handler.post { onDeviceConnectionChanged?.invoke(null) }
+                    handler.post { onDeviceConnectionChanged?.invoke(emptyList()) }
                 } else {
-                    currentDeviceName = openDevices.first().info.properties.getString(MidiDeviceInfo.PROPERTY_NAME)
-                    handler.post { onDeviceConnectionChanged?.invoke(currentDeviceName) }
+                    val deviceNames = openDevices.map { it.info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unknown Device" }
+                    currentDeviceName = deviceNames.firstOrNull()
+                    handler.post { onDeviceConnectionChanged?.invoke(deviceNames) }
                 }
             }
         }, handler)
@@ -82,8 +83,10 @@ class AndroidMidiManager(
                 openDevices.add(device)
                 if (currentDeviceName == null) {
                     currentDeviceName = deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)
-                    handler.post { onDeviceConnectionChanged?.invoke(currentDeviceName) }
                 }
+                val deviceNames = openDevices.map { it.info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unknown Device" }
+                handler.post { onDeviceConnectionChanged?.invoke(deviceNames) }
+                
                 // Open output ports of the device to receive MIDI messages
                 for (portInfo in deviceInfo.ports) {
                     if (portInfo.type == MidiDeviceInfo.PortInfo.TYPE_OUTPUT) {
@@ -105,88 +108,109 @@ class AndroidMidiManager(
         }
         openDevices.clear()
         currentDeviceName = null
-        onDeviceConnectionChanged?.invoke(null)
+        onDeviceConnectionChanged?.invoke(emptyList())
     }
 
     // Custom MidiReceiver parsing binary MIDI streams
     inner class MidiInputReceiver : MidiReceiver() {
+        private var runningStatus = 0
+
         override fun onSend(data: ByteArray, offset: Int, count: Int, timestamp: Long) {
             var i = offset
             val end = offset + count
             while (i < end) {
                 val currentByte = data[i].toInt() and 0xFF
 
+                var status = 0
+                var isRunningStatus = false
+
                 // Status bytes start at 0x80 (128)
                 if (currentByte >= 0x80) {
-                    val status = currentByte and 0xF0
+                    status = currentByte and 0xF0
+                    runningStatus = status
+                } else {
+                    if (runningStatus >= 0x80) {
+                        status = runningStatus
+                        isRunningStatus = true
+                    } else {
+                        // No valid status, skip byte
+                        i++
+                        continue
+                    }
+                }
 
-                    val channel = currentByte and 0x0F
+                val dataIndex = if (isRunningStatus) i else i + 1
 
-                    if (status == 0x90 && i + 2 < end) { // Note On
-                        val note = data[i + 1].toInt() and 0x7F
-                        val velocity = data[i + 2].toInt() and 0x7F
-                        
-                        handler.post {
-                            if (velocity > 0) {
-                                onNoteReceived?.invoke(note, velocity, true)
-                            } else {
-                                onNoteReceived?.invoke(note, 0, false)
-                            }
-                        }
-                        i += 3
-
-                    } else if (status == 0x80 && i + 2 < end) { // Note Off
-                        val note = data[i + 1].toInt() and 0x7F
-                        handler.post {
+                if (status == 0x90 && dataIndex + 1 < end) { // Note On
+                    val note = data[dataIndex].toInt() and 0x7F
+                    val velocity = data[dataIndex + 1].toInt() and 0x7F
+                    
+                    handler.post {
+                        if (velocity > 0) {
+                            onNoteReceived?.invoke(note, velocity, true)
+                        } else {
                             onNoteReceived?.invoke(note, 0, false)
                         }
-                        i += 3
+                    }
+                    i = dataIndex + 2
 
-                    } else if (status == 0xE0 && i + 2 < end) { // Pitch Bend
-                        val lsb = data[i + 1].toInt() and 0x7F
-                        val msb = data[i + 2].toInt() and 0x7F
-                        val pitchVal = (msb shl 7) or lsb
-                        // Normalize 0..16383 to -1.0..1.0 (center is 8192)
-                        val floatVal = (pitchVal - 8192) / 8192.0f
+                } else if (status == 0x80 && dataIndex + 1 < end) { // Note Off
+                    val note = data[dataIndex].toInt() and 0x7F
+                    handler.post {
+                        onNoteReceived?.invoke(note, 0, false)
+                    }
+                    i = dataIndex + 2
+
+                } else if (status == 0xE0 && dataIndex + 1 < end) { // Pitch Bend
+                    val lsb = data[dataIndex].toInt() and 0x7F
+                    val msb = data[dataIndex + 1].toInt() and 0x7F
+                    val pitchVal = (msb shl 7) or lsb
+                    // Normalize 0..16383 to -1.0..1.0 (center is 8192)
+                    val floatVal = (pitchVal - 8192) / 8192.0f
+                    handler.post {
+                        onPitchBendReceived?.invoke(floatVal)
+                    }
+                    i = dataIndex + 2
+
+                } else if (status == 0xB0 && dataIndex + 1 < end) { // Control Change
+                    val controller = data[dataIndex].toInt() and 0x7F
+                    val value = data[dataIndex + 1].toInt() and 0x7F
+                    val floatValue = value / 127f
+
+                    // [POINT 2 FIX] ✨ MIDI Learn intercept:
+                    val learnCallback = onLearnModeCcReceived
+                    if (learnCallback != null) {
+                        Log.i(TAG, "MIDI Learn captured CC $controller → mapping target")
                         handler.post {
-                            onPitchBendReceived?.invoke(floatVal)
+                            learnCallback(controller)
+                            onLearnModeCcReceived = null // auto-clear after capture
                         }
-                        i += 3
+                        i = dataIndex + 2
+                        continue
+                    }
 
-                    } else if (status == 0xB0 && i + 2 < end) { // Control Change (CC)
-                        val controller = data[i + 1].toInt() and 0x7F
-                        val value = data[i + 2].toInt() and 0x7F
-                        val floatValue = value / 127.0f
-
-                        // [POINT 2 FIX] — MIDI Learn intercept:
-                        val learnCallback = onLearnModeCcReceived
-                        if (learnCallback != null) {
-                            Log.i(TAG, "MIDI Learn captured CC $controller → mapping target")
-                            handler.post {
-                                learnCallback(controller)
-                                onLearnModeCcReceived = null // auto-clear after capture
-                            }
-                            i += 3
-                            continue
+                    // [POINT 2 FIX] ✨ Dynamic mapping lookup:
+                    val mappedTarget = ccMappings[controller]
+                    if (mappedTarget != null) {
+                        Log.d(TAG, "Mapped CC $controller → '$mappedTarget' = $floatValue")
+                        handler.post {
+                            onMappedCcReceived?.invoke(controller, mappedTarget, floatValue)
                         }
+                        i = dataIndex + 2
+                        continue
+                    }
 
-                        // [POINT 2 FIX] — Dynamic mapping lookup:
-                        val mappedTarget = ccMappings[controller]
-                        if (mappedTarget != null) {
-                            Log.d(TAG, "Mapped CC $controller → '$mappedTarget' = $floatValue")
-                            handler.post {
-                                onMappedCcReceived?.invoke(controller, mappedTarget, floatValue)
-                            }
-                            i += 3
-                            continue
-                        }
-
-                        i += 3
+                    i = dataIndex + 2
+                } else {
+                    // System messages or unrecognized, skip 1 byte and reset running status if it was a status byte
+                    if (!isRunningStatus) {
+                        if (currentByte >= 0xF0) runningStatus = 0
+                        i++
                     } else {
+                        // In running status but not enough data? Break and wait for next chunk, or skip
+                        // Usually Oboe/MIDI delivers whole messages. We just increment to avoid infinite loop.
                         i++
                     }
-                } else {
-                    i++
                 }
             }
         }

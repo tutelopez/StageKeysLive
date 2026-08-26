@@ -53,8 +53,20 @@ actual class PlatformAudioSynth actual constructor() {
         synthesizer?.channels?.getOrNull(channel)?.programChange(programNumber)
     }
 
-    actual fun loadSoundFont(path: String, channel: Int) {
+    actual fun loadSoundFont(path: String, channel: Int): Boolean {
         // Desktop uses system default wavetable synth; SF2 loading not applicable here
+        return false
+    }
+
+    actual fun allNotesOff() {
+        synthesizer?.channels?.forEach {
+            it.allNotesOff()
+            it.allSoundOff()
+        }
+    }
+
+    actual fun setModulation(value: Float, channel: Int) {
+        synthesizer?.channels?.getOrNull(channel)?.controlChange(1, (value * 127).toInt())
     }
 
     actual fun close() {
@@ -83,7 +95,7 @@ actual class PlatformAudioSynth actual constructor() {
         onMappedCc: (target: MidiTarget, floatValue: Float) -> Unit,
         onNote: (note: Int, velocity: Int, isNoteOn: Boolean) -> Unit,
         onPitchBend: (pitchBend: Float) -> Unit,
-        onDeviceConnectionChanged: (deviceName: String?) -> Unit
+        onDeviceConnectionChanged: (deviceNames: List<String>) -> Unit
     ) {
         // No hardware MIDI on desktop yet
     }

@@ -98,10 +98,10 @@ public:
         if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
             LOGI("FluidSynth: loading SF2 from path: %s for channel: %d", sf2Path, channel);
             if (sfids[channel] != -1) {
-                fluid_synth_sfunload(fluidSynth, sfids[channel], 1);
+                fluid_synth_sfunload(fluidSynth, sfids[channel], 0);
                 sfids[channel] = -1;
             }
-            sfids[channel] = fluid_synth_sfload(fluidSynth, sf2Path, 1);
+            sfids[channel] = fluid_synth_sfload(fluidSynth, sf2Path, 0);
             if (sfids[channel] != -1) {
                 LOGI("FluidSynth: SF2 loaded OK — sfid=%d for channel=%d", sfids[channel], channel);
                 // Program select bank 0, program 0 on this channel
@@ -170,6 +170,23 @@ public:
             if (fluidSynth != nullptr && sfids[channel] != -1) {
                 fluid_synth_program_select(fluidSynth, channel, sfids[channel], 0, programNumber);
             }
+        }
+    }
+
+    void allNotesOff() {
+        std::lock_guard<std::mutex> lock(synthMutex);
+        if (fluidSynth != nullptr) {
+            for (int i = 0; i < 16; ++i) {
+                fluid_synth_all_notes_off(fluidSynth, i);
+                fluid_synth_all_sounds_off(fluidSynth, i);
+            }
+        }
+    }
+
+    void setModulation(float value, int channel) {
+        std::lock_guard<std::mutex> lock(synthMutex);
+        if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
+            fluid_synth_cc(fluidSynth, channel, 1, (int)(value * 127.0f));
         }
     }
 };
@@ -259,6 +276,20 @@ JNIEXPORT jboolean JNICALL
 Java_com_midi_mainstage_PlatformAudioSynth_nativeIsAudioReady(JNIEnv *env, jobject thiz) {
     if (gEngine == nullptr) return JNI_FALSE;
     return gEngine->isAudioReady() ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeAllNotesOff(JNIEnv *env, jobject thiz) {
+    if (gEngine != nullptr) {
+        gEngine->allNotesOff();
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeSetModulation(JNIEnv *env, jobject thiz, jfloat value, jint channel) {
+    if (gEngine != nullptr) {
+        gEngine->setModulation(value, channel);
+    }
 }
 
 }

@@ -73,6 +73,14 @@ actual class PlatformAudioSynth actual constructor() {
         return nativeLoadSoundFont(path, channel)
     }
 
+    actual fun allNotesOff() {
+        nativeAllNotesOff()
+    }
+
+    actual fun setModulation(value: Float, channel: Int) {
+        nativeSetModulation(value, channel)
+    }
+
     actual fun close() {
         cancelMidiLearn()
         nativeClose()
@@ -133,7 +141,7 @@ actual class PlatformAudioSynth actual constructor() {
         onMappedCc: (target: MidiTarget, floatValue: Float) -> Unit,
         onNote: (note: Int, velocity: Int, isNoteOn: Boolean) -> Unit,
         onPitchBend: (pitchBend: Float) -> Unit,
-        onDeviceConnectionChanged: (deviceName: String?) -> Unit
+        onDeviceConnectionChanged: (deviceNames: List<String>) -> Unit
     ) {
         midiManager?.onMappedCcReceived = { _, target, floatValue -> onMappedCc(target, floatValue) }
         midiManager?.onNoteReceived = onNote
@@ -158,4 +166,6 @@ actual class PlatformAudioSynth actual constructor() {
     private external fun nativeSetPatch(programNumber: Int, channel: Int)
     private external fun nativeLoadSoundFont(path: String, channel: Int): Boolean
     private external fun nativeIsAudioReady(): Boolean
+    private external fun nativeAllNotesOff()
+    private external fun nativeSetModulation(value: Float, channel: Int)
 }

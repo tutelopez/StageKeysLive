@@ -16,6 +16,8 @@ expect class PlatformAudioSynth() {
     fun setFilterCutoff(cutoff: Float, channel: Int = 0)
     fun setPatch(programNumber: Int, channel: Int = 0)
     fun loadSoundFont(path: String, channel: Int = 0): Boolean
+    fun allNotesOff()
+    fun setModulation(value: Float, channel: Int = 0)
     fun close()
 
     // [POINT 3 FIX] Returns true only when the Oboe audio stream opened successfully
@@ -29,6 +31,6 @@ expect class PlatformAudioSynth() {
         onMappedCc: (target: MidiTarget, floatValue: Float) -> Unit,
         onNote: (note: Int, velocity: Int, isNoteOn: Boolean) -> Unit,
         onPitchBend: (pitchBend: Float) -> Unit,
-        onDeviceConnectionChanged: (deviceName: String?) -> Unit
+        onDeviceConnectionChanged: (deviceNames: List<String>) -> Unit
     )
 }

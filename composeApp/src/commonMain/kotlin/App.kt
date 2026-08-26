@@ -15,6 +15,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,7 +66,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var concerts by remember { mutableStateOf<List<Concert>>(emptyList()) }
     var activeConcert by remember { mutableStateOf<Concert?>(null) }
     var selectedPatchIndex by remember { mutableStateOf(0) }
-    var currentConnectedDeviceName by remember { mutableStateOf<String?>(null) }
+    var currentConnectedDevices by remember { mutableStateOf<List<String>>(emptyList()) }
 
     // File Picker and Snackbar State
     var showSf2Picker by remember { mutableStateOf(false) }
@@ -87,6 +90,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     // Audio & Metronome State
     var metronomeOn by remember { mutableStateOf(false) }
     var metronomeBpm by remember { mutableStateOf(120) }
+    var metronomeBpmEffective by remember { mutableStateOf(120) }
     var metronomeVolume by remember { mutableStateOf(0.7f) }
     var metronomeTickLight by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
@@ -123,6 +127,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         64 to MidiTarget.Sustain
     )}
     var mappingTarget by remember { mutableStateOf<MidiTarget?>(null) }
+    var octaveShift by remember { mutableStateOf(0) }
+    val modulation = remember { Animatable(0f) }
 
     // Trigger visual MIDI indicator
     var midiActivityIndicator by remember { mutableStateOf(false) }
@@ -154,11 +160,13 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
         activeConcert?.let { concert ->
             val pitchOffset = (pitchBend.value * 2).toInt()
-            val playedNote = note + pitchOffset
+            val playedNote = note + pitchOffset + (octaveShift * 12)
+            val anySolo = concert.channels.any { it.isSoloed }
 
             var noteTriggered = false
             concert.channels.forEachIndexed { idx, ch ->
-                if (!ch.isMuted && playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
+                val shouldPlay = if (anySolo) ch.isSoloed else !ch.isMuted
+                if (shouldPlay && playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
                     synth.noteOn(playedNote, (ch.volume * velocity).toInt(), ch.id)
                     noteTriggered = true
                     
@@ -192,10 +200,12 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             activeNote = if (activeNote == note) null else activeNote
             activeConcert?.let { concert ->
                 val pitchOffset = (pitchBend.value * 2).toInt()
-                val playedNote = note + pitchOffset
+                val playedNote = note + pitchOffset + (octaveShift * 12)
+                val anySolo = concert.channels.any { it.isSoloed }
 
                 concert.channels.forEachIndexed { idx, ch ->
-                    if (playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
+                    val shouldPlay = if (anySolo) ch.isSoloed else !ch.isMuted
+                    if (shouldPlay && playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
                         synth.noteOff(playedNote, ch.id)
                         coroutineScope.launch {
                             vuLevels[idx].animateTo(0f, tween(250))
@@ -222,10 +232,13 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             val notesToRelease = sustainedKeys.keys.filter { !heldKeys.containsKey(it) }
             activeConcert?.let { concert ->
                 val pitchOffset = (pitchBend.value * 2).toInt()
+                val anySolo = concert.channels.any { it.isSoloed }
+                
                 notesToRelease.forEach { note ->
-                    val playedNote = note + pitchOffset
+                    val playedNote = note + pitchOffset + (octaveShift * 12)
                     concert.channels.forEachIndexed { idx, ch ->
-                        if (playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
+                        val shouldPlay = if (anySolo) ch.isSoloed else !ch.isMuted
+                        if (shouldPlay && playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
                             synth.noteOff(playedNote, ch.id)
                             coroutineScope.launch {
                                 vuLevels[idx].animateTo(0f, tween(250))
@@ -240,6 +253,21 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             }
             sustainedKeys.clear()
         }
+    }
+
+    val stopConcert = {
+        activeConcert?.let { concert ->
+            synth.allNotesOff()
+            coroutineScope.launch {
+                masterVuLevel.animateTo(0f, tween(50))
+                vuLevels.forEach { it.animateTo(0f, tween(50)) }
+            }
+        }
+        heldKeys.clear()
+        sustainedKeys.clear()
+        activeNote = null
+        sustainActive = false
+        metronomeOn = false
     }
 
     LaunchedEffect(Unit) {
@@ -259,10 +287,26 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         }
                     }
                     is MidiTarget.ChannelMute -> {
-                        // Optional implementation
+                        val toggle = floatValue > 0.5f
+                        activeConcert?.let { concert ->
+                            if (target.channelIndex < concert.channels.size) {
+                                val updatedChannels = concert.channels.toMutableList()
+                                val ch = updatedChannels[target.channelIndex]
+                                updatedChannels[target.channelIndex] = ch.copy(isMuted = toggle)
+                                activeConcert = concert.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
+                            }
+                        }
                     }
                     is MidiTarget.ChannelSolo -> {
-                        // Optional implementation
+                        val toggle = floatValue > 0.5f
+                        activeConcert?.let { concert ->
+                            if (target.channelIndex < concert.channels.size) {
+                                val updatedChannels = concert.channels.toMutableList()
+                                val ch = updatedChannels[target.channelIndex]
+                                updatedChannels[target.channelIndex] = ch.copy(isSoloed = toggle)
+                                activeConcert = concert.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
+                            }
+                        }
                     }
                     is MidiTarget.Pad -> {
                         val padNote = 36 + target.padIndex
@@ -277,15 +321,32 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     }
                     is MidiTarget.MasterVolume -> masterVolume = floatValue
                     is MidiTarget.FilterCutoff -> {
-                        // Optional filter implementation
+                        activeConcert?.channels?.forEach { ch ->
+                            synth.setFilterCutoff(floatValue, ch.id)
+                        }
                     }
                     is MidiTarget.ReverbMix -> {
-                        // Optional reverb implementation
+                        synth.setReverb(floatValue)
                     }
                     is MidiTarget.Sustain -> sustainActive = floatValue > 0.5f
-                    is MidiTarget.Modulation -> {}
-                    is MidiTarget.OctaveUp -> {}
-                    is MidiTarget.OctaveDown -> {}
+                    is MidiTarget.Modulation -> {
+                        coroutineScope.launch {
+                            modulation.snapTo(floatValue)
+                        }
+                        activeConcert?.channels?.forEach { ch ->
+                            synth.setModulation(floatValue, ch.id)
+                        }
+                    }
+                    is MidiTarget.OctaveUp -> {
+                        if (floatValue > 0f) {
+                            octaveShift = (octaveShift + 1).coerceAtMost(3)
+                        }
+                    }
+                    is MidiTarget.OctaveDown -> {
+                        if (floatValue > 0f) {
+                            octaveShift = (octaveShift - 1).coerceAtLeast(-3)
+                        }
+                    }
                 }
             },
             onNote = { note, velocity, isNoteOn ->
@@ -300,8 +361,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     pitchBend.animateTo(bend, tween(20))
                 }
             },
-            onDeviceConnectionChanged = { name ->
-                currentConnectedDeviceName = name
+            onDeviceConnectionChanged = { names ->
+                currentConnectedDevices = names
             }
         )
 
@@ -357,23 +418,24 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     }
 
     // Metronome sound click volume control
-    LaunchedEffect(metronomeOn, metronomeBpm, metronomeVolume) {
+    LaunchedEffect(metronomeOn, metronomeBpmEffective, metronomeVolume) {
         if (metronomeOn) {
-            val delayMs = (60000L / metronomeBpm)
+            var nextTickTime = System.currentTimeMillis()
             while (metronomeOn) {
-                metronomeTickLight = true
-                synth.noteOn(96, (metronomeVolume * 127).toInt()) // Click controlled by volume
-                delay(80)
-                synth.noteOff(96)
-                metronomeTickLight = false
-                delay((delayMs - 80).coerceAtLeast(10))
+                val now = System.currentTimeMillis()
+                if (now >= nextTickTime) {
+                    metronomeTickLight = true
+                    synth.noteOn(96, (metronomeVolume * 127).toInt(), 0) // Click controlled by volume
+                    nextTickTime += (60000L / metronomeBpmEffective)
+                    launch {
+                        delay(80)
+                        synth.noteOff(96)
+                        metronomeTickLight = false
+                    }
+                }
+                delay(5)
             }
         }
-    }
-
-    // Keep Master Volume updated on Audio Synth
-    LaunchedEffect(masterVolume) {
-        synth.setVolume(masterVolume)
     }
 
     // Keep Master Volume updated on Audio Synth
@@ -416,6 +478,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     onMetronomeToggle = { metronomeOn = !metronomeOn },
                     metronomeBpm = metronomeBpm,
                     onBpmChange = { metronomeBpm = it },
+                    onBpmChangeFinished = { metronomeBpmEffective = metronomeBpm },
                     metronomeVolume = metronomeVolume,
                     onMetronomeVolumeChange = { metronomeVolume = it },
                     metronomeTick = metronomeTickLight,
@@ -511,6 +574,13 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     onNoteDown = { playNoteOn(it, 90) },
                     onNoteUp = playNoteOff,
                     pitchBend = pitchBend,
+                    modulation = modulation,
+                    onModulationChange = { value ->
+                        coroutineScope.launch { modulation.snapTo(value) }
+                        activeConcert?.channels?.forEach { ch ->
+                            synth.setModulation(value, ch.id)
+                        }
+                    },
                     sustainActive = sustainActive,
                     onSustainToggle = { sustainActive = !sustainActive },
                     vuLevels = vuLevels
@@ -871,6 +941,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                     MidiMappingSettingsScreen(
                                         mappings = midiCcMappings,
                                         mappingTarget = mappingTarget,
+                                        connectedDevices = currentConnectedDevices,
                                         onStartMapping = { target ->
                                             mappingTarget = target
                                             // [POINT 2 FIX] Real MIDI Learn — listens for the
@@ -884,7 +955,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                                     // Save mappings to disk for current device
                                                     try {
                                                         val jsonStr = MidiMappingSerializer.serialize(midiCcMappings.toMap())
-                                                        val fileName = currentConnectedDeviceName?.let { "mappings_$it.json" } ?: "mappings_default.json"
+                                                        val fileName = currentConnectedDevices.firstOrNull()?.let { "mappings_$it.json" } ?: "mappings_default.json"
                                                         saveTextToFile(fileName, jsonStr)
                                                     } catch (e: Exception) {
                                                     }
@@ -1043,6 +1114,7 @@ fun ConcertViewScreen(
     onMetronomeToggle: () -> Unit,
     metronomeBpm: Int,
     onBpmChange: (Int) -> Unit,
+    onBpmChangeFinished: () -> Unit,
     metronomeVolume: Float,
     onMetronomeVolumeChange: (Float) -> Unit,
     metronomeTick: Boolean,
@@ -1068,6 +1140,8 @@ fun ConcertViewScreen(
     onNoteDown: (Int) -> Unit,
     onNoteUp: (Int) -> Unit,
     pitchBend: Animatable<Float, *>,
+    modulation: Animatable<Float, *>,
+    onModulationChange: (Float) -> Unit,
     sustainActive: Boolean,
     onSustainToggle: () -> Unit,
     vuLevels: List<Animatable<Float, *>>
@@ -1126,7 +1200,13 @@ fun ConcertViewScreen(
                     modifier = Modifier.height(32.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("⏱️ ", fontSize = 12.sp)
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Metronomo",
+                            tint = if (metronomeOn) Color.Black else TextLight,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             "METRONOMO",
                             color = if (metronomeOn) Color.Black else TextLight,
@@ -1136,22 +1216,6 @@ fun ConcertViewScreen(
                     }
                 }
 
-                // Metronome Volume Control
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("🔊", fontSize = 11.sp, modifier = Modifier.padding(end = 4.dp))
-                    Slider(
-                        value = metronomeVolume,
-                        onValueChange = onMetronomeVolumeChange,
-                        valueRange = 0f..1f,
-                        modifier = Modifier.width(70.dp),
-                        colors = SliderDefaults.colors(
-                            thumbColor = NeonGreen,
-                            activeTrackColor = NeonGreen,
-                            inactiveTrackColor = LightPanel
-                        )
-                    )
-                }
-
                 // BPM speed slider
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("$metronomeBpm BPM", color = TextLight, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
@@ -1159,6 +1223,7 @@ fun ConcertViewScreen(
                     Slider(
                         value = metronomeBpm.toFloat(),
                         onValueChange = { onBpmChange(it.toInt()) },
+                        onValueChangeFinished = onBpmChangeFinished,
                         valueRange = 40f..240f,
                         modifier = Modifier.width(80.dp),
                         colors = SliderDefaults.colors(
@@ -1186,6 +1251,13 @@ fun ConcertViewScreen(
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                         modifier = Modifier.height(32.dp)
                     ) {
+                        Icon(
+                            imageVector = if (isRecording) Icons.Default.PlayArrow else Icons.Default.Notifications,
+                            contentDescription = "Grabar",
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             if (isRecording) "GRABANDO" else "GRABAR",
                             color = Color.White,
@@ -1203,6 +1275,13 @@ fun ConcertViewScreen(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                     modifier = Modifier.height(32.dp)
                 ) {
+                    Icon(
+                        imageVector = if (isPlayingRecording) Icons.Default.PlayArrow else Icons.Default.PlayArrow,
+                        contentDescription = "Reproducir Grabación",
+                        tint = if (isPlayingRecording) Color.Black else TextLight,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         if (isPlayingRecording) "PLAYING" else "PLAY REC",
                         color = if (isPlayingRecording) Color.Black else TextLight,
@@ -1339,6 +1418,14 @@ fun ConcertViewScreen(
 
                     Spacer(modifier = Modifier.width(4.dp))
 
+                    // Metronome Volume Channel Strip
+                    MetronomeChannelItem(
+                        volume = metronomeVolume,
+                        onVolumeChange = onMetronomeVolumeChange
+                    )
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
                     // Fixed Master Output General Channel (L-R OUT)
                     MasterOutputChannelItem(
                         volume = masterVolume,
@@ -1381,20 +1468,31 @@ fun ConcertViewScreen(
                     Text("SUSTAIN", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
 
-                PitchBendWheel(
-                    value = pitchBend.value,
-                    onValueChange = {
-                        coroutineScope.launch {
-                            pitchBend.snapTo(it)
-                        }
-                    },
-                    onRelease = {
-                        coroutineScope.launch {
-                            pitchBend.animateTo(0f, spring(stiffness = Spring.StiffnessLow))
-                        }
-                    },
-                    modifier = Modifier.weight(1f).width(44.dp).padding(top = 4.dp)
-                )
+                Row(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    PitchBendWheel(
+                        value = pitchBend.value,
+                        onValueChange = {
+                            coroutineScope.launch {
+                                pitchBend.snapTo(it)
+                            }
+                        },
+                        onRelease = {
+                            coroutineScope.launch {
+                                pitchBend.animateTo(0f, spring(stiffness = Spring.StiffnessLow))
+                            }
+                        },
+                        modifier = Modifier.weight(1f).fillMaxHeight().padding(top = 4.dp)
+                    )
+                    
+                    ModulationWheel(
+                        value = modulation.value,
+                        onValueChange = onModulationChange,
+                        modifier = Modifier.weight(1f).fillMaxHeight().padding(top = 4.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(4.dp))
@@ -1646,6 +1744,51 @@ fun MasterOutputChannelItem(
 }
 
 @Composable
+fun MetronomeChannelItem(
+    volume: Float,
+    onVolumeChange: (Float) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(64.dp)
+            .fillMaxHeight()
+            .background(DarkBackground, RoundedCornerShape(4.dp))
+            .border(2.dp, NeonGreen, RoundedCornerShape(4.dp))
+            .padding(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "CLICK",
+            color = NeonGreen,
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        VolumeFader(
+            value = volume,
+            onValueChange = onVolumeChange,
+            modifier = Modifier.weight(1f).width(24.dp)
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(28.dp)
+                .background(NeonGreen.copy(alpha = 0.1f), RoundedCornerShape(3.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.Notifications, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(16.dp))
+        }
+    }
+}
+
+@Composable
 fun EmptyChannelPlaceholder(id: Int) {
     Box(
         modifier = Modifier
@@ -1709,6 +1852,47 @@ fun PitchBendWheel(
                 .background(Color.LightGray, RoundedCornerShape(2.dp))
                 .border(1.dp, Color.White, RoundedCornerShape(2.dp))
         )
+    }
+}
+
+@Composable
+fun ModulationWheel(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(
+        modifier = modifier
+            .background(Color(0xFF0F0F0F), RoundedCornerShape(4.dp))
+            .border(1.dp, LightPanel, RoundedCornerShape(4.dp))
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDrag = { change, dragAmount ->
+                        val height = size.height.toFloat()
+                        val dragFactor = 1.5f
+                        val newValue = (value - dragAmount.y / height * dragFactor).coerceIn(0f, 1f)
+                        onValueChange(newValue)
+                    }
+                )
+            },
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        val totalHeight = maxHeight
+        val handleHeight = 14.dp
+        
+        // Handle position based on value (0f = bottom, 1f = top)
+        val handleOffset = (totalHeight - handleHeight) * (1f - value)
+        
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(handleHeight)
+                    .offset(y = handleOffset)
+                    .padding(horizontal = 4.dp)
+                    .background(LightPanel, RoundedCornerShape(2.dp))
+            )
+        }
     }
 }
 
@@ -1820,9 +2004,22 @@ fun ScrollablePianoKeyboard(
 fun MidiMappingSettingsScreen(
     mappings: Map<Int, MidiTarget>,
     mappingTarget: MidiTarget?,
+    connectedDevices: List<String> = emptyList(),
     onStartMapping: (MidiTarget) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        if (connectedDevices.isNotEmpty()) {
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Dispositivos MIDI conectados: ", color = TextLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(connectedDevices.joinToString(", "), color = NeonGreen, fontSize = 12.sp)
+            }
+        } else {
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Dispositivos MIDI conectados: ", color = TextLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Ninguno", color = Color.Red, fontSize = 12.sp)
+            }
+        }
+
         Text("ASIGNACION DE CONTROLADORES MIDI CC (MIDI LEARN)", color = TextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Text(
             "Haz clic en \"Mapear\" al lado del control correspondiente y mueve el potenciómetro o fader de tu teclado físico para enlazarlo.",
@@ -2177,3 +2374,5 @@ fun parseColorHex(hex: String): Color {
         else -> Color.White
     }
 }
+
+
