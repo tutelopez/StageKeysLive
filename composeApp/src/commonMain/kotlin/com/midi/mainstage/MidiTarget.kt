@@ -14,4 +14,7 @@ sealed class MidiTarget {
     object Modulation : MidiTarget()
     object OctaveUp : MidiTarget()
     object OctaveDown : MidiTarget()
+    object NextPatch : MidiTarget()
+    object PreviousPatch : MidiTarget()
 }
+

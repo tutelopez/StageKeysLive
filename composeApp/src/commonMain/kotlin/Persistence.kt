@@ -16,11 +16,25 @@ data class ChannelStripState(
     val colorHex: String
 )
 
+data class PatchChannelSnapshot(
+    val channelId: Int,
+    val sf2Name: String,
+    val sf2Path: String?,
+    val volume: Float,
+    val isMuted: Boolean,
+    val isSoloed: Boolean,
+    val keyRangeStart: Int,
+    val keyRangeEnd: Int,
+    val colorHex: String
+)
+
 data class PatchState(
     val name: String,
     val category: String,
     val programNumber: Int,
-    val description: String
+    val description: String,
+    val id: String = "patch_${System.currentTimeMillis()}_${(0..1000).random()}",
+    val channelsSnapshot: List<PatchChannelSnapshot> = emptyList()
 )
 
 data class Concert(
@@ -48,10 +62,29 @@ object ConcertSerializer {
             concert.patches.forEachIndexed { j, patch ->
                 if (j > 0) sb.append(",")
                 sb.append("{")
+                sb.append("\"id\":\"${patch.id}\",")
                 sb.append("\"name\":\"${escape(patch.name)}\",")
                 sb.append("\"category\":\"${escape(patch.category)}\",")
                 sb.append("\"programNumber\":${patch.programNumber},")
-                sb.append("\"description\":\"${escape(patch.description)}\"")
+                sb.append("\"description\":\"${escape(patch.description)}\",")
+                sb.append("\"channelsSnapshot\":[")
+                patch.channelsSnapshot.forEachIndexed { s, snap ->
+                    if (s > 0) sb.append(",")
+                    sb.append("{")
+                    sb.append("\"channelId\":${snap.channelId},")
+                    sb.append("\"sf2Name\":\"${escape(snap.sf2Name)}\",")
+                    if (snap.sf2Path != null) {
+                        sb.append("\"sf2Path\":\"${escape(snap.sf2Path)}\",")
+                    }
+                    sb.append("\"volume\":${snap.volume},")
+                    sb.append("\"isMuted\":${snap.isMuted},")
+                    sb.append("\"isSoloed\":${snap.isSoloed},")
+                    sb.append("\"keyRangeStart\":${snap.keyRangeStart},")
+                    sb.append("\"keyRangeEnd\":${snap.keyRangeEnd},")
+                    sb.append("\"colorHex\":\"${snap.colorHex}\"")
+                    sb.append("}")
+                }
+                sb.append("]")
                 sb.append("}")
             }
             sb.append("],")
@@ -181,10 +214,12 @@ class SimpleJsonParser(private val src: String) {
 
     private fun parsePatch(): PatchState {
         pos++ // skip '{'
+        var id = ""
         var name = ""
         var category = ""
         var programNumber = 0
         var description = ""
+        val channelsSnapshot = mutableListOf<PatchChannelSnapshot>()
 
         while (pos < src.length) {
             skipWhitespace()
@@ -197,16 +232,73 @@ class SimpleJsonParser(private val src: String) {
             if (pos < src.length && src[pos] == ':') pos++
             skipWhitespace()
             when (key) {
+                "id" -> id = parseString()
                 "name" -> name = parseString()
                 "category" -> category = parseString()
                 "programNumber" -> programNumber = parseInt()
                 "description" -> description = parseString()
+                "channelsSnapshot" -> {
+                    if (pos < src.length && src[pos] == '[') pos++ // skip '['
+                    while (pos < src.length) {
+                        skipWhitespace()
+                        if (src[pos] == ']') {
+                            pos++
+                            break
+                        }
+                        if (src[pos] == '{') {
+                            channelsSnapshot.add(parsePatchChannelSnapshot())
+                        }
+                        skipWhitespace()
+                        if (pos < src.length && src[pos] == ',') pos++
+                    }
+                }
                 else -> skipValue()
             }
             skipWhitespace()
             if (pos < src.length && src[pos] == ',') pos++
         }
-        return PatchState(name, category, programNumber, description)
+        if (id.isEmpty()) id = "patch_${System.currentTimeMillis()}_${(0..1000).random()}" // Fallback for old saves
+        return PatchState(name, category, programNumber, description, id, channelsSnapshot)
+    }
+
+    private fun parsePatchChannelSnapshot(): PatchChannelSnapshot {
+        pos++ // skip '{'
+        var channelId = 0
+        var sf2Name = ""
+        var sf2Path: String? = null
+        var volume = 1f
+        var isMuted = false
+        var isSoloed = false
+        var keyRangeStart = 0
+        var keyRangeEnd = 127
+        var colorHex = "#00D2FF"
+
+        while (pos < src.length) {
+            skipWhitespace()
+            if (src[pos] == '}') {
+                pos++
+                break
+            }
+            val key = parseString()
+            skipWhitespace()
+            if (pos < src.length && src[pos] == ':') pos++
+            skipWhitespace()
+            when (key) {
+                "channelId" -> channelId = parseInt()
+                "sf2Name" -> sf2Name = parseString()
+                "sf2Path" -> sf2Path = parseString()
+                "volume" -> volume = parseFloat()
+                "isMuted" -> isMuted = parseBoolean()
+                "isSoloed" -> isSoloed = parseBoolean()
+                "keyRangeStart" -> keyRangeStart = parseInt()
+                "keyRangeEnd" -> keyRangeEnd = parseInt()
+                "colorHex" -> colorHex = parseString()
+                else -> skipValue()
+            }
+            skipWhitespace()
+            if (pos < src.length && src[pos] == ',') pos++
+        }
+        return PatchChannelSnapshot(channelId, sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex)
     }
 
     private fun parseChannel(): ChannelStripState {
@@ -350,7 +442,7 @@ class SimpleJsonParser(private val src: String) {
 
 object MidiMappingSerializer {
     fun serialize(mappings: Map<Int, MidiTarget>): String {
-        return mappings.entries.joinToString(",") { "${it.key}:" }
+        return mappings.entries.joinToString(",") { "${it.key}:${serializeTarget(it.value)}" }
     }
     
     fun deserialize(str: String): Map<Int, MidiTarget> {
@@ -383,6 +475,8 @@ object MidiMappingSerializer {
             is MidiTarget.Modulation -> "Modulation"
             is MidiTarget.OctaveUp -> "OctaveUp"
             is MidiTarget.OctaveDown -> "OctaveDown"
+            is MidiTarget.NextPatch -> "NextPatch"
+            is MidiTarget.PreviousPatch -> "PreviousPatch"
         }
     }
     
@@ -401,7 +495,13 @@ object MidiMappingSerializer {
             "Modulation" -> MidiTarget.Modulation
             "OctaveUp" -> MidiTarget.OctaveUp
             "OctaveDown" -> MidiTarget.OctaveDown
+            "NextPatch" -> MidiTarget.NextPatch
+            "PreviousPatch" -> MidiTarget.PreviousPatch
             else -> null
         }
     }
 }
+
+
+
+

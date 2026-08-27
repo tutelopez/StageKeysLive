@@ -75,11 +75,51 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
     // Dialog flags
     var showCreateConcertDialog by remember { mutableStateOf(false) }
+    var concertToEdit by remember { mutableStateOf<Concert?>(null) }
     var newConcertName by remember { mutableStateOf("") }
+    
+    val saveConcertsList: (List<Concert>) -> Unit = { list ->
+        concerts = list
+        saveTextToFile("concerts.json", ConcertSerializer.serialize(list))
+    }
+
+    // Import / Export states
+    var showPackagePicker by remember { mutableStateOf(false) }
+    var concertToExport by remember { mutableStateOf<Concert?>(null) }
+    var patchToExport by remember { mutableStateOf<PatchState?>(null) }
+
+    SkPackagePicker(
+        show = showPackagePicker,
+        onPackageSelected = { concert, patch ->
+            showPackagePicker = false
+            if (concert != null) {
+                val newList = concerts + concert
+                saveConcertsList(newList)
+            } else if (patch != null && activeConcert != null) {
+                val updatedConcert = activeConcert!!.copy(
+                    patches = activeConcert!!.patches + patch,
+                    lastModified = System.currentTimeMillis()
+                )
+                val newList = concerts.map { if (it.id == updatedConcert.id) updatedConcert else it }
+                saveConcertsList(newList)
+                activeConcert = updatedConcert
+            }
+        }
+    )
+
+    PackageExporter(
+        concertToExport = concertToExport,
+        patchToExport = patchToExport,
+        onExportComplete = {
+            concertToExport = null
+            patchToExport = null
+        }
+    )
     var showSettingsDialog by remember { mutableStateOf(false) }
     var activeSettingsTab by remember { mutableStateOf(SettingsTab.MIDI_MAP) }
     var showChannelSettingsDialog by remember { mutableStateOf<ChannelStripState?>(null) }
     var showAddPatchDialog by remember { mutableStateOf(false) }
+    var patchToEdit by remember { mutableStateOf<PatchState?>(null) }
 
     // New Patch Form States
     var newPatchName by remember { mutableStateOf("") }
@@ -149,6 +189,50 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     synth.loadSoundFont(ch.sf2Path, ch.id)
                 }
             }
+        }
+    }
+
+    
+
+    val applyPatch = { patchIndex: Int ->
+        val concert = activeConcert
+        if (concert != null && patchIndex in concert.patches.indices) {
+            synth.allNotesOff()
+            heldKeys.clear()
+            sustainedKeys.clear()
+            activeNote = null
+            
+            val patch = concert.patches[patchIndex]
+            if (patch.channelsSnapshot.isNotEmpty()) {
+                val updatedChannels = concert.channels.map { ch ->
+                    val snap = patch.channelsSnapshot.find { it.channelId == ch.id }
+                    if (snap != null) {
+                        ch.copy(
+                            sf2Name = snap.sf2Name,
+                            sf2Path = snap.sf2Path,
+                            volume = snap.volume,
+                            isMuted = snap.isMuted,
+                            isSoloed = snap.isSoloed,
+                            keyRangeStart = snap.keyRangeStart,
+                            keyRangeEnd = snap.keyRangeEnd,
+                            colorHex = snap.colorHex
+                        )
+                    } else {
+                        ch
+                    }
+                }
+                
+                updatedChannels.forEach { ch ->
+                    if (ch.sf2Path != null) {
+                        synth.loadSoundFont(ch.sf2Path, ch.id)
+                    }
+                }
+                
+                val updatedConcert = concert.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
+                saveConcertsList(concerts.map { if (it.id == concert.id) updatedConcert else it })
+                activeConcert = updatedConcert
+            }
+            selectedPatchIndex = patchIndex
         }
     }
 
@@ -270,11 +354,27 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         metronomeOn = false
     }
 
+    LaunchedEffect(currentConnectedDevices.firstOrNull()) {
+        val deviceName = currentConnectedDevices.firstOrNull()
+        val fileName = if (deviceName != null) "mappings_${deviceName}.json" else "mappings_default.json"
+        
+        val json = readTextFromFile(fileName) ?: readTextFromFile("mappings_default.json")
+        if (json != null) {
+            val loadedMap = MidiMappingSerializer.deserialize(json)
+            if (loadedMap.isNotEmpty()) {
+                midiCcMappings.clear()
+                midiCcMappings.putAll(loadedMap)
+                synth.syncMidiMappings(midiCcMappings)
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         synth.syncMidiMappings(midiCcMappings)
         
         synth.setMidiListener(
             onMappedCc = { target, floatValue ->
+                triggerMidiFlash()
                 when (target) {
                     is MidiTarget.ChannelVolume -> {
                         activeConcert?.let { concert ->
@@ -347,6 +447,21 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             octaveShift = (octaveShift - 1).coerceAtLeast(-3)
                         }
                     }
+                    is MidiTarget.NextPatch -> {
+                        if (floatValue > 0f) {
+                            val concert = activeConcert
+                            if (concert != null) {
+                                val next = (selectedPatchIndex + 1).coerceAtMost(concert.patches.size - 1)
+                                if (next != selectedPatchIndex) applyPatch(next)
+                            }
+                        }
+                    }
+                    is MidiTarget.PreviousPatch -> {
+                        if (floatValue > 0f) {
+                            val prev = (selectedPatchIndex - 1).coerceAtLeast(0)
+                            if (prev != selectedPatchIndex) applyPatch(prev)
+                        }
+                    }
                 }
             },
             onNote = { note, velocity, isNoteOn ->
@@ -357,6 +472,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 }
             },
             onPitchBend = { bend ->
+                triggerMidiFlash()
                 coroutineScope.launch {
                     pitchBend.animateTo(bend, tween(20))
                 }
@@ -411,11 +527,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         }
     }
 
-    // Save concerts list helper
-    val saveConcertsList = { list: List<Concert> ->
-        concerts = list
-        saveTextToFile("concerts.json", ConcertSerializer.serialize(list))
-    }
+
 
     // Metronome sound click volume control
     LaunchedEffect(metronomeOn, metronomeBpmEffective, metronomeVolume) {
@@ -449,7 +561,16 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         ScreenState.DASHBOARD -> {
             DashboardScreen(
                 concerts = concerts,
-                onCreateConcertClick = { showCreateConcertDialog = true },
+                onCreateConcertClick = { 
+                    concertToEdit = null
+                    newConcertName = ""
+                    showCreateConcertDialog = true 
+                },
+                onEditConcertClick = { concert ->
+                    concertToEdit = concert
+                    newConcertName = concert.name
+                    showCreateConcertDialog = true
+                },
                 onOpenLastConcertClick = {
                     val last = concerts.maxByOrNull { it.lastModified }
                     if (last != null) {
@@ -460,7 +581,18 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 onSelectConcert = { concert ->
                     activeConcert = concert
                     currentScreen = ScreenState.CONCERT
-                }
+                },
+                onDeleteConcert = { concert ->
+                    val newList = concerts.filter { it.id != concert.id }
+                    saveConcertsList(newList)
+                    if (activeConcert?.id == concert.id) {
+                        stopConcert()
+                        activeConcert = null
+                    }
+                },
+                onExportConcertClick = { concertToExport = it },
+                onImportClick = { showPackagePicker = true },
+                onSettingsClick = { showSettingsDialog = true }
             )
         }
         ScreenState.CONCERT -> {
@@ -468,10 +600,39 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 ConcertViewScreen(
                     concert = concert,
                     selectedPatchIndex = selectedPatchIndex,
-                    onSelectPatch = { selectedPatchIndex = it },
-                    onAddPatchClick = { showAddPatchDialog = true },
+                    onSelectPatch = applyPatch,
+                    onAddPatchClick = { 
+                        patchToEdit = null
+                        newPatchName = ""
+                        newPatchCategory = "Keyboards"
+                        newPatchProgram = "0"
+                        newPatchDescription = ""
+                        showAddPatchDialog = true 
+                    },
+                    onEditPatchClick = { patch ->
+                        patchToEdit = patch
+                        newPatchName = patch.name
+                        newPatchCategory = patch.category
+                        newPatchProgram = patch.programNumber.toString()
+                        newPatchDescription = patch.description
+                        showAddPatchDialog = true
+                    },
+                    onDeletePatch = { patch ->
+                        val updatedPatches = concert.patches.filter { it.id != patch.id }
+                        val updatedConcert = concert.copy(patches = updatedPatches, lastModified = System.currentTimeMillis())
+                        val newList = concerts.map { if (it.id == concert.id) updatedConcert else it }
+                        saveConcertsList(newList)
+                        activeConcert = updatedConcert
+                        if (selectedPatchIndex >= updatedPatches.size) {
+                            selectedPatchIndex = (updatedPatches.size - 1).coerceAtLeast(0)
+                        }
+                    },
+                    onExportPatchClick = { patchToExport = it },
+                    onImportPatchClick = { showPackagePicker = true },
                     onBackClick = { currentScreen = ScreenState.DASHBOARD },
                     onSettingsClick = { showSettingsDialog = true },
+                    currentConnectedDevices = currentConnectedDevices,
+                    midiActivityIndicator = midiActivityIndicator,
                     
                     // Metronome & Recording
                     metronomeOn = metronomeOn,
@@ -636,7 +797,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     if (showCreateConcertDialog) {
         AlertDialog(
             onDismissRequest = { showCreateConcertDialog = false },
-            title = { Text("CREAR NUEVO CONCIERTO", color = TextLight, fontWeight = FontWeight.Bold) },
+            title = { Text(if (concertToEdit != null) "EDITAR CONCIERTO" else "CREAR NUEVO CONCIERTO", color = TextLight, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = newConcertName,
@@ -655,29 +816,36 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 Button(
                     onClick = {
                         if (newConcertName.isNotBlank()) {
-                            val newConcert = Concert(
-                                id = "concert_${System.currentTimeMillis()}",
-                                name = newConcertName,
-                                lastModified = System.currentTimeMillis(),
-                                patches = listOf(
-                                    PatchState("Default Piano", "Keyboards", 0, "Acoustic Grand Piano")
-                                ),
-                                channels = listOf(
-                                    ChannelStripState(1, "PianoDefault.sf2", null, 0.8f, false, false, 0, 127, "#00D2FF")
+                            if (concertToEdit != null) {
+                                val updated = concertToEdit!!.copy(name = newConcertName, lastModified = System.currentTimeMillis())
+                                val newList = concerts.map { if (it.id == updated.id) updated else it }
+                                saveConcertsList(newList)
+                                if (activeConcert?.id == updated.id) activeConcert = updated
+                            } else {
+                                val newConcert = Concert(
+                                    id = "concert_${System.currentTimeMillis()}",
+                                    name = newConcertName,
+                                    lastModified = System.currentTimeMillis(),
+                                    patches = listOf(
+                                        PatchState("Default Piano", "Keyboards", 0, "Acoustic Grand Piano")
+                                    ),
+                                    channels = listOf(
+                                        ChannelStripState(1, "PianoDefault.sf2", null, 0.8f, false, false, 0, 127, "#00D2FF")
+                                    )
                                 )
-                            )
-                            val newList = concerts + newConcert
-                            saveConcertsList(newList)
-                            activeConcert = newConcert
-                            selectedPatchIndex = 0
+                                val newList = concerts + newConcert
+                                saveConcertsList(newList)
+                                activeConcert = newConcert
+                                selectedPatchIndex = 0
+                                currentScreen = ScreenState.CONCERT
+                            }
                             newConcertName = ""
                             showCreateConcertDialog = false
-                            currentScreen = ScreenState.CONCERT
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MainstageBlue)
                 ) {
-                    Text("Crear")
+                    Text(if (concertToEdit != null) "Guardar" else "Crear")
                 }
             },
             dismissButton = {
@@ -693,7 +861,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     if (showAddPatchDialog) {
         AlertDialog(
             onDismissRequest = { showAddPatchDialog = false },
-            title = { Text("AÑADIR NUEVO PATCH", color = TextLight, fontWeight = FontWeight.Bold) },
+            title = { Text(if (patchToEdit != null) "EDITAR PATCH" else "AÑADIR NUEVO PATCH", color = TextLight, fontWeight = FontWeight.Bold) },
             text = {
                 Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                     OutlinedTextField(
@@ -728,8 +896,13 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         val active = activeConcert
                         if (active != null && newPatchName.isNotBlank()) {
                             val program = newPatchProgram.toIntOrNull() ?: 0
-                            val newPatch = PatchState(newPatchName, newPatchCategory, program, newPatchDescription)
-                            val updatedPatches = active.patches + newPatch
+                            val updatedPatches = if (patchToEdit != null) {
+                                active.patches.map { if (it.id == patchToEdit!!.id) it.copy(name = newPatchName, category = newPatchCategory, programNumber = program, description = newPatchDescription) else it }
+                            } else {
+                                val newPatch = PatchState(newPatchName, newPatchCategory, program, newPatchDescription)
+                                active.patches + newPatch
+                            }
+                            
                             val updatedConcert = active.copy(
                                 patches = updatedPatches,
                                 lastModified = System.currentTimeMillis()
@@ -737,7 +910,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             val newList = concerts.map { if (it.id == active.id) updatedConcert else it }
                             saveConcertsList(newList)
                             activeConcert = updatedConcert
-                            selectedPatchIndex = updatedPatches.lastIndex
+                            if (patchToEdit == null) selectedPatchIndex = updatedPatches.lastIndex
                             
                             // Reset inputs
                             newPatchName = ""
@@ -749,7 +922,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = NeonGreen)
                 ) {
-                    Text("Añadir", color = Color.Black)
+                    Text(if (patchToEdit != null) "Guardar" else "Añadir", color = Color.Black)
                 }
             },
             dismissButton = {
@@ -1006,8 +1179,13 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 fun DashboardScreen(
     concerts: List<Concert>,
     onCreateConcertClick: () -> Unit,
+    onEditConcertClick: (Concert) -> Unit,
     onOpenLastConcertClick: () -> Unit,
-    onSelectConcert: (Concert) -> Unit
+    onSelectConcert: (Concert) -> Unit,
+    onDeleteConcert: (Concert) -> Unit,
+    onExportConcertClick: (Concert) -> Unit,
+    onImportClick: () -> Unit,
+    onSettingsClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -1029,6 +1207,10 @@ fun DashboardScreen(
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace
                 )
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = onSettingsClick) {
+                    Icon(Icons.Default.Settings, contentDescription = "Ajustes", tint = TextLight)
+                }
             }
 
             Row(
@@ -1064,13 +1246,26 @@ fun DashboardScreen(
                 }
             }
 
-            Text(
-                text = "MIS CONCIERTOS RECIENTES",
-                color = TextDark,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "MIS CONCIERTOS RECIENTES",
+                    color = TextDark,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Button(
+                    onClick = onImportClick,
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                    modifier = Modifier.height(32.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) {
+                    Text("Importar", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
 
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
@@ -1106,8 +1301,14 @@ fun ConcertViewScreen(
     selectedPatchIndex: Int,
     onSelectPatch: (Int) -> Unit,
     onAddPatchClick: () -> Unit,
+    onEditPatchClick: (PatchState) -> Unit,
+    onDeletePatch: (PatchState) -> Unit,
+    onExportPatchClick: (PatchState) -> Unit,
+    onImportPatchClick: () -> Unit,
     onBackClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    currentConnectedDevices: List<String>,
+    midiActivityIndicator: Boolean,
 
     // Metronome & Recording
     metronomeOn: Boolean,
@@ -1321,6 +1522,20 @@ fun ConcertViewScreen(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
+                    IconButton(
+                        onClick = onImportPatchClick,
+                        modifier = Modifier.size(20.dp)
+                    ) {
+                        Text("↓", color = TextDark, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(
+                        onClick = onImportPatchClick,
+                        modifier = Modifier.size(20.dp)
+                    ) {
+                        Text("?", color = TextDark, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
                     IconButton(
                         onClick = onAddPatchClick,
                         modifier = Modifier.size(20.dp)
@@ -2056,6 +2271,8 @@ fun MidiMappingSettingsScreen(
                 is MidiTarget.Modulation -> "Rueda de Modulación"
                 is MidiTarget.OctaveUp -> "Octava Arriba"
                 is MidiTarget.OctaveDown -> "Octava Abajo"
+                is MidiTarget.NextPatch -> "Siguiente Patch"
+                is MidiTarget.PreviousPatch -> "Patch Anterior"
             }
             
             Row(
@@ -2374,5 +2591,8 @@ fun parseColorHex(hex: String): Color {
         else -> Color.White
     }
 }
+
+
+
 
 
