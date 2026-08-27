@@ -118,6 +118,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         }
     )
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var settingsOpenedFromConcert by remember { mutableStateOf(false) }
     var activeSettingsTab by remember { mutableStateOf(SettingsTab.MIDI_MAP) }
     var showChannelSettingsDialog by remember { mutableStateOf<ChannelStripState?>(null) }
     var showAddPatchDialog by remember { mutableStateOf(false) }
@@ -607,7 +608,11 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 },
                 onExportConcertClick = { concertToExport = it },
                 onImportClick = { showPackagePicker = true },
-                onSettingsClick = { showSettingsDialog = true }
+                onSettingsClick = { 
+                    settingsOpenedFromConcert = false
+                    activeSettingsTab = SettingsTab.MIDI_MAP
+                    showSettingsDialog = true 
+                }
             )
         }
         ScreenState.CONCERT -> {
@@ -645,7 +650,11 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     onExportPatchClick = { patchToExport = it },
                     onImportPatchClick = { showPackagePicker = true },
                     onBackClick = { currentScreen = ScreenState.DASHBOARD },
-                    onSettingsClick = { showSettingsDialog = true },
+                    onSettingsClick = { 
+                        settingsOpenedFromConcert = true
+                        activeSettingsTab = SettingsTab.SPLIT_ZONES
+                        showSettingsDialog = true 
+                    },
                     currentConnectedDevices = currentConnectedDevices,
                     midiActivityIndicator = midiActivityIndicator,
                     
@@ -914,7 +923,20 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             val updatedPatches = if (patchToEdit != null) {
                                 active.patches.map { if (it.id == patchToEdit!!.id) it.copy(name = newPatchName, category = newPatchCategory, programNumber = program, description = newPatchDescription) else it }
                             } else {
-                                val newPatch = PatchState(newPatchName, newPatchCategory, program, newPatchDescription)
+                                val currentSnapshot = active.channels.map { ch ->
+                                    PatchChannelSnapshot(
+                                        channelId = ch.id,
+                                        sf2Name = ch.sf2Name,
+                                        sf2Path = ch.sf2Path,
+                                        volume = ch.volume,
+                                        isMuted = ch.isMuted,
+                                        isSoloed = ch.isSoloed,
+                                        keyRangeStart = ch.keyRangeStart,
+                                        keyRangeEnd = ch.keyRangeEnd,
+                                        colorHex = ch.colorHex
+                                    )
+                                }
+                                val newPatch = PatchState(newPatchName, newPatchCategory, program, newPatchDescription, channelsSnapshot = currentSnapshot)
                                 active.patches + newPatch
                             }
                             
@@ -2347,10 +2369,20 @@ fun MidiMappingSettingsScreen(
 @Composable
 fun SplitKeyboardSettingsScreen(
     concert: Concert,
+    selectedPatchName: String? = null,
     onUpdateRange: (Int, Int, Int) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Text("RANGOS DE TECLADO Y SPLITS (OCTAVAS A0 - C8)", color = TextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        if (selectedPatchName != null) {
+            Text(
+                "Editando zonas del patch: $selectedPatchName",
+                color = NeonGreen,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+        }
         Text(
             "Visualiza y modifica las zonas de las teclas activas para cada archivo SF2 cargado.",
             color = TextDark,
