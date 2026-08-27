@@ -575,9 +575,9 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         PatchState("Warm Strings Pad", "Strings", 49, "Slow attack pad for jazz ballads")
                     ),
                     channels = listOf(
-                        ChannelStripState(1, "TonewheelOrgan.sf2", null, 0.8f, false, false, 0, 127, "#00D2FF"),
-                        ChannelStripState(2, "VibeMallets.sf2", null, 0.65f, false, false, 0, 127, "#FFFF8C00"),
-                        ChannelStripState(3, "AmbientStrings.sf2", null, 0.7f, false, false, 0, 127, "#FF39FF14")
+                        ChannelStripState(1, "TonewheelOrgan.sf2", null, 0.8f, false, false, 0, 127, "#38BDF8"),
+                        ChannelStripState(2, "VibeMallets.sf2", null, 0.65f, false, false, 0, 127, "#FBBF24"),
+                        ChannelStripState(3, "AmbientStrings.sf2", null, 0.7f, false, false, 0, 127, "#39FF14")
                     )
                 )
             )
@@ -780,7 +780,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 isSoloed = false,
                                 keyRangeStart = 0,
                                 keyRangeEnd = 127,
-                                colorHex = listOf("#00D2FF", "#FFFF8C00", "#FF39FF14", "#FFFF0055", "#FF9D00FF", "#FFFFEE00", "#FF0044FF", "#FFEA00FF").random()
+                                colorHex = listOf("#38BDF8", "#39FF14", "#9D4EDD", "#FB7185", "#2DD4BF", "#F472B6", "#FBBF24").random()
                             )
                             val updatedChannels = concert.channels + newChannel
                             updateChannelsAndPatchSnapshot(updatedChannels)
@@ -857,17 +857,17 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     if (showCreateConcertDialog) {
         AlertDialog(
             onDismissRequest = { showCreateConcertDialog = false },
-            title = { Text(if (concertToEdit != null) "EDITAR CONCIERTO" else "CREAR NUEVO CONCIERTO", color = TextLight, fontWeight = FontWeight.Bold) },
+            title = { Text(if (concertToEdit != null) "EDITAR CONCIERTO" else "CREAR NUEVO CONCIERTO", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
             text = {
                 OutlinedTextField(
                     value = newConcertName,
                     onValueChange = { newConcertName = it },
                     label = { Text("Nombre del Concierto") },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextLight,
-                        unfocusedTextColor = TextLight,
-                        focusedBorderColor = AccentSky,
-                        unfocusedBorderColor = LightPanel
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -890,7 +890,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         PatchState("Default Piano", "Keyboards", 0, "Acoustic Grand Piano")
                                     ),
                                     channels = listOf(
-                                        ChannelStripState(1, "PianoDefault.sf2", null, 0.8f, false, false, 0, 127, "#00D2FF")
+                                        ChannelStripState(1, "PianoDefault.sf2", null, 0.8f, false, false, 0, 127, "#38BDF8")
                                     )
                                 )
                                 val newList = concerts + newConcert
@@ -903,17 +903,19 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             showCreateConcertDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentSky)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
+                    shape = AppShapes.medium
                 ) {
-                    Text(if (concertToEdit != null) "Guardar" else "Crear")
+                    Text(if (concertToEdit != null) "Guardar" else "Crear", style = MaterialTheme.typography.labelLarge)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showCreateConcertDialog = false }) {
-                    Text("Cancelar", color = TextDark)
+                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
                 }
             },
-            containerColor = DarkPanel
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = AppShapes.large
         )
     }
 
@@ -921,31 +923,41 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     if (showAddPatchDialog) {
         AlertDialog(
             onDismissRequest = { showAddPatchDialog = false },
-            title = { Text(if (patchToEdit != null) "EDITAR PATCH" else "AÑADIR NUEVO PATCH", color = TextLight, fontWeight = FontWeight.Bold) },
+            title = { Text(if (patchToEdit != null) "EDITAR PATCH" else "AÑADIR NUEVO PATCH", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
             text = {
                 Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                    val tfColors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                     OutlinedTextField(
                         value = newPatchName,
                         onValueChange = { newPatchName = it },
                         label = { Text("Nombre") },
+                        colors = tfColors,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
                         value = newPatchCategory,
                         onValueChange = { newPatchCategory = it },
                         label = { Text("Categoría") },
+                        colors = tfColors,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
                         value = newPatchProgram,
                         onValueChange = { newPatchProgram = it },
                         label = { Text("Número de Programa MIDI (0-127)") },
+                        colors = tfColors,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
                         value = newPatchDescription,
                         onValueChange = { newPatchDescription = it },
                         label = { Text("Descripción") },
+                        colors = tfColors,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -969,7 +981,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         isSoloed = false,
                                         keyRangeStart = 0,
                                         keyRangeEnd = 127,
-                                        colorHex = "#00D2FF"
+                                        colorHex = "#38BDF8"
                                     )
                                 )
                                 val newPatch = PatchState(newPatchName, newPatchCategory, program, newPatchDescription, channelsSnapshot = defaultSnapshot)
@@ -993,17 +1005,19 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             showAddPatchDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentNeonGreen)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary, contentColor = MaterialTheme.colorScheme.onTertiary),
+                    shape = AppShapes.medium
                 ) {
-                    Text(if (patchToEdit != null) "Guardar" else "Añadir", color = Color.Black)
+                    Text(if (patchToEdit != null) "Guardar" else "Añadir", style = MaterialTheme.typography.labelLarge)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showAddPatchDialog = false }) {
-                    Text("Cancelar", color = TextDark)
+                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
                 }
             },
-            containerColor = DarkPanel
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = AppShapes.large
         )
     }
 
@@ -1011,14 +1025,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     showChannelSettingsDialog?.let { chState ->
         AlertDialog(
             onDismissRequest = { showChannelSettingsDialog = null },
-            title = { Text("CONFIGURAR CANAL ${chState.id}", color = TextLight, fontWeight = FontWeight.Bold) },
+            title = { Text("CONFIGURAR CANAL ${chState.id}", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
             text = {
                 Column {
-                    Text("SoundFont Actual: ${chState.sf2Name}", color = TextDark, fontSize = 12.sp, modifier = Modifier.padding(bottom = 12.dp))
+                    Text("SoundFont Actual: ${chState.sf2Name}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 12.dp))
                     
                     if (isLoadingSf2) {
                         CircularProgressIndicator(
-                            color = AccentSky,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(bottom = 12.dp).align(Alignment.CenterHorizontally).size(32.dp)
                         )
                     } else {
@@ -1027,25 +1041,25 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             onClick = {
                                 showSf2Picker = true
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = LightPanel),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            shape = AppShapes.medium,
                             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                         ) {
-                            Text("Cambiar SF2 Preset", color = TextLight)
+                            Text("Cambiar SF2 Preset", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelLarge)
                         }
                     }
 
                     // Dynamic Vibrant Color grid
-                    Text("CAMBIAR COLOR DE CANAL:", color = TextLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                    Text("CAMBIAR COLOR DE CANAL:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(bottom = 8.dp))
                     
                     val vibrantColors = listOf(
-                        "#00D2FF", // Neon Cyan
-                        "#FFFF8C00", // Neon Orange
-                        "#FF39FF14", // Neon Green
-                        "#FFFF0055", // Neon Red/Pink
-                        "#FF9D00FF", // Neon Purple
-                        "#FFFFEE00", // Neon Yellow
-                        "#FF0044FF", // Electric Blue
-                        "#FFEA00FF"  // Hot Magenta
+                        "#38BDF8", // Sky
+                        "#39FF14", // Neon Green
+                        "#9D4EDD", // Purple
+                        "#FB7185", // Coral
+                        "#2DD4BF", // Mint
+                        "#F472B6", // Pink
+                        "#FBBF24"  // Warm Yellow
                     )
 
                     Row(
@@ -1383,21 +1397,21 @@ fun MidiMappingSettingsScreen(
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         if (connectedDevices.isNotEmpty()) {
             Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Dispositivos MIDI conectados: ", color = TextLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text(connectedDevices.joinToString(", "), color = AccentNeonGreen, fontSize = 12.sp)
+                Text("Dispositivos MIDI conectados: ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(connectedDevices.joinToString(", "), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary)
             }
         } else {
             Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Dispositivos MIDI conectados: ", color = TextLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text("Ninguno", color = Color.Red, fontSize = 12.sp)
+                Text("Dispositivos MIDI conectados: ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text("Ninguno", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
             }
         }
 
-        Text("ASIGNACION DE CONTROLADORES MIDI CC (MIDI LEARN)", color = TextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text("ASIGNACION DE CONTROLADORES MIDI CC (MIDI LEARN)", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Text(
             "Haz clic en \"Mapear\" al lado del control correspondiente y mueve el potenciómetro o fader de tu teclado físico para enlazarlo.",
-            color = TextDark,
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
@@ -1437,32 +1451,32 @@ fun MidiMappingSettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 6.dp)
-                    .background(LightPanel, RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant, AppShapes.small)
                     .padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(targetName.uppercase(), color = TextLight, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(targetName.uppercase(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
                     Text(
                         text = if (mappedCc != null) "Mapeado a MIDI CC $mappedCc" else "Sin mapear",
-                        color = if (mappedCc != null) AccentNeonGreen else TextDark,
-                        fontSize = 11.sp
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (mappedCc != null) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 
                 Button(
                     onClick = { onStartMapping(target) },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (mappingTarget == target) AccentWarmYellow else AccentSky
+                        containerColor = if (mappingTarget == target) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                        contentColor = if (mappingTarget == target) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary
                     ),
+                    shape = AppShapes.small,
                     modifier = Modifier.height(32.dp)
                 ) {
                     Text(
                         text = if (mappingTarget == target) "ESCUCHANDO..." else "MAPEAR",
-                        color = Color.Black,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.labelSmall
                     )
                 }
             }
@@ -1477,20 +1491,19 @@ fun SplitKeyboardSettingsScreen(
     onUpdateRange: (Int, Int, Int) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text("RANGOS DE TECLADO Y SPLITS (OCTAVAS A0 - C8)", color = TextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text("RANGOS DE TECLADO Y SPLITS (OCTAVAS A0 - C8)", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         if (selectedPatchName != null) {
             Text(
                 "Editando zonas del patch: $selectedPatchName",
-                color = AccentNeonGreen,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
         }
         Text(
             "Visualiza y modifica las zonas de las teclas activas para cada archivo SF2 cargado.",
-            color = TextDark,
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
@@ -1498,8 +1511,8 @@ fun SplitKeyboardSettingsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .background(Color.Black, RoundedCornerShape(4.dp))
-                .border(1.dp, LightPanel, RoundedCornerShape(4.dp))
+                .background(Color.Black, AppShapes.small)
+                .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, AppShapes.small)
         ) {
             concert.channels.forEach { ch ->
                 val startPercent = ch.keyRangeStart / 127f
@@ -1524,7 +1537,7 @@ fun SplitKeyboardSettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
-                    .background(LightPanel, RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant, AppShapes.small)
                     .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -1532,31 +1545,30 @@ fun SplitKeyboardSettingsScreen(
                 Text(
                     text = ch.sf2Name.substringBefore(".sf2").uppercase(),
                     color = parseColorHex(ch.colorHex),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.width(100.dp)
                 )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Nota Min: ", color = TextDark, fontSize = 11.sp)
+                    Text("Nota Min: ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Slider(
                         value = ch.keyRangeStart.toFloat(),
                         onValueChange = { onUpdateRange(ch.id, it.toInt(), ch.keyRangeEnd) },
                         valueRange = 0f..ch.keyRangeEnd.toFloat(),
                         modifier = Modifier.width(80.dp)
                     )
-                    Text(ch.keyRangeStart.toString(), color = TextLight, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.width(30.dp))
+                    Text(ch.keyRangeStart.toString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(30.dp))
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Nota Max: ", color = TextDark, fontSize = 11.sp)
+                    Text("Nota Max: ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Slider(
                         value = ch.keyRangeEnd.toFloat(),
                         onValueChange = { onUpdateRange(ch.id, ch.keyRangeStart, it.toInt()) },
                         valueRange = ch.keyRangeStart.toFloat()..127f,
                         modifier = Modifier.width(80.dp)
                     )
-                    Text(ch.keyRangeEnd.toString(), color = TextLight, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.width(30.dp))
+                    Text(ch.keyRangeEnd.toString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(30.dp))
                 }
             }
         }
@@ -1571,15 +1583,15 @@ fun AudioSettingsTabScreen(
     onOutputChange: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Text("INTERFACES DE AUDIO Y LATENCIA", color = TextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text("INTERFACES DE AUDIO Y LATENCIA", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("DISPOSITIVO DE SALIDA:", color = TextDark, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text("DISPOSITIVO DE SALIDA:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 6.dp)
-                .background(LightPanel, RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant, AppShapes.small)
                 .clickable {
                     val outputs = listOf(
                         "Salida Estéreo Principal (System Default)",
@@ -1593,13 +1605,13 @@ fun AudioSettingsTabScreen(
                 .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(selectedOutput, color = TextLight, fontSize = 13.sp)
-            Text("Cambiar ➔", color = AccentSky, fontSize = 11.sp)
+            Text(selectedOutput, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text("Cambiar ➔", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Text("VELOCIDAD DE MUESTREO (BITRATE/SAMPLE RATE):", color = TextDark, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Text("VELOCIDAD DE MUESTREO (BITRATE/SAMPLE RATE):", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -1610,13 +1622,13 @@ fun AudioSettingsTabScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(40.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(if (isSelected) AccentSky.copy(alpha = 0.15f) else LightPanel)
-                        .border(1.dp, if (isSelected) AccentSky else Color.Transparent, RoundedCornerShape(4.dp))
+                        .clip(AppShapes.small)
+                        .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant)
+                        .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, AppShapes.small)
                         .clickable { onSampleRateChange(rate) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("$rate Hz", color = if (isSelected) TextLight else TextDark, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("$rate Hz", style = MaterialTheme.typography.labelMedium, color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -1626,13 +1638,13 @@ fun AudioSettingsTabScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF0F1512), RoundedCornerShape(4.dp))
-                .border(1.dp, Color(0xFF1B2C21), RoundedCornerShape(4.dp))
+                .background(Color(0xFF0F1512), AppShapes.small)
+                .border(1.dp, Color(0xFF1B2C21), AppShapes.small)
                 .padding(12.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("ESTADO DEL DRIVER:", color = TextDark, fontSize = 11.sp)
-                Text("ACTIVO (LOW LATENCY)", color = AccentNeonGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("ESTADO DEL DRIVER:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("ACTIVO (LOW LATENCY)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
             }
         }
     }
