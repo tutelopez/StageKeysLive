@@ -16,6 +16,7 @@ actual class PlatformAudioSynth actual constructor() {
     // App.kt (commonMain) can call startMidiLearn() without knowing about Android specifics.
     companion object {
         internal var midiManager: AndroidMidiManager? = null
+        internal var audioDeviceManager: AndroidAudioDeviceManager? = null
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -152,6 +153,25 @@ actual class PlatformAudioSynth actual constructor() {
     private fun cancelLearnTimeout() {
         learnTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
         learnTimeoutRunnable = null
+    }
+
+    // --- Audio Device Management ---
+    actual fun getAudioDevices(): List<AudioOutputDeviceInfo> {
+        // Since we are synchronous here, let's just trigger a refresh so the callback fires
+        audioDeviceManager?.refreshDevices()
+        return emptyList() // The actual list is delivered via the callback
+    }
+
+    actual fun selectAudioDevice(deviceId: Int) {
+        audioDeviceManager?.selectDevice(deviceId)
+    }
+
+    actual fun setAudioDeviceListener(onDeviceListChanged: (List<AudioOutputDeviceInfo>) -> Unit) {
+        audioDeviceManager?.onDeviceListChanged = onDeviceListChanged
+    }
+
+    actual fun refreshAudioDevices() {
+        audioDeviceManager?.refreshDevices()
     }
 
     // Native JNI bindings to C++ Audio/FluidSynth engine

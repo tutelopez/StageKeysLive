@@ -63,6 +63,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var activeConcert by remember { mutableStateOf<Concert?>(null) }
     var selectedPatchIndex by remember { mutableStateOf(0) }
     var currentConnectedDevices by remember { mutableStateOf<List<String>>(emptyList()) }
+    var currentAudioDevices by remember { mutableStateOf<List<AudioOutputDeviceInfo>>(emptyList()) }
 
     // File Picker and Snackbar State
     var showSf2Picker by remember { mutableStateOf(false) }
@@ -140,7 +141,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     val masterVuLevel = remember { Animatable(0f) }
 
     // Audio Interfaces & Settings state
-    var selectedSampleRate by remember { mutableStateOf(44100) }
+    var selectedSampleRate by remember { mutableStateOf(48000) }
     var selectedAudioOutput by remember { mutableStateOf("Salida Estéreo Principal (System Default)") }
 
     // Live performance controls state
@@ -540,6 +541,11 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 currentConnectedDevices = names
             }
         )
+
+        synth.setAudioDeviceListener { devices ->
+            currentAudioDevices = devices
+        }
+        synth.refreshAudioDevices()
 
         val json = readTextFromFile("concerts.json")
         if (json != null) {
@@ -1250,8 +1256,9 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                     AudioSettingsTabScreen(
                                         sampleRate = selectedSampleRate,
                                         onSampleRateChange = { selectedSampleRate = it },
-                                        selectedOutput = selectedAudioOutput,
-                                        onOutputChange = { selectedAudioOutput = it }
+                                        audioDevices = currentAudioDevices,
+                                        onSelectDevice = { synth.selectAudioDevice(it) },
+                                        onRefreshDevices = { synth.refreshAudioDevices() }
                                     )
                                 }
                             }
@@ -1579,34 +1586,57 @@ fun SplitKeyboardSettingsScreen(
 fun AudioSettingsTabScreen(
     sampleRate: Int,
     onSampleRateChange: (Int) -> Unit,
-    selectedOutput: String,
-    onOutputChange: (String) -> Unit
+    audioDevices: List<AudioOutputDeviceInfo>,
+    onSelectDevice: (Int) -> Unit,
+    onRefreshDevices: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Text("INTERFACES DE AUDIO Y LATENCIA", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("INTERFACES DE AUDIO Y LATENCIA", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Button(
+                onClick = onRefreshDevices,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                shape = AppShapes.small,
+                modifier = Modifier.height(32.dp)
+            ) {
+                Text("Actualizar dispositivos", style = MaterialTheme.typography.labelSmall)
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
 
         Text("DISPOSITIVO DE SALIDA:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 6.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, AppShapes.small)
-                .clickable {
-                    val outputs = listOf(
-                        "Salida Estéreo Principal (System Default)",
-                        "ASIO: Focusrite USB Audio Driver",
-                        "ASIO: Behringer U-Phoria Driver",
-                        "DirectSound: Altavoces de Computadora"
-                    )
-                    val nextIdx = (outputs.indexOf(selectedOutput) + 1) % outputs.size
-                    onOutputChange(outputs[nextIdx])
+        
+        if (audioDevices.isEmpty()) {
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+                Text("Buscando dispositivos...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            Column(modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                audioDevices.forEach { device ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .background(if (device.isCurrentlySelected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant, AppShapes.small)
+                            .border(1.dp, if (device.isCurrentlySelected) MaterialTheme.colorScheme.secondary else Color.Transparent, AppShapes.small)
+                            .clickable { onSelectDevice(device.id) }
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(device.name, style = MaterialTheme.typography.bodyMedium, color = if (device.isCurrentlySelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(device.type, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if (device.isCurrentlySelected) {
+                            Text("Activo", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                        }
+                    }
                 }
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(selectedOutput, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-            Text("Cambiar ➔", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))

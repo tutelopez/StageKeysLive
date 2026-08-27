@@ -33,4 +33,10 @@ expect class PlatformAudioSynth() {
         onPitchBend: (pitchBend: Float) -> Unit,
         onDeviceConnectionChanged: (deviceNames: List<String>) -> Unit
     )
+
+    // --- Audio Device Management ---
+    fun getAudioDevices(): List<AudioOutputDeviceInfo>
+    fun selectAudioDevice(deviceId: Int)
+    fun setAudioDeviceListener(onDeviceListChanged: (List<AudioOutputDeviceInfo>) -> Unit)
+    fun refreshAudioDevices()
 }

@@ -99,4 +99,10 @@ actual class PlatformAudioSynth actual constructor() {
     ) {
         // No hardware MIDI on desktop yet
     }
+
+    // --- Audio Device Management ---
+    actual fun getAudioDevices(): List<AudioOutputDeviceInfo> = emptyList()
+    actual fun selectAudioDevice(deviceId: Int) {}
+    actual fun setAudioDeviceListener(onDeviceListChanged: (List<AudioOutputDeviceInfo>) -> Unit) {}
+    actual fun refreshAudioDevices() {}
 }

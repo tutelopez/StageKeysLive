@@ -13,6 +13,7 @@ private const val TAG = "StageKeysMain"
 
 class MainActivity : ComponentActivity() {
     private lateinit var midiManager: AndroidMidiManager
+    private lateinit var audioDeviceManager: AndroidAudioDeviceManager
     private val synth = PlatformAudioSynth()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,12 +30,12 @@ class MainActivity : ComponentActivity() {
 
         // Setup native audio engine and physical MIDI keyboard listeners
         midiManager = AndroidMidiManager(this, synth)
+        audioDeviceManager = AndroidAudioDeviceManager(this)
 
-        // [POINT 2 FIX] Wire the midiManager reference into PlatformAudioSynth's companion
-        // so that App.kt can call synth.startMidiLearn() without knowing about Android.
+        // [POINT 2 FIX] Wire the managers into PlatformAudioSynth's companion
+        // so that App.kt can call them without knowing about Android.
         PlatformAudioSynth.midiManager = midiManager
-
-        // Load default SoundFont from assets so that FluidSynth can produce sound!
+        PlatformAudioSynth.audioDeviceManager = audioDeviceManager
         Thread {
             try {
                 val sf2Name = "PianoDefault.sf2"
@@ -56,6 +57,7 @@ class MainActivity : ComponentActivity() {
         // Handled by App.kt via setMidiListener
 
         midiManager.startListening()
+        audioDeviceManager.startListening()
 
         // [POINT 3 FIX] Log audio readiness after a brief delay so the Oboe stream
         // has time to open before we check.
@@ -79,7 +81,9 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         // Release hardware and native engine resources
         PlatformAudioSynth.midiManager = null
+        PlatformAudioSynth.audioDeviceManager = null
         midiManager.stopListening()
+        audioDeviceManager.stopListening()
         synth.close()
     }
 }
