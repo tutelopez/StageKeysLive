@@ -20,9 +20,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
-import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 @Composable
 fun DashboardScreen(
     concerts: List<Concert>,
@@ -35,11 +32,9 @@ fun DashboardScreen(
     onImportClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
-    // Saludo dinámico según hora del día
+    // Saludo dinámico según hora del día usando expect/actual (100% nativo)
     val greeting = remember {
-        val hour = Clock.System.now()
-            .toLocalDateTime(TimeZone.currentSystemDefault()).hour
-        when (hour) {
+        when (getCurrentHourOfDay()) {
             in 5..11  -> "Buenos días, hora de tocar 🌅"
             in 12..18 -> "Buenas tardes, hora de tocar 🎹"
             in 19..23 -> "Buenas noches, hora de tocar 🌙"

@@ -34,7 +34,6 @@ kotlin {
                 implementation(compose.components.resources)
                 implementation(compose.components.uiToolingPreview)
                 implementation("br.com.devsrsouza.compose.icons:tabler-icons:1.1.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
             }
         }
 
