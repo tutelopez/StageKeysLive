@@ -67,15 +67,13 @@ private val StageKeysColorScheme = darkColorScheme(
 )
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
-// Font(Res.font.*) is a @Composable function — it must be called directly in a
-// @Composable body (not inside remember{}). The results are stable Font objects
-// that are passed as keys and used inside remember to build the FontFamily once.
+// Font(Res.font.*) is @Composable — called directly in composable body.
+// remember(keys) ensures FontFamily is only rebuilt if the font objects change.
 @Composable
 fun StageKeysTheme(content: @Composable () -> Unit) {
-    // Each Font() call is @Composable and returns a stable Font object.
-    val regular   = Font(Res.font.outfit_regular,  weight = FontWeight.Normal)
-    val semiBold  = Font(Res.font.outfit_semibold, weight = FontWeight.SemiBold)
-    val bold      = Font(Res.font.outfit_bold,     weight = FontWeight.Bold)
+    val regular  = Font(Res.font.outfit_regular,  weight = FontWeight.Normal)
+    val semiBold = Font(Res.font.outfit_semibold, weight = FontWeight.SemiBold)
+    val bold     = Font(Res.font.outfit_bold,     weight = FontWeight.Bold)
 
     val outfitFamily = remember(regular, semiBold, bold) {
         FontFamily(regular, semiBold, bold)

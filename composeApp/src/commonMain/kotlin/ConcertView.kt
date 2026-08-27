@@ -84,11 +84,9 @@ fun ConcertViewScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
-    // Collapsible keyboard: start expanded on tablets (>=600dp), collapsed on phones
-    val configuration = LocalConfiguration.current
-    var isKeyboardVisible by remember { mutableStateOf(configuration.screenWidthDp >= 600) }
 
-    Box(
+    // Use BoxWithConstraints to detect screen width (KMP-safe, no LocalConfiguration needed)
+    androidx.compose.foundation.layout.BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(
@@ -97,6 +95,9 @@ fun ConcertViewScreen(
                 )
             )
     ) {
+    // Tablets (>=600dp) start expanded; phones start collapsed to maximize mixer space
+    var isKeyboardVisible by remember { mutableStateOf(maxWidth >= 600.dp) }
+
         Column(
             modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
