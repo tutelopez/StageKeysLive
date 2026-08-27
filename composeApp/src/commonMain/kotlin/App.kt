@@ -375,6 +375,23 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         synth.setMidiListener(
             onMappedCc = { target, floatValue ->
                 triggerMidiFlash()
+                
+                val handleNextPatch = {
+                    val concert = activeConcert
+                    if (concert != null && concert.patches.isNotEmpty()) {
+                        val next = (selectedPatchIndex + 1) % concert.patches.size
+                        applyPatch(next)
+                    }
+                }
+                
+                val handlePreviousPatch = {
+                    val concert = activeConcert
+                    if (concert != null && concert.patches.isNotEmpty()) {
+                        val prev = (selectedPatchIndex - 1 + concert.patches.size) % concert.patches.size
+                        applyPatch(prev)
+                    }
+                }
+                
                 when (target) {
                     is MidiTarget.ChannelVolume -> {
                         activeConcert?.let { concert ->
@@ -449,11 +466,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     }
                     is MidiTarget.NextPatch -> {
                         if (floatValue > 0f) {
-                            val concert = activeConcert
-                            if (concert != null) {
-                                val next = (selectedPatchIndex + 1).coerceAtMost(concert.patches.size - 1)
-                                if (next != selectedPatchIndex) applyPatch(next)
-                            }
+                            handleNextPatch()
                         }
                     }
                     is MidiTarget.PreviousPatch -> {

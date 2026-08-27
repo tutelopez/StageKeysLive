@@ -114,7 +114,7 @@ actual fun PackageExporter(
                     sf2Paths.forEach { absPath ->
                         val sf2File = File(absPath)
                         if (sf2File.exists()) {
-                            zout.putNextEntry(ZipEntry("soundfonts/"))
+                            zout.putNextEntry(ZipEntry("soundfonts/${sf2File.name}"))
                             FileInputStream(sf2File).use { input ->
                                 input.copyTo(zout)
                             }
@@ -124,7 +124,7 @@ actual fun PackageExporter(
                 }
 
                 // Share via Intent
-                val uri: Uri = FileProvider.getUriForFile(context, ".fileprovider", zipFile)
+                val uri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", zipFile)
                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                     type = "application/zip"
                     putExtra(Intent.EXTRA_STREAM, uri)
@@ -134,6 +134,9 @@ actual fun PackageExporter(
                 context.startActivity(Intent.createChooser(shareIntent, "Exportar paquete"))
             } catch (e: Exception) {
                 e.printStackTrace()
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    android.widget.Toast.makeText(context, "Error al exportar: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                }
             }
         }
         

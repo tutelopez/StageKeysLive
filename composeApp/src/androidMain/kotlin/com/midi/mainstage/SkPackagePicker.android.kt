@@ -84,7 +84,7 @@ actual fun SkPackagePicker(show: Boolean, onPackageSelected: (Concert?, PatchSta
                         }
                         
                         val finalConcert = concert.copy(
-                            id = "concert_",
+                            id = "concert_${System.currentTimeMillis()}_${(0..9999).random()}",
                             channels = updatedChannels, 
                             patches = updatedPatches
                         )
@@ -127,7 +127,7 @@ actual fun SkPackagePicker(show: Boolean, onPackageSelected: (Concert?, PatchSta
                     }
                     
                     val finalPatch = PatchState(
-                        id = "patch_",
+                        id = "patch_${System.currentTimeMillis()}_${(0..9999).random()}",
                         name = pObj.getString("name"),
                         category = pObj.getString("category"),
                         programNumber = pObj.getInt("programNumber"),
