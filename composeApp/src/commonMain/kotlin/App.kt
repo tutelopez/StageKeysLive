@@ -197,6 +197,32 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
     
 
+    val updateChannelsAndPatchSnapshot = { newChannels: List<ChannelStripState> ->
+        val concert = activeConcert
+        if (concert != null) {
+            val updatedPatches = if (selectedPatchIndex in concert.patches.indices) {
+                concert.patches.mapIndexed { idx, patch ->
+                    if (idx == selectedPatchIndex) {
+                        val newSnapshot = newChannels.map { ch ->
+                            PatchChannelSnapshot(
+                                channelId = ch.id, sf2Name = ch.sf2Name, sf2Path = ch.sf2Path,
+                                volume = ch.volume, isMuted = ch.isMuted, isSoloed = ch.isSoloed,
+                                keyRangeStart = ch.keyRangeStart, keyRangeEnd = ch.keyRangeEnd,
+                                colorHex = ch.colorHex
+                            )
+                        }
+                        patch.copy(channelsSnapshot = newSnapshot)
+                    } else patch
+                }
+            } else concert.patches
+
+            val updatedConcert = concert.copy(channels = newChannels, patches = updatedPatches, lastModified = System.currentTimeMillis())
+            val newList = concerts.map { if (it.id == concert.id) updatedConcert else it }
+            saveConcertsList(newList)
+            activeConcert = updatedConcert
+        }
+    }
+
     val applyPatch = { patchIndex: Int ->
         val concert = activeConcert
         if (concert != null && patchIndex in concert.patches.indices) {
@@ -207,22 +233,18 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             
             val patch = concert.patches[patchIndex]
             if (patch.channelsSnapshot.isNotEmpty()) {
-                val updatedChannels = concert.channels.map { ch ->
-                    val snap = patch.channelsSnapshot.find { it.channelId == ch.id }
-                    if (snap != null) {
-                        ch.copy(
-                            sf2Name = snap.sf2Name,
-                            sf2Path = snap.sf2Path,
-                            volume = snap.volume,
-                            isMuted = snap.isMuted,
-                            isSoloed = snap.isSoloed,
-                            keyRangeStart = snap.keyRangeStart,
-                            keyRangeEnd = snap.keyRangeEnd,
-                            colorHex = snap.colorHex
-                        )
-                    } else {
-                        ch
-                    }
+                val updatedChannels = patch.channelsSnapshot.map { snap ->
+                    ChannelStripState(
+                        id = snap.channelId,
+                        sf2Name = snap.sf2Name,
+                        sf2Path = snap.sf2Path,
+                        volume = snap.volume,
+                        isMuted = snap.isMuted,
+                        isSoloed = snap.isSoloed,
+                        keyRangeStart = snap.keyRangeStart,
+                        keyRangeEnd = snap.keyRangeEnd,
+                        colorHex = snap.colorHex
+                    )
                 }
                 
                 updatedChannels.forEach { ch ->
@@ -402,7 +424,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 val updatedChannels = concert.channels.toMutableList()
                                 val ch = updatedChannels[target.channelIndex]
                                 updatedChannels[target.channelIndex] = ch.copy(volume = floatValue)
-                                activeConcert = concert.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
+                                updateChannelsAndPatchSnapshot(updatedChannels)
                             }
                         }
                     }
@@ -413,7 +435,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 val updatedChannels = concert.channels.toMutableList()
                                 val ch = updatedChannels[target.channelIndex]
                                 updatedChannels[target.channelIndex] = ch.copy(isMuted = toggle)
-                                activeConcert = concert.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
+                                updateChannelsAndPatchSnapshot(updatedChannels)
                             }
                         }
                     }
@@ -707,25 +729,19 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         val updatedChannels = concert.channels.map {
                             if (it.id == chId) it.copy(volume = vol) else it
                         }
-                        val updatedConcert = concert.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
-                        activeConcert = updatedConcert
-                        saveConcertsList(concerts.map { if (it.id == concert.id) updatedConcert else it })
+                        updateChannelsAndPatchSnapshot(updatedChannels)
                     },
                     onMuteToggle = { chId ->
                         val updatedChannels = concert.channels.map {
                             if (it.id == chId) it.copy(isMuted = !it.isMuted) else it
                         }
-                        val updatedConcert = concert.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
-                        activeConcert = updatedConcert
-                        saveConcertsList(concerts.map { if (it.id == concert.id) updatedConcert else it })
+                        updateChannelsAndPatchSnapshot(updatedChannels)
                     },
                     onSoloToggle = { chId ->
                         val updatedChannels = concert.channels.map {
                             if (it.id == chId) it.copy(isSoloed = !it.isSoloed) else it
                         }
-                        val updatedConcert = concert.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
-                        activeConcert = updatedConcert
-                        saveConcertsList(concerts.map { if (it.id == concert.id) updatedConcert else it })
+                        updateChannelsAndPatchSnapshot(updatedChannels)
                     },
                     onAddChannelClick = {
                         if (concert.channels.size < 8) {
@@ -742,9 +758,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 colorHex = listOf("#00D2FF", "#FFFF8C00", "#FF39FF14", "#FFFF0055", "#FF9D00FF", "#FFFFEE00", "#FF0044FF", "#FFEA00FF").random()
                             )
                             val updatedChannels = concert.channels + newChannel
-                            val updatedConcert = concert.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
-                            activeConcert = updatedConcert
-                            saveConcertsList(concerts.map { if (it.id == concert.id) updatedConcert else it })
+                            updateChannelsAndPatchSnapshot(updatedChannels)
                         }
                     },
                     onChannelGearClick = { showChannelSettingsDialog = it },
@@ -799,11 +813,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             val updatedChannels = active.channels.map {
                                 if (it.id == channel.id) it.copy(sf2Name = sf2Name, sf2Path = path) else it
                             }
-                            val updatedConcert = active.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
-                            val newList = concerts.map { if (it.id == active.id) updatedConcert else it }
-                            saveConcertsList(newList)
-                            activeConcert = updatedConcert
-                            showChannelSettingsDialog = updatedConcert.channels.find { it.id == channel.id }
+                            updateChannelsAndPatchSnapshot(updatedChannels)
+                            showChannelSettingsDialog = activeConcert?.channels?.find { it.id == channel.id }
                         } else {
                             deleteLocalFile(path)
                             snackbarHostState.showSnackbar("Error al cargar el archivo .sf2")
@@ -923,20 +934,20 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             val updatedPatches = if (patchToEdit != null) {
                                 active.patches.map { if (it.id == patchToEdit!!.id) it.copy(name = newPatchName, category = newPatchCategory, programNumber = program, description = newPatchDescription) else it }
                             } else {
-                                val currentSnapshot = active.channels.map { ch ->
+                                val defaultSnapshot = listOf(
                                     PatchChannelSnapshot(
-                                        channelId = ch.id,
-                                        sf2Name = ch.sf2Name,
-                                        sf2Path = ch.sf2Path,
-                                        volume = ch.volume,
-                                        isMuted = ch.isMuted,
-                                        isSoloed = ch.isSoloed,
-                                        keyRangeStart = ch.keyRangeStart,
-                                        keyRangeEnd = ch.keyRangeEnd,
-                                        colorHex = ch.colorHex
+                                        channelId = 1,
+                                        sf2Name = "Sin Asignar",
+                                        sf2Path = null,
+                                        volume = 0.8f,
+                                        isMuted = false,
+                                        isSoloed = false,
+                                        keyRangeStart = 0,
+                                        keyRangeEnd = 127,
+                                        colorHex = "#00D2FF"
                                     )
-                                }
-                                val newPatch = PatchState(newPatchName, newPatchCategory, program, newPatchDescription, channelsSnapshot = currentSnapshot)
+                                )
+                                val newPatch = PatchState(newPatchName, newPatchCategory, program, newPatchDescription, channelsSnapshot = defaultSnapshot)
                                 active.patches + newPatch
                             }
                             
@@ -1049,10 +1060,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             val active = activeConcert
                             if (active != null) {
                                 val updatedChannels = active.channels.filter { it.id != chState.id }
-                                val updatedConcert = active.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
-                                val newList = concerts.map { if (it.id == active.id) updatedConcert else it }
-                                saveConcertsList(newList)
-                                activeConcert = updatedConcert
+                                updateChannelsAndPatchSnapshot(updatedChannels)
                                 showChannelSettingsDialog = null
                             }
                         },
@@ -1109,11 +1117,18 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 .background(DarkPanel, RoundedCornerShape(8.dp))
                                 .padding(8.dp)
                         ) {
-                            val tabs = listOf(
-                                SettingsTab.MIDI_MAP to "Mapear MIDI",
-                                SettingsTab.SPLIT_ZONES to " Keyboard Zones",
-                                SettingsTab.AUDIO to "Interfaces de Audio"
-                            )
+                            val tabs = if (settingsOpenedFromConcert) {
+                                listOf(
+                                    SettingsTab.SPLIT_ZONES to " Keyboard Zones",
+                                    SettingsTab.AUDIO to "Interfaces de Audio"
+                                )
+                            } else {
+                                listOf(
+                                    SettingsTab.MIDI_MAP to "Mapear MIDI",
+                                    SettingsTab.SPLIT_ZONES to " Keyboard Zones",
+                                    SettingsTab.AUDIO to "Interfaces de Audio"
+                                )
+                            }
                             tabs.forEach { (tab, label) ->
                                 val isSelected = activeSettingsTab == tab
                                 Row(
