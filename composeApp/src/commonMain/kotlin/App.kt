@@ -12,6 +12,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
@@ -1536,17 +1538,34 @@ fun ConcertViewScreen(
                         fontWeight = FontWeight.Bold
                     )
                     IconButton(
-                        onClick = onImportPatchClick,
+                        onClick = {
+                            if (concert.patches.isNotEmpty()) {
+                                val prev = (selectedPatchIndex - 1 + concert.patches.size) % concert.patches.size
+                                onSelectPatch(prev)
+                            }
+                        },
                         modifier = Modifier.size(20.dp)
                     ) {
-                        Text("↓", color = TextDark, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Previous patch", tint = TextDark, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(modifier = Modifier.width(2.dp))
+                    IconButton(
+                        onClick = {
+                            if (concert.patches.isNotEmpty()) {
+                                val next = (selectedPatchIndex + 1) % concert.patches.size
+                                onSelectPatch(next)
+                            }
+                        },
+                        modifier = Modifier.size(20.dp)
+                    ) {
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Next patch", tint = TextDark, modifier = Modifier.size(16.dp))
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     IconButton(
                         onClick = onImportPatchClick,
                         modifier = Modifier.size(20.dp)
                     ) {
-                        Text("?", color = TextDark, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("↓", color = TextDark, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     IconButton(
