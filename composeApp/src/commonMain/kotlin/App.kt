@@ -671,7 +671,11 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     },
                     onExportPatchClick = { patchToExport = it },
                     onImportPatchClick = { showPackagePicker = true },
-                    onBackClick = { currentScreen = ScreenState.DASHBOARD },
+                    onBackClick = { 
+                        stopConcert()
+                        activeConcert = null
+                        currentScreen = ScreenState.DASHBOARD 
+                    },
                     onSettingsClick = { 
                         settingsOpenedFromConcert = true
                         activeSettingsTab = SettingsTab.SPLIT_ZONES
@@ -1125,7 +1129,6 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             } else {
                                 listOf(
                                     SettingsTab.MIDI_MAP to "Mapear MIDI",
-                                    SettingsTab.SPLIT_ZONES to " Keyboard Zones",
                                     SettingsTab.AUDIO to "Interfaces de Audio"
                                 )
                             }
