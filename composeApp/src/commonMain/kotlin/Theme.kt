@@ -15,10 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import mainstageandroid.composeapp.generated.resources.Res
-import mainstageandroid.composeapp.generated.resources.outfit_regular
-import mainstageandroid.composeapp.generated.resources.outfit_semibold
-import mainstageandroid.composeapp.generated.resources.outfit_bold
-import org.jetbrains.compose.resources.Font
+// KMP resources no longer imported for font directly to avoid crashes on Android
 
 // ─── Brand Colors (Sunday Keys inspired) ─────────────────────────────────────
 val DarkBackground   = Color(0xFF0D0D12)
@@ -67,17 +64,11 @@ private val StageKeysColorScheme = darkColorScheme(
 )
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
-// Font(Res.font.*) is @Composable — called directly in composable body.
-// remember(keys) ensures FontFamily is only rebuilt if the font objects change.
+// Font loading uses an expect/actual getOutfitFontFamily() to bypass
+// org.jetbrains.compose.resources.Font crashes on older Android devices.
 @Composable
 fun StageKeysTheme(content: @Composable () -> Unit) {
-    val regular  = Font(Res.font.outfit_regular,  weight = FontWeight.Normal)
-    val semiBold = Font(Res.font.outfit_semibold, weight = FontWeight.SemiBold)
-    val bold     = Font(Res.font.outfit_bold,     weight = FontWeight.Bold)
-
-    val outfitFamily = remember(regular, semiBold, bold) {
-        FontFamily(regular, semiBold, bold)
-    }
+    val outfitFamily = getOutfitFontFamily()
 
     val typography = remember(outfitFamily) {
         Typography(
