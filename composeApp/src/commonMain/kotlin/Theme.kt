@@ -6,15 +6,19 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import mainstageandroid.composeapp.generated.resources.Res
+import mainstageandroid.composeapp.generated.resources.outfit_regular
+import mainstageandroid.composeapp.generated.resources.outfit_semibold
+import mainstageandroid.composeapp.generated.resources.outfit_bold
+import org.jetbrains.compose.resources.Font
 
 // ─── Brand Colors (Sunday Keys inspired) ─────────────────────────────────────
 val DarkBackground   = Color(0xFF0D0D12)
@@ -42,64 +46,6 @@ val AppShapes = Shapes(
     large  = RoundedCornerShape(24.dp)
 )
 
-// ─── Typography (system fonts — safe fallback, avoids font-load crash) ────────
-private val StageKeysTypography = Typography(
-    displayLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Bold,
-        fontSize = 32.sp,
-        letterSpacing = (-0.5).sp
-    ),
-    titleLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Bold,
-        fontSize = 22.sp,
-        letterSpacing = 0.sp
-    ),
-    titleMedium = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        letterSpacing = 0.15.sp
-    ),
-    bodyLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        letterSpacing = 0.5.sp
-    ),
-    bodyMedium = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        letterSpacing = 0.25.sp
-    ),
-    bodySmall = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        letterSpacing = 0.4.sp
-    ),
-    labelLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 14.sp,
-        letterSpacing = 0.1.sp
-    ),
-    labelMedium = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 12.sp,
-        letterSpacing = 0.5.sp
-    ),
-    labelSmall = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 11.sp,
-        letterSpacing = 0.5.sp
-    )
-)
-
 // ─── Color Scheme ─────────────────────────────────────────────────────────────
 private val StageKeysColorScheme = darkColorScheme(
     background          = DarkBackground,
@@ -121,11 +67,82 @@ private val StageKeysColorScheme = darkColorScheme(
 )
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
+// Font(Res.font.*) is a @Composable function — it must be called directly in a
+// @Composable body (not inside remember{}). The results are stable Font objects
+// that are passed as keys and used inside remember to build the FontFamily once.
 @Composable
 fun StageKeysTheme(content: @Composable () -> Unit) {
+    // Each Font() call is @Composable and returns a stable Font object.
+    val regular   = Font(Res.font.outfit_regular,  weight = FontWeight.Normal)
+    val semiBold  = Font(Res.font.outfit_semibold, weight = FontWeight.SemiBold)
+    val bold      = Font(Res.font.outfit_bold,     weight = FontWeight.Bold)
+
+    val outfitFamily = remember(regular, semiBold, bold) {
+        FontFamily(regular, semiBold, bold)
+    }
+
+    val typography = remember(outfitFamily) {
+        Typography(
+            displayLarge = TextStyle(
+                fontFamily = outfitFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 32.sp,
+                letterSpacing = (-0.5).sp
+            ),
+            titleLarge = TextStyle(
+                fontFamily = outfitFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                letterSpacing = 0.sp
+            ),
+            titleMedium = TextStyle(
+                fontFamily = outfitFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                letterSpacing = 0.15.sp
+            ),
+            bodyLarge = TextStyle(
+                fontFamily = outfitFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 16.sp,
+                letterSpacing = 0.5.sp
+            ),
+            bodyMedium = TextStyle(
+                fontFamily = outfitFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                letterSpacing = 0.25.sp
+            ),
+            bodySmall = TextStyle(
+                fontFamily = outfitFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 12.sp,
+                letterSpacing = 0.4.sp
+            ),
+            labelLarge = TextStyle(
+                fontFamily = outfitFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                letterSpacing = 0.1.sp
+            ),
+            labelMedium = TextStyle(
+                fontFamily = outfitFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
+                letterSpacing = 0.5.sp
+            ),
+            labelSmall = TextStyle(
+                fontFamily = outfitFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 11.sp,
+                letterSpacing = 0.5.sp
+            )
+        )
+    }
+
     MaterialTheme(
         colorScheme = StageKeysColorScheme,
-        typography  = StageKeysTypography,
+        typography  = typography,
         shapes      = AppShapes,
         content     = content
     )

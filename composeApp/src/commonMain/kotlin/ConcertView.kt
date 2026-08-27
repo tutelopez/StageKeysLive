@@ -1,8 +1,11 @@
 package com.midi.mainstage
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
@@ -18,6 +21,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,6 +84,9 @@ fun ConcertViewScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    // Collapsible keyboard: start expanded on tablets (>=600dp), collapsed on phones
+    val configuration = LocalConfiguration.current
+    var isKeyboardVisible by remember { mutableStateOf(configuration.screenWidthDp >= 600) }
 
     Box(
         modifier = Modifier
@@ -150,18 +157,56 @@ fun ConcertViewScreen(
                 )
             }
 
-            // ─── BOTTOM KEYBOARD PANEL ──────────────────────────────────────────
-            KeyboardPanel(
-                activeNote = activeNote,
-                onNoteDown = onNoteDown,
-                onNoteUp = onNoteUp,
-                pitchBend = pitchBend,
-                modulation = modulation,
-                onModulationChange = onModulationChange,
-                sustainActive = sustainActive,
-                onSustainToggle = onSustainToggle,
-                coroutineScope = coroutineScope
-            )
+            // ─── KEYBOARD TOGGLE + PANEL ────────────────────────────────────
+            // Chevron toggle bar
+            Surface(
+                shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+                color = Color(0xFF1A1A28),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isKeyboardVisible = !isKeyboardVisible }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 5.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (isKeyboardVisible) TablerIcons.ChevronDown else TablerIcons.ChevronUp,
+                        contentDescription = if (isKeyboardVisible) "Colapsar teclado" else "Expandir teclado",
+                        tint = Color(0xFF606080),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isKeyboardVisible) "TECLADO" else "TECLADO (oculto)",
+                        color = Color(0xFF606080),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
+            // Animated keyboard panel
+            AnimatedVisibility(
+                visible = isKeyboardVisible,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                KeyboardPanel(
+                    activeNote = activeNote,
+                    onNoteDown = onNoteDown,
+                    onNoteUp = onNoteUp,
+                    pitchBend = pitchBend,
+                    modulation = modulation,
+                    onModulationChange = onModulationChange,
+                    sustainActive = sustainActive,
+                    onSustainToggle = onSustainToggle,
+                    coroutineScope = coroutineScope
+                )
+            }
         }
     }
 }

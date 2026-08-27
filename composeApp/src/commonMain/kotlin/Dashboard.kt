@@ -12,7 +12,6 @@ import androidx.compose.ui.unit.*
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
 import androidx.compose.ui.Alignment
-
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.foundation.gestures.*
 import androidx.compose.material.icons.filled.*
@@ -21,9 +20,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
-
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.LazyColumn
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 @Composable
 fun DashboardScreen(
     concerts: List<Concert>,
@@ -36,43 +35,66 @@ fun DashboardScreen(
     onImportClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
+    // Saludo dinámico según hora del día
+    val greeting = remember {
+        val hour = Clock.System.now()
+            .toLocalDateTime(TimeZone.currentSystemDefault()).hour
+        when (hour) {
+            in 5..11  -> "Buenos días, hora de tocar 🌅"
+            in 12..18 -> "Buenas tardes, hora de tocar 🎹"
+            in 19..23 -> "Buenas noches, hora de tocar 🌙"
+            else      -> "Hora de tocar 🎹"  // 0–4 AM
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(
+                Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0.0f to Color(0xFF0D0D12),
+                        0.45f to Color(0xFF0F1222),
+                        1.0f to Color(0xFF121C33)
+                    )
+                )
+            )
             .padding(32.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)) {
             // Header
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 48.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 36.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
-                )
-                Spacer(modifier = Modifier.width(16.dp))
+                // Brand row
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "STAGEKEYS LIVE",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelLarge,
+                        letterSpacing = 2.sp
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(TablerIcons.Settings, contentDescription = "Ajustes", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                // Dynamic greeting — primary hierarchy
                 Text(
-                    text = "STAGEKEYS LIVE",
+                    text = greeting,
                     color = MaterialTheme.colorScheme.onBackground,
                     style = MaterialTheme.typography.titleLarge,
-                    letterSpacing = 2.sp
+                    letterSpacing = 0.sp
                 )
-                Spacer(modifier = Modifier.weight(1f))
-                
-                // Welcome text
-                Text(
-                    text = "Ready to play ♫",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Spacer(modifier = Modifier.width(24.dp))
-                
-                IconButton(onClick = onSettingsClick) {
-                    Icon(TablerIcons.Settings, contentDescription = "Ajustes", tint = MaterialTheme.colorScheme.onBackground)
-                }
             }
 
             // Quick Actions
