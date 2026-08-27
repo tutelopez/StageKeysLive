@@ -69,7 +69,9 @@ class MainActivity : ComponentActivity() {
         }, 500)
 
         setContent {
-            App(synth)
+            StageKeysTheme {
+                App(synth)
+            }
         }
     }
 
