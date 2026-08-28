@@ -39,4 +39,15 @@ expect class PlatformAudioSynth() {
     fun selectAudioDevice(deviceId: Int)
     fun setAudioDeviceListener(onDeviceListChanged: (List<AudioOutputDeviceInfo>) -> Unit)
     fun refreshAudioDevices()
+
+    // --- Dynamic Engine Config ---
+    fun initializeEngine(sampleRate: Int)
+    fun getAudioDiagnostics(): String
+
+    // --- Continuous Pad Engine ---
+    fun padSetEnabled(enabled: Boolean)
+    fun padSetVolume(volume: Float)
+    fun padSetBank(bankName: String)
+    fun padNoteOn(pitchClass: Int)
+    fun padNoteOff()
 }

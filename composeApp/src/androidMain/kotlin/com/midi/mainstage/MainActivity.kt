@@ -2,12 +2,21 @@ package com.midi.mainstage
 
 import com.midi.mainstage.App
 import android.os.Bundle
+import android.media.AudioManager
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import android.content.Context
+import android.content.pm.PackageManager
+import android.Manifest
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 private const val TAG = "StageKeysMain"
 
@@ -19,6 +28,32 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 101)
+            }
+        }
+        
+        val notifier = DeviceStatusNotifier(this)
+
+        val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val sampleRateStr = am.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)
+        val framesStr = am.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)
+        
+        val prefs = getSharedPreferences("AudioSettings", Context.MODE_PRIVATE)
+        val savedSampleRate = prefs.getInt("sampleRate", -1)
+        
+        PlatformAudioSynth.optimalSampleRate = if (savedSampleRate != -1) savedSampleRate else (sampleRateStr?.toIntOrNull() ?: 48000)
+        PlatformAudioSynth.optimalBufferFrames = framesStr?.toIntOrNull() ?: 256
+        
+        PlatformAudioSynth.globalPrefs = prefs
+        
+        synth.setAssetManager(assets)
+        
+        Thread {
+            synth.initializeEngine(PlatformAudioSynth.optimalSampleRate)
+        }.start()
+        
         // Hide system bars (Full Screen Immersive Mode)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowInsetsControllerCompat(window, window.decorView)
@@ -28,9 +63,10 @@ class MainActivity : ComponentActivity() {
         // Initialize Android base folder for file persistence
         setAndroidBaseDir(filesDir)
 
-        // Setup native audio engine and physical MIDI keyboard listeners
-        midiManager = AndroidMidiManager(this, synth)
-        audioDeviceManager = AndroidAudioDeviceManager(this)
+        // Initialize MIDI manager AFTER synth is ready (so listeners can be wired)
+        // Pass the actual instance of PlatformAudioSynth to the AndroidMidiManager
+        midiManager = AndroidMidiManager(this, synth, notifier)
+        audioDeviceManager = AndroidAudioDeviceManager(this, notifier)
 
         // [POINT 2 FIX] Wire the managers into PlatformAudioSynth's companion
         // so that App.kt can call them without knowing about Android.

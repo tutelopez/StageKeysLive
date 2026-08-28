@@ -105,4 +105,15 @@ actual class PlatformAudioSynth actual constructor() {
     actual fun selectAudioDevice(deviceId: Int) {}
     actual fun setAudioDeviceListener(onDeviceListChanged: (List<AudioOutputDeviceInfo>) -> Unit) {}
     actual fun refreshAudioDevices() {}
+
+    // --- Dynamic Engine Config ---
+    actual fun initializeEngine(sampleRate: Int) {}
+    actual fun getAudioDiagnostics(): String = "Desktop Audio API | SR: 44100"
+
+    // --- Continuous Pad Engine ---
+    actual fun padSetEnabled(enabled: Boolean) {}
+    actual fun padSetVolume(volume: Float) {}
+    actual fun padSetBank(bankName: String) {}
+    actual fun padNoteOn(pitchClass: Int) {}
+    actual fun padNoteOff() {}
 }

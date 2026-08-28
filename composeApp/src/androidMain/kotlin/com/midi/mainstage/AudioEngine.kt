@@ -17,6 +17,9 @@ actual class PlatformAudioSynth actual constructor() {
     companion object {
         internal var midiManager: AndroidMidiManager? = null
         internal var audioDeviceManager: AndroidAudioDeviceManager? = null
+        var globalPrefs: android.content.SharedPreferences? = null
+        var optimalSampleRate: Int = 48000
+        var optimalBufferFrames: Int = 256
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -36,7 +39,7 @@ actual class PlatformAudioSynth actual constructor() {
             System.loadLibrary("fluidsynth")
             System.loadLibrary("fluidsynth-assetloader")
             System.loadLibrary("mainstage_audio")
-            nativeInit()
+            // nativeInit() is now called explicitly via initializeEngine() from a background thread
         } catch (e: UnsatisfiedLinkError) {
             Log.e(TAG, "Failed to load native audio library: ${e.message}", e)
         }
@@ -174,8 +177,38 @@ actual class PlatformAudioSynth actual constructor() {
         audioDeviceManager?.refreshDevices()
     }
 
+    // --- Dynamic Engine Config ---
+    actual fun initializeEngine(sampleRate: Int) {
+        globalPrefs?.edit()?.putInt("sampleRate", sampleRate)?.apply()
+        nativeInit(sampleRate, optimalBufferFrames)
+    }
+
+    actual fun getAudioDiagnostics(): String {
+        return nativeGetAudioDiagnostics()
+    }
+
+    actual fun padSetEnabled(enabled: Boolean) {
+        nativePadSetEnabled(enabled)
+    }
+
+    actual fun padSetVolume(volume: Float) {
+        nativePadSetVolume(volume)
+    }
+
+    actual fun padSetBank(bankName: String) {
+        nativePadSetBank(bankName)
+    }
+
+    actual fun padNoteOn(pitchClass: Int) {
+        nativePadNoteOn(pitchClass)
+    }
+
+    actual fun padNoteOff() {
+        nativePadNoteOff()
+    }
+
     // Native JNI bindings to C++ Audio/FluidSynth engine
-    private external fun nativeInit()
+    private external fun nativeInit(sampleRate: Int, bufferFrames: Int)
     private external fun nativeClose()
     private external fun nativeNoteOn(note: Int, velocity: Int, channel: Int)
     private external fun nativeNoteOff(note: Int, channel: Int)
@@ -188,4 +221,17 @@ actual class PlatformAudioSynth actual constructor() {
     private external fun nativeIsAudioReady(): Boolean
     private external fun nativeAllNotesOff()
     private external fun nativeSetModulation(value: Float, channel: Int)
+    private external fun nativeGetAudioDiagnostics(): String
+    
+    // Pad Engine
+    private external fun nativePadSetEnabled(enabled: Boolean)
+    private external fun nativePadSetVolume(volume: Float)
+    private external fun nativePadSetBank(bankName: String)
+    private external fun nativePadNoteOn(pitchClass: Int)
+    private external fun nativePadNoteOff()
+    
+    fun setAssetManager(am: android.content.res.AssetManager) {
+        nativeSetAssetManager(am)
+    }
+    private external fun nativeSetAssetManager(am: android.content.res.AssetManager)
 }

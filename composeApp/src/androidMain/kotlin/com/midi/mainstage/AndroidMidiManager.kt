@@ -13,7 +13,8 @@ private const val TAG = "StageKeysMIDI"
 
 class AndroidMidiManager(
     private val context: Context,
-    private val synth: PlatformAudioSynth
+    private val synth: PlatformAudioSynth,
+    private val notifier: DeviceStatusNotifier
 ) {
     private val midiManager: MidiManager? = context.getSystemService(Context.MIDI_SERVICE) as? MidiManager
     private val handler = Handler(Looper.getMainLooper())
@@ -54,6 +55,8 @@ class AndroidMidiManager(
             }
 
             override fun onDeviceRemoved(deviceInfo: MidiDeviceInfo) {
+                val name = deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Dispositivo MIDI"
+                notifier.notifyDeviceDisconnected(name, isAudio = false)
                 Log.i(TAG, "MIDI device removed: ${deviceInfo.properties}")
                 val toClose = openDevices.filter { it.info == deviceInfo }
                 toClose.forEach { device ->
@@ -84,6 +87,9 @@ class AndroidMidiManager(
                 if (currentDeviceName == null) {
                     currentDeviceName = deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)
                 }
+                val name = deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Device"
+                notifier.notifyDeviceConnected(name, isAudio = false)
+                
                 val deviceNames = openDevices.map { it.info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unknown Device" }
                 handler.post { onDeviceConnectionChanged?.invoke(deviceNames) }
                 

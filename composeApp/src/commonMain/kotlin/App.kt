@@ -37,8 +37,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // Theme Colors now defined in Theme.kt
 
@@ -64,11 +66,35 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var selectedPatchIndex by remember { mutableStateOf(0) }
     var currentConnectedDevices by remember { mutableStateOf<List<String>>(emptyList()) }
     var currentAudioDevices by remember { mutableStateOf<List<AudioOutputDeviceInfo>>(emptyList()) }
+    var audioDiagnostics by remember { mutableStateOf("INICIALIZANDO...") }
 
     // File Picker and Snackbar State
     var showSf2Picker by remember { mutableStateOf(false) }
     var isLoadingSf2 by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var prevMidiDevices by remember { mutableStateOf<List<String>>(emptyList()) }
+    LaunchedEffect(currentConnectedDevices) {
+        if (prevMidiDevices.isNotEmpty() || currentConnectedDevices.isNotEmpty()) {
+            val added = currentConnectedDevices - prevMidiDevices.toSet()
+            val removed = prevMidiDevices - currentConnectedDevices.toSet()
+            added.forEach { launch { snackbarHostState.showSnackbar("Teclado MIDI conectado: $it") } }
+            removed.forEach { launch { snackbarHostState.showSnackbar("Teclado MIDI desconectado: $it") } }
+        }
+        prevMidiDevices = currentConnectedDevices
+    }
+
+    var prevAudioDevices by remember { mutableStateOf<List<String>>(emptyList()) }
+    LaunchedEffect(currentAudioDevices) {
+        if (prevAudioDevices.isNotEmpty() || currentAudioDevices.isNotEmpty()) {
+            val currentNames = currentAudioDevices.map { it.name }
+            val added = currentNames - prevAudioDevices.toSet()
+            val removed = prevAudioDevices - currentNames.toSet()
+            added.forEach { launch { snackbarHostState.showSnackbar("Interfaz de audio conectada: $it") } }
+            removed.forEach { launch { snackbarHostState.showSnackbar("Interfaz de audio desconectada: $it") } }
+            prevAudioDevices = currentNames
+        }
+    }
 
     // Dialog flags
     var showCreateConcertDialog by remember { mutableStateOf(false) }
@@ -130,6 +156,24 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var metronomeBpm by remember { mutableStateOf(120) }
     var metronomeBpmEffective by remember { mutableStateOf(120) }
     var metronomeVolume by remember { mutableStateOf(0.7f) }
+
+    // Continuous Pad Engine State
+    var padEnabled by remember { mutableStateOf(false) }
+    var padVolume by remember { mutableStateOf(0.7f) }
+    var padBank by remember { mutableStateOf("") }
+    var activePadNote by remember { mutableStateOf<Int?>(null) }
+    val availablePadBanks = listOf("abba_pad", "dark_pad", "pad_reverse", "pad_shimmer", "pad_synth", "shimmer_2", "warm_pad", "worship")
+
+    // Sync pad state with engine when it changes
+    LaunchedEffect(padEnabled) { 
+        synth.padSetEnabled(padEnabled) 
+        if (!padEnabled) {
+            synth.padNoteOff()
+            activePadNote = null
+        }
+    }
+    LaunchedEffect(padVolume) { synth.padSetVolume(padVolume) }
+    LaunchedEffect(padBank) { if (padBank.isNotEmpty()) synth.padSetBank(padBank) }
     var metronomeTickLight by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
     var isPlayingRecording by remember { mutableStateOf(false) }
@@ -142,6 +186,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
     // Audio Interfaces & Settings state
     var selectedSampleRate by remember { mutableStateOf(48000) }
+    var pendingSampleRate by remember { mutableStateOf<Int?>(null) }
+    var isRestartingAudio by remember { mutableStateOf(false) }
     var selectedAudioOutput by remember { mutableStateOf("Salida Estéreo Principal (System Default)") }
 
     // Live performance controls state
@@ -311,6 +357,12 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 coroutineScope.launch {
                     masterVuLevel.animateTo(masterVolume * (velocity / 127f), tween(50))
                 }
+            }
+
+            // Pad Engine routing
+            if (padEnabled && velocity > 0) {
+                synth.padNoteOn(note % 12)
+                activePadNote = note % 12
             }
 
             // Record MIDI event
@@ -546,6 +598,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             currentAudioDevices = devices
         }
         synth.refreshAudioDevices()
+
+        // Poll audio diagnostics to reflect real driver status once ready
+        coroutineScope.launch {
+            while (true) {
+                audioDiagnostics = synth.getAudioDiagnostics()
+                delay(1500)
+            }
+        }
 
         val json = readTextFromFile("concerts.json")
         if (json != null) {
@@ -799,6 +859,25 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     onMasterVolumeChange = { masterVolume = it },
                     masterVuLevel = masterVuLevel.value,
 
+                    // Pad Engine
+                    padEnabled = padEnabled,
+                    onPadEnabledChange = { padEnabled = it },
+                    padVolume = padVolume,
+                    onPadVolumeChange = { padVolume = it },
+                    padBank = padBank,
+                    onPadBankChange = { padBank = it },
+                    availablePadBanks = availablePadBanks,
+                    activePadNote = activePadNote,
+                    onPadNoteToggle = { note ->
+                        if (activePadNote == note) {
+                            synth.padNoteOff()
+                            activePadNote = null
+                        } else {
+                            synth.padNoteOn(note)
+                            activePadNote = note
+                        }
+                    },
+
                     // Key events
                     activeNote = activeNote,
                     onNoteDown = { playNoteOn(it, 90) },
@@ -860,6 +939,47 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     // --- DIALOGS ---
 
     // 1. Create Concert Dialog
+    // Audio Engine Restart Dialog
+    if (pendingSampleRate != null) {
+        val newRate = pendingSampleRate!!
+        AlertDialog(
+            onDismissRequest = { pendingSampleRate = null },
+            title = { Text("Cambiar Sample Rate", style = MaterialTheme.typography.titleMedium) },
+            text = { Text("Cambiar la frecuencia de muestreo a $newRate Hz cortará brevemente el audio mientras se reinicia el motor. ¿Deseas continuar?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingSampleRate = null
+                    isRestartingAudio = true
+                    selectedSampleRate = newRate
+                    
+                    // Controlled restart
+                    synth.allNotesOff()
+                    coroutineScope.launch(Dispatchers.Default) {
+                        synth.initializeEngine(newRate)
+                        
+                        // Back to Main to update UI and reload SoundFonts
+                        withContext(Dispatchers.Main) {
+                            activeConcert?.channels?.forEach { ch ->
+                                if (ch.sf2Path != null) {
+                                    synth.loadSoundFont(ch.sf2Path, ch.id)
+                                }
+                            }
+                            audioDiagnostics = synth.getAudioDiagnostics()
+                            isRestartingAudio = false
+                        }
+                    }
+                }) {
+                    Text("REINICIAR MOTOR")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingSampleRate = null }) {
+                    Text("CANCELAR")
+                }
+            }
+        )
+    }
+
     if (showCreateConcertDialog) {
         AlertDialog(
             onDismissRequest = { showCreateConcertDialog = false },
@@ -1255,15 +1375,24 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 SettingsTab.AUDIO -> {
                                     AudioSettingsTabScreen(
                                         sampleRate = selectedSampleRate,
-                                        onSampleRateChange = { selectedSampleRate = it },
+                                        onSampleRateChange = { pendingSampleRate = it },
                                         audioDevices = currentAudioDevices,
                                         onSelectDevice = { synth.selectAudioDevice(it) },
-                                        onRefreshDevices = { synth.refreshAudioDevices() }
+                                        onRefreshDevices = { synth.refreshAudioDevices() },
+                                        audioDiagnostics = audioDiagnostics,
+                                        isRestartingAudio = isRestartingAudio
                                     )
                                 }
                             }
                         }
                     }
+                }
+            }
+
+            // Pad Engine off logic: only turn off if no keys are currently held physically or sustained
+            if (padEnabled) {
+                if (heldKeys.isEmpty() && sustainedKeys.isEmpty()) {
+                    synth.padNoteOff()
                 }
             }
         }
@@ -1588,9 +1717,11 @@ fun AudioSettingsTabScreen(
     onSampleRateChange: (Int) -> Unit,
     audioDevices: List<AudioOutputDeviceInfo>,
     onSelectDevice: (Int) -> Unit,
-    onRefreshDevices: () -> Unit
+    onRefreshDevices: () -> Unit,
+    audioDiagnostics: String,
+    isRestartingAudio: Boolean
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("INTERFACES DE AUDIO Y LATENCIA", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Button(
@@ -1665,24 +1796,21 @@ fun AudioSettingsTabScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF0F1512), AppShapes.small)
-                .border(1.dp, Color(0xFF1B2C21), AppShapes.small)
-                .padding(12.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, AppShapes.small).padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("ESTADO DEL DRIVER:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("ACTIVO (LOW LATENCY)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
+                Text(
+                    if (isRestartingAudio) "REINICIANDO..." else audioDiagnostics,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (isRestartingAudio) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
+                )
             }
         }
     }
 }
-
-
-
-
 
 fun parseColorHex(hex: String): Color {
     val clean = hex.removePrefix("#")

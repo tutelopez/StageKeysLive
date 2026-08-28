@@ -7,19 +7,37 @@ import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 
-class AndroidAudioDeviceManager(context: Context) {
+class AndroidAudioDeviceManager(context: Context, private val notifier: DeviceStatusNotifier) {
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val handler = Handler(Looper.getMainLooper())
 
     var onDeviceListChanged: ((devices: List<AudioOutputDeviceInfo>) -> Unit)? = null
     var selectedDeviceId: Int = -1
 
+    private fun isRelevant(info: AudioDeviceInfo): Boolean {
+        return info.type == AudioDeviceInfo.TYPE_USB_DEVICE ||
+               info.type == AudioDeviceInfo.TYPE_USB_HEADSET ||
+               info.type == AudioDeviceInfo.TYPE_USB_ACCESSORY ||
+               info.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+               info.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+               info.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+               info.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+    }
+
     private val deviceCallback = object : AudioDeviceCallback() {
         override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
+            addedDevices?.filter { isRelevant(it) }?.forEach { info ->
+                val name = info.productName?.toString()?.takeIf { it.isNotBlank() } ?: "Dispositivo"
+                notifier.notifyDeviceConnected(name, isAudio = true)
+            }
             refreshDevices()
         }
 
         override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
+            removedDevices?.filter { isRelevant(it) }?.forEach { info ->
+                val name = info.productName?.toString()?.takeIf { it.isNotBlank() } ?: "Dispositivo"
+                notifier.notifyDeviceDisconnected(name, isAudio = true)
+            }
             refreshDevices()
         }
     }
@@ -40,15 +58,7 @@ class AndroidAudioDeviceManager(context: Context) {
 
     fun refreshDevices() {
         val outputs = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-        val filtered = outputs.filter {
-            it.type == AudioDeviceInfo.TYPE_USB_DEVICE ||
-            it.type == AudioDeviceInfo.TYPE_USB_HEADSET ||
-            it.type == AudioDeviceInfo.TYPE_USB_ACCESSORY ||
-            it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
-            it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-            it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
-            it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
-        }
+        val filtered = outputs.filter { isRelevant(it) }
 
         val mapped = filtered.map { info ->
             val typeStr = when (info.type) {

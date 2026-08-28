@@ -71,6 +71,17 @@ fun ConcertViewScreen(
     onMasterVolumeChange: (Float) -> Unit,
     masterVuLevel: Float,
 
+    // Pad Engine
+    padEnabled: Boolean,
+    onPadEnabledChange: (Boolean) -> Unit,
+    padVolume: Float,
+    onPadVolumeChange: (Float) -> Unit,
+    padBank: String,
+    onPadBankChange: (String) -> Unit,
+    availablePadBanks: List<String>,
+    activePadNote: Int?,
+    onPadNoteToggle: (Int) -> Unit,
+
     // Keyboard & Expression
     activeNote: Int?,
     onNoteDown: (Int) -> Unit,
@@ -122,10 +133,17 @@ fun ConcertViewScreen(
             )
 
             // ─── MAIN AREA: PATCHES + MIXER ─────────────────────────────────────
-            Row(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Row(
+                    modifier = Modifier.heightIn(min = 320.dp, max = 500.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                 // PATCHES PANEL
                 PatchesPanel(
                     patches = concert.patches,
@@ -154,9 +172,26 @@ fun ConcertViewScreen(
                     onAddChannelClick = onAddChannelClick,
                     onChannelGearClick = onChannelGearClick,
                     onSettingsClick = onSettingsClick,
-                    scrollState = scrollState
+                    scrollState = rememberScrollState()
                 )
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // --- PAD STRIP ---
+            PadStrip(
+                enabled = padEnabled,
+                onEnabledChange = onPadEnabledChange,
+                volume = padVolume,
+                onVolumeChange = onPadVolumeChange,
+                bank = padBank,
+                onBankChange = onPadBankChange,
+                availableBanks = availablePadBanks,
+                activePadNote = activePadNote,
+                onPadNoteToggle = onPadNoteToggle
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
 
             // ─── KEYBOARD TOGGLE + PANEL ────────────────────────────────────
             // Chevron toggle bar
@@ -208,8 +243,9 @@ fun ConcertViewScreen(
                     coroutineScope = coroutineScope
                 )
             }
-        }
-    }
+        } // End scrollable column
+    } // End Column inside BoxWithConstraints
+    } // End BoxWithConstraints
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -757,4 +793,132 @@ private fun OctaveButton(label: String, onClick: () -> Unit) {
             lineHeight = 11.sp
         )
     }
+}@Composable
+fun PadStrip(
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+    volume: Float,
+    onVolumeChange: (Float) -> Unit,
+    bank: String,
+    onBankChange: (String) -> Unit,
+    availableBanks: List<String>,
+    activePadNote: Int?,
+    onPadNoteToggle: (Int) -> Unit
+) {
+    Surface(
+        color = Color(0xFF1E1E2E),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Bank Selector
+                var expanded by remember { mutableStateOf(false) }
+                Box {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF2A2A3A))
+                            .clickable { expanded = true }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = bank.ifEmpty { "Bank" },
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Icon(TablerIcons.ChevronDown, contentDescription = null, tint = Color(0xFF8080A0), modifier = Modifier.size(14.dp))
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(Color(0xFF2A2A3A))
+                    ) {
+                        availableBanks.forEach { b ->
+                            DropdownMenuItem(
+                                text = { Text(b, color = Color.White) },
+                                onClick = {
+                                    onBankChange(b)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.width(16.dp))
+
+                // Volume Slider
+                Icon(TablerIcons.Volume, contentDescription = null, tint = Color(0xFF8080A0), modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Slider(
+                    value = volume,
+                    onValueChange = onVolumeChange,
+                    valueRange = 0f..1f,
+                    modifier = Modifier.weight(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color(0xFF38BDF8),
+                        activeTrackColor = Color(0xFF38BDF8),
+                        inactiveTrackColor = Color(0xFF2A2A3A)
+                    )
+                )
+
+                Spacer(Modifier.width(16.dp))
+
+                // Toggle
+                Text("PAD", color = Color(0xFF8080A0), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(8.dp))
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = onEnabledChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = Color(0xFF38BDF8),
+                        uncheckedThumbColor = Color(0xFF8080A0),
+                        uncheckedTrackColor = Color(0xFF2A2A3A)
+                    )
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Pad note triggers
+            val notes = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+            val scrollState = rememberScrollState()
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                notes.forEachIndexed { index, noteName ->
+                    val isActive = activePadNote == index
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp, 40.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                if (isActive) Brush.verticalGradient(listOf(Color(0xFF22C55E), Color(0xFF16A34A)))
+                                else Brush.verticalGradient(listOf(Color(0xFF2D2D3D), Color(0xFF232332)))
+                            )
+                            .border(1.dp, if (isActive) Color(0xFF4ADE80) else Color.Transparent, RoundedCornerShape(6.dp))
+                            .clickable(enabled = enabled) { onPadNoteToggle(index) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = noteName,
+                            color = if (isActive || !enabled) Color.White else Color(0xFFB0B0C0),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
+

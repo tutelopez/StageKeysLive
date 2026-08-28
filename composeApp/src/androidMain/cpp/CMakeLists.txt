@@ -51,6 +51,7 @@ add_definitions(-DUSE_FLUIDSYNTH)
 
 add_library(mainstage_audio SHARED
     mainstage_audio.cpp
+    pad_engine.cpp
 )
 
 target_link_libraries(mainstage_audio

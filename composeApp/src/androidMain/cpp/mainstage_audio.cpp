@@ -7,6 +7,8 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 #include <fluidsynth.h>
+#include <android/asset_manager_jni.h>
+#include "pad_engine.h"
 
 class MainstageAudioEngine {
 private:
@@ -38,7 +40,7 @@ public:
 
     bool isAudioReady() const { return audioReady; }
 
-    void init() {
+    void init(int sampleRate, int bufferFrames) {
         std::lock_guard<std::mutex> lock(synthMutex);
         audioReady = false;
 
@@ -50,8 +52,14 @@ public:
         // Optimize fluidsynth settings for low latency mobile rendering
         fluid_settings_setstr(fluidSettings, "synth.reverb.active", "yes");
         fluid_settings_setstr(fluidSettings, "synth.chorus.active", "no");
-        fluid_settings_setnum(fluidSettings, "synth.sample-rate", 48000.0);
+        fluid_settings_setnum(fluidSettings, "synth.sample-rate", (double)sampleRate);
         fluid_settings_setint(fluidSettings, "synth.polyphony", 64);
+        
+        // Try to set Oboe specific hints, fallback to standard period-size if OpenSLES is used
+        fluid_settings_setstr(fluidSettings, "audio.oboe.performance-mode", "LowLatency");
+        fluid_settings_setstr(fluidSettings, "audio.oboe.sharing-mode", "Shared");
+        fluid_settings_setint(fluidSettings, "audio.period-size", bufferFrames);
+        fluid_settings_setint(fluidSettings, "audio.periods", 2);
         
         fluidSynth = new_fluid_synth(fluidSettings);
         if (fluidSynth == nullptr) {
@@ -78,6 +86,11 @@ public:
     void stop() {
         std::lock_guard<std::mutex> lock(synthMutex);
         audioReady = false;
+
+        // Reset sfids before destroying the synth to avoid orphaned IDs on restart
+        for (int i = 0; i < 16; i++) {
+            sfids[i] = -1;
+        }
 
         if (fluidAudioDriver != nullptr) {
             delete_fluid_audio_driver(fluidAudioDriver);
@@ -189,9 +202,32 @@ public:
             fluid_synth_cc(fluidSynth, channel, 1, (int)(value * 127.0f));
         }
     }
+
+    std::string getAudioDiagnostics() {
+        std::lock_guard<std::mutex> lock(synthMutex);
+        if (fluidSettings == nullptr) {
+            return "NO INICIALIZADO";
+        }
+        
+        char driverStr[64] = "unknown";
+        fluid_settings_copystr(fluidSettings, "audio.driver", driverStr, sizeof(driverStr));
+        
+        double actualSampleRate = 0.0;
+        fluid_settings_getnum(fluidSettings, "synth.sample-rate", &actualSampleRate);
+        
+        int actualPeriodSize = 0;
+        fluid_settings_getint(fluidSettings, "audio.period-size", &actualPeriodSize);
+        
+        char buffer[256];
+        snprintf(buffer, sizeof(buffer), "API: %s | SR: %.0f Hz | Buffer: %d", 
+                 driverStr, actualSampleRate, actualPeriodSize);
+        return std::string(buffer);
+    }
 };
 
 static MainstageAudioEngine* gEngine = nullptr;
+static PadEngine* gPadEngine = nullptr;
+static AAssetManager* gAssetManager = nullptr;
 
 extern "C" {
 
@@ -245,10 +281,21 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeSetPatch(JNIEnv *env, jobject t
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeInit(JNIEnv *env, jobject thiz) {
-    if (gEngine == nullptr) {
+Java_com_midi_mainstage_PlatformAudioSynth_nativeInit(JNIEnv *env, jobject thiz, jint sampleRate, jint bufferFrames) {
+    if (gEngine != nullptr) {
+        gEngine->stop();
+    } else {
         gEngine = new MainstageAudioEngine();
-        gEngine->init();
+    }
+    gEngine->init(sampleRate, bufferFrames);
+
+    if (gPadEngine != nullptr) {
+        gPadEngine->destroy();
+    } else {
+        gPadEngine = new PadEngine();
+    }
+    if (gAssetManager != nullptr) {
+        gPadEngine->init(gAssetManager, sampleRate);
     }
 }
 
@@ -258,6 +305,11 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeClose(JNIEnv *env, jobject thiz
         gEngine->stop();
         delete gEngine;
         gEngine = nullptr;
+    }
+    if (gPadEngine != nullptr) {
+        gPadEngine->destroy();
+        delete gPadEngine;
+        gPadEngine = nullptr;
     }
 }
 
@@ -290,6 +342,49 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeSetModulation(JNIEnv *env, jobj
     if (gEngine != nullptr) {
         gEngine->setModulation(value, channel);
     }
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeGetAudioDiagnostics(JNIEnv *env, jobject thiz) {
+    if (gEngine == nullptr) {
+        return env->NewStringUTF("NO INICIALIZADO");
+    }
+    std::string diag = gEngine->getAudioDiagnostics();
+    return env->NewStringUTF(diag.c_str());
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeSetAssetManager(JNIEnv *env, jobject thiz, jobject assetManager) {
+    gAssetManager = AAssetManager_fromJava(env, assetManager);
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativePadSetEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
+    if (gPadEngine != nullptr) gPadEngine->setEnabled(enabled == JNI_TRUE);
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativePadSetVolume(JNIEnv *env, jobject thiz, jfloat volume) {
+    if (gPadEngine != nullptr) gPadEngine->setVolume(volume);
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativePadSetBank(JNIEnv *env, jobject thiz, jstring bankName) {
+    if (gPadEngine != nullptr && bankName != nullptr) {
+        const char *bankStr = env->GetStringUTFChars(bankName, nullptr);
+        gPadEngine->setBank(bankStr);
+        env->ReleaseStringUTFChars(bankName, bankStr);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativePadNoteOn(JNIEnv *env, jobject thiz, jint pitchClass) {
+    if (gPadEngine != nullptr) gPadEngine->noteOn(pitchClass);
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativePadNoteOff(JNIEnv *env, jobject thiz) {
+    if (gPadEngine != nullptr) gPadEngine->noteOff();
 }
 
 }
