@@ -121,4 +121,5 @@ actual class PlatformAudioSynth actual constructor() {
     actual fun padSetBank(bankName: String) {}
     actual fun padNoteOn(pitchClass: Int) {}
     actual fun padNoteOff() {}
+    actual fun padHardKillAll() {}
 }

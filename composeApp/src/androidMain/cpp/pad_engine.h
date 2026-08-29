@@ -33,6 +33,7 @@ public:
     void setBank(const std::string& bankName);
     void noteOn(int pitchClass);
     void noteOff();
+    void hardKillAll();
     void setCrossfadeSeconds(float seconds);
     void setReleaseSeconds(float seconds);
 

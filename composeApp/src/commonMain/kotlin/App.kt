@@ -750,7 +750,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     concert = concert,
                     onPanicClick = {
                         synth.allNotesOff()
-                        synth.padNoteOff()
+                        synth.padHardKillAll()
                     },
                     performanceStats = performanceStats,
                     batteryLevel = batteryLevel,

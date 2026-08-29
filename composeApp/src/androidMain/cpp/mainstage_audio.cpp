@@ -387,4 +387,9 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativePadNoteOff(JNIEnv *env, jobject
     if (gPadEngine != nullptr) gPadEngine->noteOff();
 }
 
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativePadHardKillAll(JNIEnv *env, jobject thiz) {
+    if (gPadEngine != nullptr) gPadEngine->hardKillAll();
+}
+
 }

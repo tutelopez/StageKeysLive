@@ -55,4 +55,5 @@ expect class PlatformAudioSynth() {
     fun padSetBank(bankName: String)
     fun padNoteOn(pitchClass: Int)
     fun padNoteOff()
+    fun padHardKillAll()
 }

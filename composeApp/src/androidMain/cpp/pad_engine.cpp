@@ -240,6 +240,22 @@ void PadEngine::noteOff() {
     }
 }
 
+void PadEngine::hardKillAll() {
+    std::lock_guard<std::mutex> lock(mMutex);
+    mLastPitchClass = -1;
+    for (int i = 0; i < 2; ++i) {
+        if (mVoices[i].active) {
+            mVoices[i].currentGain = 0.0f;
+            mVoices[i].targetGain = 0.0f;
+            mVoices[i].active = false;
+            if (mVoices[i].vorbis) {
+                stb_vorbis_close(mVoices[i].vorbis);
+                mVoices[i].vorbis = nullptr;
+            }
+        }
+    }
+}
+
 oboe::DataCallbackResult PadEngine::onAudioReady(oboe::AudioStream* audioStream, void* audioData, int32_t numFrames) {
     auto startTime = std::chrono::high_resolution_clock::now();
     
