@@ -440,19 +440,19 @@ private fun TopBar(
             Spacer(Modifier.width(6.dp))
 
             // Tap Tempo button
-            var tapPulse by remember { mutableStateOf(false) }
-            LaunchedEffect(tapPulse) {
-                if (tapPulse) {
+            var tapPulseKey by remember { mutableStateOf(0L) }
+            LaunchedEffect(tapPulseKey) {
+                if (tapPulseKey > 0L) {
                     delay(150)
-                    tapPulse = false
+                    tapPulseKey = 0L
                 }
             }
             PillButton(
                 label = "TAP",
-                active = tapPulse,
+                active = (System.currentTimeMillis() - tapPulseKey) < 150,
                 activeColor = Color(0xFF38BDF8),
                 onClick = { 
-                    tapPulse = true
+                    tapPulseKey = System.currentTimeMillis()
                     onTapTempo() 
                 }
             )
