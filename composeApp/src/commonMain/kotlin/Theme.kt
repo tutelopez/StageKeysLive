@@ -20,9 +20,15 @@ import mainstageandroid.composeapp.generated.resources.Res
 // ─── Brand Colors (Sunday Keys inspired) ─────────────────────────────────────
 val DarkBackground   = Color(0xFF0D0D12)
 val DarkPanel        = Color(0xFF181824)
+val SurfaceElevated  = Color(0xFF1E1E2C) // Replaces #1E1E2C, #141420, #0C0C14, #12121E, #0E0E18, #1A1424, #110E1A, #161A16, #101410, #1A1A28, #1A1A26
 val LightPanel       = Color(0xFF252535)
+val OutlineVariant   = Color(0xFF2A2A3A)
 val TextLight        = Color(0xFFFFFFFF)
 val TextDark         = Color(0xFF9090B0)
+
+val StatusSuccess    = Color(0xFF10B981)
+val StatusWarning    = Color(0xFFF59E0B)
+val StatusError      = Color(0xFFFF2A2A)
 
 val AccentSky        = Color(0xFF38BDF8)
 val AccentNeonGreen  = Color(0xFF39FF14)

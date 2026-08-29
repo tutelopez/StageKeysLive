@@ -1,4 +1,4 @@
-package com.midi.mainstage
+﻿package com.midi.mainstage
 
 import androidx.compose.ui.draw.clip
 
@@ -236,7 +236,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var selectedSampleRate by remember { mutableStateOf(48000) }
     var pendingSampleRate by remember { mutableStateOf<Int?>(null) }
     var isRestartingAudio by remember { mutableStateOf(false) }
-    var selectedAudioOutput by remember { mutableStateOf("Salida EstÃƒÂ©reo Principal (System Default)") }
+    var selectedAudioOutput by remember { mutableStateOf("Salida EstÃƒÆ’Ã‚Â©reo Principal (System Default)") }
 
     // Live performance controls state
     var activeNote by remember { mutableStateOf<Int?>(null) }
@@ -360,7 +360,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     )
                 }
             } else {
-                // Patch has no snapshot yet Ã¢â‚¬â€  start with a single clean channel
+                // Patch has no snapshot yet ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬  start with a single clean channel
                 listOf(
                     ChannelStripState(
                         id = 1, name = "Canal 1", sf2Name = "Sin Asignar", sf2Path = null,
@@ -1012,7 +1012,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         AlertDialog(
             onDismissRequest = { pendingSampleRate = null },
             title = { Text("Cambiar Sample Rate", style = MaterialTheme.typography.titleMedium) },
-            text = { Text("Cambiar la frecuencia de muestreo a $newRate Hz cortarÃƒÂ¡ brevemente el audio mientras se reinicia el motor. Ã‚Â¿Deseas continuar?") },
+            text = { Text("Cambiar la frecuencia de muestreo a $newRate Hz cortarÃƒÆ’Ã‚Â¡ brevemente el audio mientras se reinicia el motor. Ãƒâ€šÃ‚Â¿Deseas continuar?") },
             confirmButton = {
                 TextButton(onClick = {
                     pendingSampleRate = null
@@ -1116,7 +1116,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     if (showAddPatchDialog) {
         AlertDialog(
             onDismissRequest = { showAddPatchDialog = false },
-            title = { Text(if (patchToEdit != null) "EDITAR PATCH" else "AÃƒâ€˜ADIR NUEVO PATCH", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
+            title = { Text(if (patchToEdit != null) "EDITAR PATCH" else "AÃƒÆ’Ã¢â‚¬ËœADIR NUEVO PATCH", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
             text = {
                 Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                     val tfColors = OutlinedTextFieldDefaults.colors(
@@ -1135,21 +1135,21 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     OutlinedTextField(
                         value = newPatchCategory,
                         onValueChange = { newPatchCategory = it },
-                        label = { Text("CategorÃƒÂ­a") },
+                        label = { Text("CategorÃƒÆ’Ã‚Â­a") },
                         colors = tfColors,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
                         value = newPatchProgram,
                         onValueChange = { newPatchProgram = it },
-                        label = { Text("NÃƒÂºmero de Programa MIDI (0-127)") },
+                        label = { Text("NÃƒÆ’Ã‚Âºmero de Programa MIDI (0-127)") },
                         colors = tfColors,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
                         value = newPatchDescription,
                         onValueChange = { newPatchDescription = it },
-                        label = { Text("DescripciÃƒÂ³n") },
+                        label = { Text("DescripciÃƒÆ’Ã‚Â³n") },
                         colors = tfColors,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                     )
@@ -1219,7 +1219,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary, contentColor = MaterialTheme.colorScheme.onTertiary),
                     shape = AppShapes.medium
                 ) {
-                    Text(if (patchToEdit != null) "Guardar" else "AÃƒÂ±adir", style = MaterialTheme.typography.labelLarge)
+                    Text(if (patchToEdit != null) "Guardar" else "AÃƒÆ’Ã‚Â±adir", style = MaterialTheme.typography.labelLarge)
                 }
             },
             dismissButton = {
@@ -1330,7 +1330,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 showChannelSettingsDialog = null
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6B1D1D)),
+                        colors = ButtonDefaults.buttonColors(containerColor = StatusError.copy(alpha = 0.5f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Eliminar Canal", color = Color.White)
@@ -1434,7 +1434,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         connectedDevices = currentConnectedDevices,
                                         onStartMapping = { target ->
                                             mappingTarget = target
-                                            // [POINT 2 FIX] Real MIDI Learn Ã¢â‚¬â€ listens for the
+                                            // [POINT 2 FIX] Real MIDI Learn ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â listens for the
                                             // next CC from a physical controller (7-second window)
                                             synth.startMidiLearn(
                                                 target = target,
@@ -1593,7 +1593,7 @@ fun ScrollablePianoKeyboard(
                             .width(18.dp)
                             .fillMaxHeight(0.6f)
                             .background(
-                                if (isPressed) AccentSky else Color(0xFF1E1E1E),
+                                if (isPressed) AccentSky else SurfaceElevated,
                                 RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp)
                             )
                             .border(1.dp, Color.Black)
@@ -1641,7 +1641,7 @@ fun MidiMappingSettingsScreen(
 
         Text("ASIGNACION DE CONTROLADORES MIDI CC (MIDI LEARN)", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Text(
-            "Haz clic en \"Mapear\" al lado del control correspondiente y mueve el potenciÃƒÂ³metro o fader de tu teclado fÃƒÂ­sico para enlazarlo.",
+            "Haz clic en \"Mapear\" al lado del control correspondiente y mueve el potenciÃƒÆ’Ã‚Â³metro o fader de tu teclado fÃƒÆ’Ã‚Â­sico para enlazarlo.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 8.dp)
@@ -1672,7 +1672,7 @@ fun MidiMappingSettingsScreen(
                 is MidiTarget.FilterCutoff -> "Filtro (Cutoff)"
                 is MidiTarget.ReverbMix -> "Mezcla de Reverb"
                 is MidiTarget.Sustain -> "Pedal Sustain"
-                is MidiTarget.Modulation -> "Rueda de ModulaciÃƒÂ³n"
+                is MidiTarget.Modulation -> "Rueda de ModulaciÃƒÆ’Ã‚Â³n"
                 is MidiTarget.OctaveUp -> "Octava Arriba"
                 is MidiTarget.OctaveDown -> "Octava Abajo"
                 is MidiTarget.NextPatch -> "Siguiente Patch"

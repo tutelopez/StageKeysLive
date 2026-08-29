@@ -1,4 +1,4 @@
-package com.midi.mainstage
+﻿package com.midi.mainstage
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -109,7 +109,7 @@ fun ConcertViewScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFF0D0D12), Color(0xFF121220))
+                    listOf(DarkBackground, DarkPanel)
                 )
             )
     ) {
@@ -121,7 +121,7 @@ fun ConcertViewScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
-            // ─── TOP BAR ────────────────────────────────────────────────────────
+            // â”€â”€â”€ TOP BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             TopBar(
                 concertName = concert.name,
                 metronomeOn = metronomeOn,
@@ -145,7 +145,7 @@ fun ConcertViewScreen(
                 audioDiagnostics = audioDiagnostics
             )
 
-            // ─── MAIN AREA: PATCHES + MIXER ─────────────────────────────────────
+            // â”€â”€â”€ MAIN AREA: PATCHES + MIXER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -206,11 +206,11 @@ fun ConcertViewScreen(
             
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ─── KEYBOARD TOGGLE + PANEL ────────────────────────────────────
+            // â”€â”€â”€ KEYBOARD TOGGLE + PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             // Chevron toggle bar
             Surface(
                 shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-                color = Color(0xFF1A1A28),
+                color = DarkPanel,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { isKeyboardVisible = !isKeyboardVisible }
@@ -225,13 +225,13 @@ fun ConcertViewScreen(
                     Icon(
                         imageVector = if (isKeyboardVisible) TablerIcons.ChevronDown else TablerIcons.ChevronUp,
                         contentDescription = if (isKeyboardVisible) "Colapsar teclado" else "Expandir teclado",
-                        tint = Color(0xFF606080),
+                        tint = TextDark,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (isKeyboardVisible) "TECLADO" else "TECLADO (oculto)",
-                        color = Color(0xFF606080),
+                        color = TextDark,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 1.sp
@@ -261,9 +261,9 @@ fun ConcertViewScreen(
     } // End BoxWithConstraints
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // TOP BAR
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun TopBar(
     concertName: String,
@@ -299,7 +299,7 @@ private fun TopBar(
 
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF1A1A26),
+        color = DarkPanel,
         tonalElevation = 4.dp,
         shadowElevation = 8.dp,
         modifier = Modifier.fillMaxWidth().height(56.dp)
@@ -313,7 +313,7 @@ private fun TopBar(
                 Icon(
                     TablerIcons.ArrowLeft,
                     contentDescription = "Back",
-                    tint = Color(0xFF9090B0),
+                    tint = TextDark,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -340,7 +340,7 @@ private fun TopBar(
             if (midiActive) {
                 Box(
                     modifier = Modifier.size(8.dp)
-                        .background(Color(0xFF38BDF8), CircleShape)
+                        .background(AccentSky, CircleShape)
                 )
                 Spacer(Modifier.width(6.dp))
             }
@@ -348,9 +348,9 @@ private fun TopBar(
             // System status dot
             val audioDegraded = audioDiagnostics.contains("xrun", ignoreCase = true) || audioDiagnostics.contains("underflow", ignoreCase = true)
             val sysColor = when {
-                batteryLevel < 10 -> Color.Red
-                batteryLevel < 20 || audioDegraded -> Color(0xFFF59E0B) // Amber
-                else -> Color(0xFF10B981) // Green
+                batteryLevel < 10 -> StatusError
+                batteryLevel < 20 || audioDegraded -> StatusWarning // Amber
+                else -> StatusSuccess // Green
             }
             Box {
                 Box(
@@ -365,7 +365,7 @@ private fun TopBar(
                 DropdownMenu(
                     expanded = showSysPopup,
                     onDismissRequest = { showSysPopup = false },
-                    modifier = Modifier.background(Color(0xFF1A1A26))
+                    modifier = Modifier.background(DarkPanel)
                 ) {
                     Text("Battery: $batteryLevel% ${if (batteryCharging) "(Charging)" else ""}", modifier = Modifier.padding(8.dp), color = Color.White)
                     if (performanceStats != null) {
@@ -389,7 +389,7 @@ private fun TopBar(
                 Icon(
                     TablerIcons.AlertTriangle,
                     contentDescription = "Panic",
-                    tint = if (panicBlink) Color.Red else Color(0xFF9090B0),
+                    tint = if (panicBlink) StatusError else TextDark,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -400,7 +400,7 @@ private fun TopBar(
             Box(
                 modifier = Modifier.size(8.dp)
                     .background(
-                        if (metronomeTick && metronomeOn) Color(0xFF39FF14) else Color(0xFF2A2A3A),
+                        if (metronomeTick && metronomeOn) AccentNeonGreen else OutlineVariant,
                         CircleShape
                     )
             )
@@ -412,7 +412,7 @@ private fun TopBar(
                 PillButton(
                     label = if (metronomeOn) "$metronomeBpm BPM" else "METRO",
                     active = metronomeOn,
-                    activeColor = Color(0xFF39FF14),
+                    activeColor = AccentNeonGreen,
                     onClick = onMetronomeToggle,
                     onLongClick = { showMetroPopup = true }
                 )
@@ -420,7 +420,7 @@ private fun TopBar(
                 DropdownMenu(
                     expanded = showMetroPopup,
                     onDismissRequest = { showMetroPopup = false },
-                    modifier = Modifier.background(Color(0xFF1A1A26))
+                    modifier = Modifier.background(DarkPanel)
                 ) {
                     Slider(
                         value = metronomeBpm.toFloat(),
@@ -429,9 +429,9 @@ private fun TopBar(
                         valueRange = 40f..240f,
                         modifier = Modifier.width(150.dp).padding(horizontal = 16.dp),
                         colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFF39FF14),
-                            activeTrackColor = Color(0xFF39FF14),
-                            inactiveTrackColor = Color(0xFF2A2A3A)
+                            thumbColor = AccentNeonGreen,
+                            activeTrackColor = AccentNeonGreen,
+                            inactiveTrackColor = OutlineVariant
                         )
                     )
                 }
@@ -450,7 +450,7 @@ private fun TopBar(
             PillButton(
                 label = "TAP",
                 active = (System.currentTimeMillis() - tapPulseKey) < 150,
-                activeColor = Color(0xFF38BDF8),
+                activeColor = AccentSky,
                 onClick = { 
                     tapPulseKey = System.currentTimeMillis()
                     onTapTempo() 
@@ -462,9 +462,9 @@ private fun TopBar(
 
             // Record button
             PillButton(
-                label = if (isRecording) "● REC" else "REC",
+                label = if (isRecording) "â— REC" else "REC",
                 active = isRecording,
-                activeColor = Color(0xFFFF2A2A),
+                activeColor = StatusError,
                 onClick = onRecordToggle
             )
 
@@ -475,7 +475,7 @@ private fun TopBar(
                 Icon(
                     if (isPlayingRecording) TablerIcons.PlayerStop else TablerIcons.PlayerPlay,
                     contentDescription = "Play",
-                    tint = if (isPlayingRecording) Color(0xFF38BDF8) else Color(0xFF606080),
+                    tint = if (isPlayingRecording) AccentSky else TextDark,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -487,7 +487,7 @@ private fun TopBar(
                 Icon(
                     TablerIcons.Settings,
                     contentDescription = "Settings",
-                    tint = Color(0xFF9090B0),
+                    tint = TextDark,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -503,9 +503,9 @@ private fun PillButton(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
-    val bgColor = if (active) activeColor.copy(alpha = 0.18f) else Color(0xFF252535)
-    val borderColor = if (active) activeColor else Color(0xFF353548)
-    val textColor = if (active) activeColor else Color(0xFF8080A0)
+    val bgColor = if (active) activeColor.copy(alpha = 0.18f) else LightPanel
+    val borderColor = if (active) activeColor else OutlineVariant
+    val textColor = if (active) activeColor else TextDark
 
     @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
     Box(
@@ -531,9 +531,9 @@ private fun PillButton(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // PATCHES PANEL
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun PatchesPanel(
     patches: List<PatchState>,
@@ -547,7 +547,7 @@ private fun PatchesPanel(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color(0xFF181824),
+        color = DarkPanel,
         tonalElevation = 2.dp,
         modifier = Modifier.width(168.dp).fillMaxHeight()
     ) {
@@ -559,21 +559,21 @@ private fun PatchesPanel(
             ) {
                 Text(
                     "PATCHES",
-                    color = Color(0xFF5A5A7A),
+                    color = TextDark,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp,
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = onImport, modifier = Modifier.size(24.dp)) {
-                    Icon(TablerIcons.Download, contentDescription = "Import", tint = Color(0xFF5A5A7A), modifier = Modifier.size(14.dp))
+                    Icon(TablerIcons.Download, contentDescription = "Import", tint = TextDark, modifier = Modifier.size(14.dp))
                 }
                 IconButton(onClick = onAdd, modifier = Modifier.size(24.dp)) {
-                    Icon(TablerIcons.Plus, contentDescription = "Add patch", tint = Color(0xFF38BDF8), modifier = Modifier.size(16.dp))
+                    Icon(TablerIcons.Plus, contentDescription = "Add patch", tint = AccentSky, modifier = Modifier.size(16.dp))
                 }
             }
 
-            Divider(color = Color(0xFF252535), thickness = 1.dp)
+            Divider(color = LightPanel, thickness = 1.dp)
             Spacer(Modifier.height(4.dp))
 
             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -603,10 +603,10 @@ private fun PatchRow(
     onDelete: () -> Unit
 ) {
     val bgColor = if (isSelected)
-        Brush.horizontalGradient(listOf(Color(0xFF38BDF8).copy(alpha = 0.2f), Color(0xFF9D4EDD).copy(alpha = 0.1f)))
+        Brush.horizontalGradient(listOf(AccentSky.copy(alpha = 0.2f), AccentPurple.copy(alpha = 0.1f)))
     else
         Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
-    val borderColor = if (isSelected) Color(0xFF38BDF8).copy(alpha = 0.7f) else Color.Transparent
+    val borderColor = if (isSelected) AccentSky.copy(alpha = 0.7f) else Color.Transparent
 
     Row(
         modifier = Modifier
@@ -621,7 +621,7 @@ private fun PatchRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = patch.name,
-                color = if (isSelected) Color.White else Color(0xFFAAAAAA),
+                color = if (isSelected) Color.White else TextDark,
                 fontSize = 11.sp,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                 maxLines = 1,
@@ -630,22 +630,22 @@ private fun PatchRow(
             if (patch.category.isNotBlank()) {
                 Text(
                     text = patch.category,
-                    color = Color(0xFF5A5A7A),
+                    color = TextDark,
                     fontSize = 9.sp
                 )
             }
         }
         if (isSelected) {
             IconButton(onClick = onEdit, modifier = Modifier.size(20.dp)) {
-                Icon(TablerIcons.Edit, contentDescription = "Edit", tint = Color(0xFF38BDF8), modifier = Modifier.size(12.dp))
+                Icon(TablerIcons.Edit, contentDescription = "Edit", tint = AccentSky, modifier = Modifier.size(12.dp))
             }
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // MIXER PANEL
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun MixerPanel(
     modifier: Modifier = Modifier,
@@ -666,13 +666,13 @@ private fun MixerPanel(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color(0xFF161620),
+        color = DarkBackground,
         modifier = modifier.fillMaxHeight()
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
             Text(
                 "MIXER",
-                color = Color(0xFF3A3A55),
+                color = OutlineVariant,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp,
@@ -730,15 +730,15 @@ private fun VerticalDividerLine() {
             .width(1.dp)
             .background(
                 Brush.verticalGradient(
-                    listOf(Color.Transparent, Color(0xFF353550), Color.Transparent)
+                    listOf(Color.Transparent, OutlineVariant, Color.Transparent)
                 )
             )
     )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // KEYBOARD PANEL
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 private fun KeyboardPanel(
     activeNote: Int?,
@@ -753,7 +753,7 @@ private fun KeyboardPanel(
 ) {
     Surface(
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 12.dp, bottomEnd = 12.dp),
-        color = Color(0xFF181824),
+        color = DarkPanel,
         tonalElevation = 4.dp,
         modifier = Modifier.fillMaxWidth().height(140.dp)
     ) {
@@ -775,13 +775,13 @@ private fun KeyboardPanel(
                         .clip(RoundedCornerShape(8.dp))
                         .background(
                             if (sustainActive)
-                                Brush.horizontalGradient(listOf(Color(0xFFFBBF24), Color(0xFFEF6C00)))
+                                Brush.horizontalGradient(listOf(AccentWarmYellow, AccentCoral))
                             else
-                                Brush.horizontalGradient(listOf(Color(0xFF252535), Color(0xFF1C1C2C)))
+                                Brush.horizontalGradient(listOf(LightPanel, DarkPanel))
                         )
                         .border(
                             1.dp,
-                            if (sustainActive) Color(0xFFFBBF24) else Color(0xFF353548),
+                            if (sustainActive) AccentWarmYellow else OutlineVariant,
                             RoundedCornerShape(8.dp)
                         )
                         .clickable(onClick = onSustainToggle),
@@ -789,7 +789,7 @@ private fun KeyboardPanel(
                 ) {
                     Text(
                         "SUSTAIN",
-                        color = if (sustainActive) Color.Black else Color(0xFF606080),
+                        color = if (sustainActive) Color.Black else TextDark,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -867,14 +867,14 @@ private fun ColumnScope.OctaveButton(label: String, onClick: () -> Unit) {
             .fillMaxWidth()
             .weight(1f)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF252535))
-            .border(1.dp, Color(0xFF353548), RoundedCornerShape(8.dp))
+            .background(LightPanel)
+            .border(1.dp, OutlineVariant, RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
             label,
-            color = Color(0xFF8080A0),
+            color = TextDark,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -891,14 +891,14 @@ private fun OctaveButton(label: String, onClick: () -> Unit) {
             .fillMaxWidth()
             .height(44.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF252535))
-            .border(1.dp, Color(0xFF353548), RoundedCornerShape(8.dp))
+            .background(LightPanel)
+            .border(1.dp, OutlineVariant, RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
             label,
-            color = Color(0xFF8080A0),
+            color = TextDark,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -918,7 +918,7 @@ fun PadStrip(
     onPadNoteToggle: (Int) -> Unit
 ) {
     Surface(
-        color = Color(0xFF1E1E2E),
+        color = SurfaceElevated,
         shape = RoundedCornerShape(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -933,7 +933,7 @@ fun PadStrip(
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF2A2A3A))
+                            .background(OutlineVariant)
                             .clickable { expanded = true }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -945,12 +945,12 @@ fun PadStrip(
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(Modifier.width(4.dp))
-                        Icon(TablerIcons.ChevronDown, contentDescription = null, tint = Color(0xFF8080A0), modifier = Modifier.size(14.dp))
+                        Icon(TablerIcons.ChevronDown, contentDescription = null, tint = TextDark, modifier = Modifier.size(14.dp))
                     }
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
-                        modifier = Modifier.background(Color(0xFF2A2A3A))
+                        modifier = Modifier.background(OutlineVariant)
                     ) {
                         availableBanks.forEach { b ->
                             DropdownMenuItem(
@@ -967,7 +967,7 @@ fun PadStrip(
                 Spacer(Modifier.width(16.dp))
 
                 // Volume Slider
-                Icon(TablerIcons.Volume, contentDescription = null, tint = Color(0xFF8080A0), modifier = Modifier.size(16.dp))
+                Icon(TablerIcons.Volume, contentDescription = null, tint = TextDark, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(8.dp))
                 Slider(
                     value = volume,
@@ -975,25 +975,25 @@ fun PadStrip(
                     valueRange = 0f..1f,
                     modifier = Modifier.weight(1f),
                     colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFF38BDF8),
-                        activeTrackColor = Color(0xFF38BDF8),
-                        inactiveTrackColor = Color(0xFF2A2A3A)
+                        thumbColor = AccentSky,
+                        activeTrackColor = AccentSky,
+                        inactiveTrackColor = OutlineVariant
                     )
                 )
 
                 Spacer(Modifier.width(16.dp))
 
                 // Toggle
-                Text("PAD", color = Color(0xFF8080A0), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("PAD", color = TextDark, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
                 Switch(
                     checked = enabled,
                     onCheckedChange = onEnabledChange,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
-                        checkedTrackColor = Color(0xFF38BDF8),
-                        uncheckedThumbColor = Color(0xFF8080A0),
-                        uncheckedTrackColor = Color(0xFF2A2A3A)
+                        checkedTrackColor = AccentSky,
+                        uncheckedThumbColor = TextDark,
+                        uncheckedTrackColor = OutlineVariant
                     )
                 )
             }
@@ -1014,16 +1014,16 @@ fun PadStrip(
                             .size(50.dp, 40.dp)
                             .clip(RoundedCornerShape(6.dp))
                             .background(
-                                if (isActive) Brush.verticalGradient(listOf(Color(0xFF22C55E), Color(0xFF16A34A)))
-                                else Brush.verticalGradient(listOf(Color(0xFF2D2D3D), Color(0xFF232332)))
+                                if (isActive) Brush.verticalGradient(listOf(StatusSuccess, StatusSuccess.copy(alpha=0.7f)))
+                                else Brush.verticalGradient(listOf(LightPanel, DarkPanel))
                             )
-                            .border(1.dp, if (isActive) Color(0xFF4ADE80) else Color.Transparent, RoundedCornerShape(6.dp))
+                            .border(1.dp, if (isActive) StatusSuccess else Color.Transparent, RoundedCornerShape(6.dp))
                             .clickable(enabled = enabled) { onPadNoteToggle(index) },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = noteName,
-                            color = if (isActive || !enabled) Color.White else Color(0xFFB0B0C0),
+                            color = if (isActive || !enabled) Color.White else TextDark,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )

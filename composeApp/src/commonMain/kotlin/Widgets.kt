@@ -1,4 +1,4 @@
-package com.midi.mainstage
+﻿package com.midi.mainstage
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -18,21 +18,21 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.*
 import androidx.compose.ui.Alignment
 
-// ─────────────────────────────────────────────────────────────────────────────
-// VOLUME FADER (Vertical drag — gradient fill + bright handle)
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// VOLUME FADER (Vertical drag â€” gradient fill + bright handle)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 fun VolumeFader(
     value: Float,
     onValueChange: (Float) -> Unit,
-    accentColor: Color = Color(0xFF38BDF8),
+    accentColor: Color = AccentSky,
     modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF0C0C14))
-            .border(1.dp, Color(0xFF252535), RoundedCornerShape(8.dp))
+            .background(DarkPanel)
+            .border(1.dp, LightPanel, RoundedCornerShape(8.dp))
             .pointerInput(Unit) {
                 detectDragGestures { change, _ ->
                     val newValue = 1f - (change.position.y / size.height).coerceIn(0f, 1f)
@@ -61,7 +61,7 @@ fun VolumeFader(
                 val y = i * step
                 val w = if (i % 2 == 0) size.width * 0.55f else size.width * 0.3f
                 drawLine(
-                    color = Color(0xFF2A2A3A),
+                    color = OutlineVariant,
                     start = Offset((size.width - w) / 2f, y),
                     end = Offset((size.width + w) / 2f, y),
                     strokeWidth = 1.5f
@@ -83,7 +83,7 @@ fun VolumeFader(
                 .clip(RoundedCornerShape(4.dp))
                 .background(
                     Brush.horizontalGradient(
-                        listOf(Color(0xFF3A3A50), accentColor.copy(alpha = 0.8f), Color(0xFF3A3A50))
+                        listOf(LightPanel, accentColor.copy(alpha = 0.8f), LightPanel)
                     )
                 )
                 .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
@@ -91,13 +91,13 @@ fun VolumeFader(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LEVEL METER (VU — segmented bars from bottom)
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// LEVEL METER (VU â€” segmented bars from bottom)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 fun LevelMeter(
     level: Float,
-    accentColor: Color = Color(0xFF39FF14),
+    accentColor: Color = AccentNeonGreen,
     modifier: Modifier = Modifier
 ) {
     val segments = 12
@@ -112,9 +112,9 @@ fun LevelMeter(
             val top = i * (segH + 2f)
             val isActive = segIdx < activeSeg
             val segColor = when {
-                segIdx >= segments - 2 -> if (isActive) Color(0xFFFF2A2A) else Color(0xFF2A1010)
-                segIdx >= segments - 4 -> if (isActive) Color(0xFFFFD600) else Color(0xFF2A2A10)
-                else -> if (isActive) accentColor else Color(0xFF151525)
+                segIdx >= segments - 2 -> if (isActive) StatusError else StatusError.copy(alpha = 0.2f)
+                segIdx >= segments - 4 -> if (isActive) StatusWarning else StatusWarning.copy(alpha = 0.2f)
+                else -> if (isActive) accentColor else DarkPanel
             }
             drawRoundRect(
                 color = segColor,
@@ -126,9 +126,9 @@ fun LevelMeter(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // ADD CHANNEL BUTTON
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 fun AddChannelButton(onClick: () -> Unit) {
     Box(
@@ -136,11 +136,11 @@ fun AddChannelButton(onClick: () -> Unit) {
             .width(72.dp)
             .fillMaxHeight()
             .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFF12121E))
+            .background(DarkPanel)
             .border(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
-                    listOf(Color(0xFF38BDF8).copy(alpha = 0.3f), Color(0xFF252535))
+                    listOf(AccentSky.copy(alpha = 0.3f), LightPanel)
                 ),
                 shape = RoundedCornerShape(14.dp)
             )
@@ -155,20 +155,20 @@ fun AddChannelButton(onClick: () -> Unit) {
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF38BDF8).copy(alpha = 0.15f))
-                    .border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.5f), CircleShape),
+                    .background(AccentSky.copy(alpha = 0.15f))
+                    .border(1.dp, AccentSky.copy(alpha = 0.5f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     TablerIcons.Plus,
                     contentDescription = "Add channel",
-                    tint = Color(0xFF38BDF8),
+                    tint = AccentSky,
                     modifier = Modifier.size(18.dp)
                 )
             }
             Text(
                 "ADD",
-                color = Color(0xFF38BDF8).copy(alpha = 0.7f),
+                color = AccentSky.copy(alpha = 0.7f),
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
@@ -177,9 +177,9 @@ fun AddChannelButton(onClick: () -> Unit) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // EMPTY CHANNEL PLACEHOLDER
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 fun EmptyChannelPlaceholder() {
     Box(
@@ -187,39 +187,39 @@ fun EmptyChannelPlaceholder() {
             .width(72.dp)
             .fillMaxHeight()
             .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFF0E0E18))
-            .border(1.dp, Color(0xFF1E1E2A), RoundedCornerShape(14.dp)),
+            .background(DarkPanel)
+            .border(1.dp, OutlineVariant, RoundedCornerShape(14.dp)),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            "—",
-            color = Color(0xFF2A2A3A),
+            "â€”",
+            color = OutlineVariant,
             fontSize = 18.sp
         )
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // METRONOME CHANNEL ITEM
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 fun MetronomeChannelItem(
     volume: Float,
     onVolumeChange: (Float) -> Unit
 ) {
-    val accent = Color(0xFF39FF14)
+    val accent = AccentNeonGreen
     Column(
         modifier = Modifier
             .width(72.dp)
             .fillMaxHeight()
             .clip(RoundedCornerShape(14.dp))
             .background(
-                Brush.verticalGradient(listOf(Color(0xFF161A16), Color(0xFF101410)))
+                Brush.verticalGradient(listOf(DarkPanel, DarkBackground))
             )
             .border(
                 1.dp,
                 Brush.verticalGradient(
-                    listOf(accent.copy(alpha = 0.3f), Color(0xFF202820))
+                    listOf(accent.copy(alpha = 0.3f), DarkBackground)
                 ),
                 RoundedCornerShape(14.dp)
             )
@@ -252,16 +252,16 @@ fun MetronomeChannelItem(
 
         Text(
             "${(volume * 100).toInt()}%",
-            color = Color(0xFF4A5A4A),
+            color = TextDark,
             fontSize = 8.sp,
             textAlign = TextAlign.Center
         )
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // MASTER OUTPUT CHANNEL ITEM
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 fun MasterOutputChannelItem(
     volume: Float,
@@ -269,19 +269,19 @@ fun MasterOutputChannelItem(
     onVolumeChange: (Float) -> Unit,
     onMidiMapClick: () -> Unit
 ) {
-    val accent = Color(0xFF9D4EDD)
+    val accent = AccentPurple
     Column(
         modifier = Modifier
             .width(88.dp)
             .fillMaxHeight()
             .clip(RoundedCornerShape(14.dp))
             .background(
-                Brush.verticalGradient(listOf(Color(0xFF1A1424), Color(0xFF110E1A)))
+                Brush.verticalGradient(listOf(DarkPanel, DarkBackground))
             )
             .border(
                 1.dp,
                 Brush.verticalGradient(
-                    listOf(accent.copy(alpha = 0.5f), Color(0xFF251E35))
+                    listOf(accent.copy(alpha = 0.5f), DarkBackground)
                 ),
                 RoundedCornerShape(14.dp)
             )
@@ -309,7 +309,7 @@ fun MasterOutputChannelItem(
         }
         Text(
             "L/R OUT",
-            color = Color(0xFF5A4A7A),
+            color = TextDark,
             fontSize = 7.sp
         )
 
@@ -332,7 +332,7 @@ fun MasterOutputChannelItem(
 
         Text(
             "${(volume * 100).toInt()}%",
-            color = Color(0xFF5A4A7A),
+            color = TextDark,
             fontSize = 8.sp,
             textAlign = TextAlign.Center
         )
@@ -357,9 +357,9 @@ fun MasterOutputChannelItem(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // PITCH BEND WHEEL
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 fun PitchBendWheel(
     value: Float,
@@ -368,14 +368,14 @@ fun PitchBendWheel(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("PB", color = Color(0xFF4A4A6A), fontSize = 7.sp, letterSpacing = 1.sp)
+        Text("PB", color = TextDark, fontSize = 7.sp, letterSpacing = 1.sp)
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF0C0C14))
-                .border(1.dp, Color(0xFF252535), RoundedCornerShape(8.dp))
+                .background(DarkPanel)
+                .border(1.dp, LightPanel, RoundedCornerShape(8.dp))
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = { onRelease() },
@@ -390,7 +390,7 @@ fun PitchBendWheel(
             // Center line
             Box(
                 modifier = Modifier.fillMaxWidth().height(1.dp)
-                    .background(Color(0xFF252535))
+                    .background(LightPanel)
             )
             // Filled portion
             val clipped = (value + 1f) / 2f
@@ -400,15 +400,15 @@ fun PitchBendWheel(
                     .fillMaxHeight(clipped.coerceIn(0.01f, 1f))
                     .align(Alignment.BottomCenter)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFF38BDF8).copy(alpha = 0.35f))
+                    .background(AccentSky.copy(alpha = 0.35f))
             )
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // MODULATION WHEEL
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 fun ModulationWheel(
     value: Float,
@@ -416,14 +416,14 @@ fun ModulationWheel(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("MOD", color = Color(0xFF4A4A6A), fontSize = 7.sp, letterSpacing = 1.sp)
+        Text("MOD", color = TextDark, fontSize = 7.sp, letterSpacing = 1.sp)
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF0C0C14))
-                .border(1.dp, Color(0xFF252535), RoundedCornerShape(8.dp))
+                .background(DarkPanel)
+                .border(1.dp, LightPanel, RoundedCornerShape(8.dp))
                 .pointerInput(Unit) {
                     detectDragGestures { change, _ ->
                         val newVal = 1f - (change.position.y / size.height).coerceIn(0f, 1f)
@@ -439,7 +439,7 @@ fun ModulationWheel(
                     .clip(RoundedCornerShape(4.dp))
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color(0xFFF472B6).copy(alpha = 0.6f), Color(0xFF9D4EDD).copy(alpha = 0.3f))
+                            listOf(AccentPink.copy(alpha = 0.6f), AccentPurple.copy(alpha = 0.3f))
                         )
                     )
             )

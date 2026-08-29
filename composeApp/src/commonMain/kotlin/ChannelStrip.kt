@@ -1,4 +1,4 @@
-package com.midi.mainstage
+﻿package com.midi.mainstage
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -34,13 +34,13 @@ fun ChannelStripItem(
             .clip(RoundedCornerShape(14.dp))
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFF1E1E2C), Color(0xFF141420))
+                    listOf(SurfaceElevated, DarkBackground)
                 )
             )
             .border(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
-                    listOf(accentColor.copy(alpha = 0.4f), Color(0xFF252535))
+                    listOf(accentColor.copy(alpha = 0.4f), LightPanel)
                 ),
                 shape = RoundedCornerShape(14.dp)
             )
@@ -48,7 +48,7 @@ fun ChannelStripItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // ── Channel name + gear ──────────────────────────────────
+        // â”€â”€ Channel name + gear â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -79,13 +79,13 @@ fun ChannelStripItem(
                 Icon(
                     TablerIcons.Settings,
                     contentDescription = "Configure",
-                    tint = Color(0xFF4A4A6A),
+                    tint = TextDark,
                     modifier = Modifier.size(12.dp)
                 )
             }
         }
 
-        // ── Fader + VU meter ─────────────────────────────────────
+        // â”€â”€ Fader + VU meter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Row(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -104,18 +104,18 @@ fun ChannelStripItem(
             )
         }
 
-        // ── Volume % label ───────────────────────────────────────
+        // â”€â”€ Volume % label â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Text(
             text = "${(state.volume * 100).toInt()}%",
-            color = Color(0xFF5A5A7A),
+            color = TextDark,
             fontSize = 8.sp,
             textAlign = TextAlign.Center
         )
 
-        // ── Loaded Patch Name ────────────────────────────────────
+        // â”€â”€ Loaded Patch Name â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Text(
             text = state.sf2Name.substringBefore(".sf2").take(10),
-            color = Color(0xFF8A8A9A),
+            color = TextDark,
             fontSize = 7.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -123,7 +123,7 @@ fun ChannelStripItem(
             modifier = Modifier.padding(bottom = 2.dp)
         )
 
-        // ── Mute / Solo ──────────────────────────────────────────
+        // â”€â”€ Mute / Solo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -131,14 +131,14 @@ fun ChannelStripItem(
             MuteSoloButton(
                 label = "M",
                 active = state.isMuted,
-                activeColor = Color(0xFFFF2A2A),
+                activeColor = StatusError,
                 onClick = onMuteToggle,
                 modifier = Modifier.weight(1f)
             )
             MuteSoloButton(
                 label = "S",
                 active = state.isSoloed,
-                activeColor = Color(0xFFFFD600),
+                activeColor = StatusWarning,
                 onClick = onSoloToggle,
                 modifier = Modifier.weight(1f)
             )
@@ -159,11 +159,11 @@ private fun MuteSoloButton(
             .height(20.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(
-                if (active) activeColor.copy(alpha = 0.2f) else Color(0xFF1A1A28)
+                if (active) activeColor.copy(alpha = 0.2f) else SurfaceElevated
             )
             .border(
                 1.dp,
-                if (active) activeColor else Color(0xFF2C2C3E),
+                if (active) activeColor else LightPanel,
                 RoundedCornerShape(4.dp)
             )
             .clickable(onClick = onClick),
@@ -171,7 +171,7 @@ private fun MuteSoloButton(
     ) {
         Text(
             label,
-            color = if (active) activeColor else Color(0xFF4A4A6A),
+            color = if (active) activeColor else TextDark,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold
         )

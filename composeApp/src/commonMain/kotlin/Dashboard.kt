@@ -1,4 +1,4 @@
-package com.midi.mainstage
+﻿package com.midi.mainstage
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -32,13 +32,13 @@ fun DashboardScreen(
     onImportClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
-    // Saludo dinámico según hora del día usando expect/actual (100% nativo)
+    // Saludo dinÃƒÂ¡mico segÃƒÂºn hora del dÃƒÂ­a usando expect/actual (100% nativo)
     val greeting = remember {
         when (getCurrentHourOfDay()) {
-            in 5..11  -> "Buenos días, hora de tocar 🌅"
-            in 12..18 -> "Buenas tardes, hora de tocar 🎹"
-            in 19..23 -> "Buenas noches, hora de tocar 🌙"
-            else      -> "Hora de tocar 🎹"  // 0–4 AM
+            in 5..11  -> "Buenos dÃƒÂ­as, hora de tocar Ã°Å¸Å’â€¦"
+            in 12..18 -> "Buenas tardes, hora de tocar Ã°Å¸Å½Â¹"
+            in 19..23 -> "Buenas noches, hora de tocar Ã°Å¸Å’â„¢"
+            else      -> "Hora de tocar Ã°Å¸Å½Â¹"  // 0Ã¢â‚¬â€œ4 AM
         }
     }
 
@@ -48,9 +48,9 @@ fun DashboardScreen(
             .background(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.0f to Color(0xFF0D0D12),
-                        0.45f to Color(0xFF0F1222),
-                        1.0f to Color(0xFF121C33)
+                        0.0f to DarkBackground,
+                        0.45f to DarkPanel,
+                        1.0f to SurfaceElevated
                     )
                 )
             )
@@ -68,9 +68,22 @@ fun DashboardScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(24.dp)
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
-                    )
+                            .size(32.dp)
+                            .background(
+                                brush = Brush.linearGradient(
+                                    colors = listOf(AccentSky, AccentPurple)
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "SK",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = "STAGEKEYS LIVE",
@@ -83,7 +96,7 @@ fun DashboardScreen(
                         Icon(TablerIcons.Settings, contentDescription = "Ajustes", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                // Dynamic greeting — primary hierarchy
+                // Dynamic greeting Ã¢â‚¬â€ primary hierarchy
                 Text(
                     text = greeting,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -116,7 +129,7 @@ fun DashboardScreen(
                 ) {
                     Icon(TablerIcons.PlayerPlay, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Abrir Último", fontWeight = FontWeight.Bold)
+                    Text("Abrir ÃƒÅ¡ltimo", fontWeight = FontWeight.Bold)
                 }
                 
                 Button(
