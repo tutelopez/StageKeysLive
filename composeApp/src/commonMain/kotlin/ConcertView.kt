@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -42,6 +43,11 @@ fun ConcertViewScreen(
     onImportPatchClick: () -> Unit,
     onBackClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onPanicClick: () -> Unit,
+    performanceStats: PerformanceStats?,
+    batteryLevel: Int,
+    batteryCharging: Boolean,
+    audioDiagnostics: String,
     currentConnectedDevices: List<String>,
     midiActivityIndicator: Boolean,
 
@@ -129,7 +135,12 @@ fun ConcertViewScreen(
                 onPlayRecordingClick = onPlayRecordingClick,
                 midiActive = midiActivityIndicator,
                 onBackClick = onBackClick,
-                onSettingsClick = onSettingsClick
+                onSettingsClick = onSettingsClick,
+                onPanicClick = onPanicClick,
+                performanceStats = performanceStats,
+                batteryLevel = batteryLevel,
+                batteryCharging = batteryCharging,
+                audioDiagnostics = audioDiagnostics
             )
 
             // ─── MAIN AREA: PATCHES + MIXER ─────────────────────────────────────
@@ -266,8 +277,23 @@ private fun TopBar(
     onPlayRecordingClick: () -> Unit,
     midiActive: Boolean,
     onBackClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onPanicClick: () -> Unit,
+    performanceStats: PerformanceStats?,
+    batteryLevel: Int,
+    batteryCharging: Boolean,
+    audioDiagnostics: String
 ) {
+    var panicBlink by remember { mutableStateOf(false) }
+    var showSysPopup by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(panicBlink) {
+        if (panicBlink) {
+            delay(300)
+            panicBlink = false
+        }
+    }
+
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = Color(0xFF1A1A26),
@@ -315,6 +341,57 @@ private fun TopBar(
                 )
                 Spacer(Modifier.width(6.dp))
             }
+
+            // System status dot
+            val audioDegraded = audioDiagnostics.contains("xrun", ignoreCase = true) || audioDiagnostics.contains("underflow", ignoreCase = true)
+            val sysColor = when {
+                batteryLevel < 10 -> Color.Red
+                batteryLevel < 20 || audioDegraded -> Color(0xFFF59E0B) // Amber
+                else -> Color(0xFF10B981) // Green
+            }
+            Box {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clickable { showSysPopup = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(modifier = Modifier.size(8.dp).background(sysColor, CircleShape))
+                }
+                
+                DropdownMenu(
+                    expanded = showSysPopup,
+                    onDismissRequest = { showSysPopup = false },
+                    modifier = Modifier.background(Color(0xFF1A1A26))
+                ) {
+                    Text("Battery: $batteryLevel% ${if (batteryCharging) "(Charging)" else ""}", modifier = Modifier.padding(8.dp), color = Color.White)
+                    if (performanceStats != null) {
+                        Text("CPU: ${performanceStats.cpuPercent ?: "?"}%", modifier = Modifier.padding(8.dp), color = Color.White)
+                        Text("RAM: ${performanceStats.ramMb} MB", modifier = Modifier.padding(8.dp), color = Color.White)
+                    }
+                    Text("Audio: $audioDiagnostics", modifier = Modifier.padding(8.dp), color = Color.White)
+                }
+            }
+            
+            Spacer(Modifier.width(6.dp))
+            
+            // Panic Button
+            IconButton(
+                onClick = { 
+                    onPanicClick()
+                    panicBlink = true
+                },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    TablerIcons.AlertTriangle,
+                    contentDescription = "Panic",
+                    tint = if (panicBlink) Color.Red else Color(0xFF9090B0),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            
+            Spacer(Modifier.width(6.dp))
 
             // Metronome beat dot
             Box(

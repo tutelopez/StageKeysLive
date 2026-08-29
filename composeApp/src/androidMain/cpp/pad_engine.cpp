@@ -93,16 +93,8 @@ void PadEngine::loadBankInternal(const std::string& bankName) {
     mCurrentBank = bankName;
     if (bankName.empty() || !mAssetManager) return;
 
+    int loadedCount = 0;
     for (int i = 0; i < 12; ++i) {
-        // Formato esperado de nombres, ej. "pads/worship/c.ogg" o "pads/abba_pad/c_abba.ogg"
-        // Buscaremos archivos que contengan el note name. Para simplificar, asumimos que el
-        // usuario renombró los archivos a "note.ogg" (ej. "c.ogg") o simplemente usó el script
-        // que respeta el nombre original, por lo que necesitaremos leer el asset.
-        
-        // El script convirtió cosas como c_abba.wav a c_abba.ogg. 
-        // Vamos a intentar un pattern matching básico. Para este prototipo, vamos a leer
-        // el directorio del assetManager y buscar el archivo.
-        
         std::string dirPath = "pads/" + bankName;
         AAssetDir* assetDir = AAssetManager_openDir(mAssetManager, dirPath.c_str());
         if (!assetDir) {
@@ -110,15 +102,25 @@ void PadEngine::loadBankInternal(const std::string& bankName) {
             break;
         }
         
-        std::string targetPrefix1 = std::string(NOTE_FILES[i]) + "_";
-        std::string targetPrefix2 = std::string(NOTE_FILES[i]) + ".ogg";
         std::string foundFile = "";
+        std::string note = NOTE_FILES[i];
         
         const char* filename;
         while ((filename = AAssetDir_getNextFileName(assetDir)) != nullptr) {
             std::string fname(filename);
-            // check if it's the right note
-            if (fname == targetPrefix2 || fname.find(targetPrefix1) == 0) {
+            bool isMatch = false;
+            
+            if (fname == note + ".ogg") {
+                isMatch = true;
+            } else if (fname.find(note + "_") == 0) {
+                isMatch = true;
+            } else if (fname.find("_" + note + ".ogg") != std::string::npos && fname.rfind("_" + note + ".ogg") == fname.length() - note.length() - 5) {
+                isMatch = true;
+            } else if (fname.find("_" + note + "_") != std::string::npos) {
+                isMatch = true;
+            }
+
+            if (isMatch) {
                 foundFile = dirPath + "/" + fname;
                 break;
             }
@@ -136,11 +138,12 @@ void PadEngine::loadBankInternal(const std::string& bankName) {
             const void* buffer = AAsset_getBuffer(asset);
             if (buffer) {
                 mOggFiles[i].data.assign((const uint8_t*)buffer, (const uint8_t*)buffer + length);
+                loadedCount++;
             }
             AAsset_close(asset);
-            LOGI("Loaded pad note %s: %zu bytes", foundFile.c_str(), length);
         }
     }
+    LOGI("Loaded %d/12 notes for bank %s", loadedCount, bankName.c_str());
 }
 
 void PadEngine::setBank(const std::string& bankName) {
@@ -257,12 +260,14 @@ oboe::DataCallbackResult PadEngine::onAudioReady(oboe::AudioStream* audioStream,
         PadVoice& voice = mVoices[v];
         if (!voice.active || !voice.vorbis) continue;
         
-        float buffer[1024]; // Assuming max numFrames is usually 128 or 256. 512 frames * 2 channels = 1024
+        const int MAX_FRAMES_PER_CHUNK = 512;
+        float buffer[MAX_FRAMES_PER_CHUNK * 2];
         int framesNeeded = numFrames;
         int framesRead = 0;
         
         while (framesRead < framesNeeded) {
             int toRead = framesNeeded - framesRead;
+            if (toRead > MAX_FRAMES_PER_CHUNK) toRead = MAX_FRAMES_PER_CHUNK;
             // stb_vorbis_get_samples_float_interleaved returns number of frames read
             int read = stb_vorbis_get_samples_float_interleaved(voice.vorbis, 2, buffer, toRead * 2);
             if (read == 0) {

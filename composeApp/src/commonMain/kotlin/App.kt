@@ -39,6 +39,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -63,10 +64,33 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var currentScreen by remember { mutableStateOf(ScreenState.DASHBOARD) }
     var concerts by remember { mutableStateOf<List<Concert>>(emptyList()) }
     var activeConcert by remember { mutableStateOf<Concert?>(null) }
+    
+    var performanceStats by remember { mutableStateOf<PerformanceStats?>(null) }
+    var batteryLevel by remember { mutableStateOf(100) }
+    var batteryCharging by remember { mutableStateOf(false) }
+    var audioDiagnostics by remember { mutableStateOf("INICIALIZANDO...") }
+
+    LaunchedEffect(currentScreen) {
+        if (currentScreen == ScreenState.CONCERT) {
+            setKeepScreenOn(true)
+            synth.setPerformanceListener { stats ->
+                performanceStats = stats
+            }
+            synth.startPerformanceMonitor()
+            while (isActive) {
+                batteryLevel = getBatteryLevel()
+                batteryCharging = isBatteryCharging()
+                audioDiagnostics = synth.getAudioDiagnostics()
+                delay(30000)
+            }
+        } else {
+            setKeepScreenOn(false)
+            synth.stopPerformanceMonitor()
+        }
+    }
     var selectedPatchIndex by remember { mutableStateOf(0) }
     var currentConnectedDevices by remember { mutableStateOf<List<String>>(emptyList()) }
     var currentAudioDevices by remember { mutableStateOf<List<AudioOutputDeviceInfo>>(emptyList()) }
-    var audioDiagnostics by remember { mutableStateOf("INICIALIZANDO...") }
 
     // File Picker and Snackbar State
     var showSf2Picker by remember { mutableStateOf(false) }
@@ -162,7 +186,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var padVolume by remember { mutableStateOf(0.7f) }
     var padBank by remember { mutableStateOf("") }
     var activePadNote by remember { mutableStateOf<Int?>(null) }
-    val availablePadBanks = listOf("abba_pad", "dark_pad", "pad_reverse", "pad_shimmer", "pad_synth", "shimmer_2", "warm_pad", "worship")
+    val availablePadBanks = listOf("stage_abba_pad", "stage_dark_pad", "stage_pad_reverse", "stage_pad_shimmer", "stage_pad_synth", "stage_shimmer_2", "stage_warm_pad", "stage_worship")
 
     // Sync pad state with engine when it changes
     LaunchedEffect(padEnabled) { 
@@ -359,11 +383,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 }
             }
 
-            // Pad Engine routing
-            if (padEnabled && velocity > 0) {
-                synth.padNoteOn(note % 12)
-                activePadNote = note % 12
-            }
+            // No pad routing from keyboard/MIDI per user request
 
             // Record MIDI event
             if (isRecording) {
@@ -728,6 +748,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             activeConcert?.let { concert ->
                 ConcertViewScreen(
                     concert = concert,
+                    onPanicClick = {
+                        synth.allNotesOff()
+                        synth.padNoteOff()
+                    },
+                    performanceStats = performanceStats,
+                    batteryLevel = batteryLevel,
+                    batteryCharging = batteryCharging,
+                    audioDiagnostics = audioDiagnostics,
                     selectedPatchIndex = selectedPatchIndex,
                     onSelectPatch = applyPatch,
                     onAddPatchClick = { 
@@ -1389,12 +1417,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 }
             }
 
-            // Pad Engine off logic: only turn off if no keys are currently held physically or sustained
-            if (padEnabled) {
-                if (heldKeys.isEmpty() && sustainedKeys.isEmpty()) {
-                    synth.padNoteOff()
-                }
-            }
+            // Pad off logic tied to keys has been removed per user request
         }
     }
 }

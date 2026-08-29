@@ -21,12 +21,16 @@ import androidx.core.content.ContextCompat
 private const val TAG = "StageKeysMain"
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        var instance: MainActivity? = null
+    }
     private lateinit var midiManager: AndroidMidiManager
     private lateinit var audioDeviceManager: AndroidAudioDeviceManager
     private val synth = PlatformAudioSynth()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        instance = this
         
         if (Build.VERSION.SDK_INT >= 33) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -115,6 +119,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        if (instance == this) instance = null
         // Release hardware and native engine resources
         PlatformAudioSynth.midiManager = null
         PlatformAudioSynth.audioDeviceManager = null

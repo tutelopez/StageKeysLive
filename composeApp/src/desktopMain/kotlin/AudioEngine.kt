@@ -4,7 +4,12 @@ import javax.sound.midi.MidiSystem
 import javax.sound.midi.Synthesizer
 import javax.sound.midi.MidiChannel
 
+import com.midi.mainstage.PerformanceStats
+
 actual class PlatformAudioSynth actual constructor() {
+    actual fun startPerformanceMonitor() {}
+    actual fun stopPerformanceMonitor() {}
+    actual fun setPerformanceListener(onStats: (PerformanceStats) -> Unit) {}
     private var synthesizer: Synthesizer? = null
     private var channel: MidiChannel? = null
     private var currentProgram = 0

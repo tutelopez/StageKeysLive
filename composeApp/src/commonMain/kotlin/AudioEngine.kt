@@ -7,7 +7,12 @@ package com.midi.mainstage
 // - cancelMidiLearn(): cancels an in-progress learn session
 // - applyMappedCc(): called when a mapped CC arrives, routes to correct synth parameter
 
+data class PerformanceStats(val cpuPercent: Int?, val ramMb: Int)
+
 expect class PlatformAudioSynth() {
+    fun startPerformanceMonitor()
+    fun stopPerformanceMonitor()
+    fun setPerformanceListener(onStats: (PerformanceStats) -> Unit)
     fun noteOn(note: Int, velocity: Int, channel: Int = 0)
     fun noteOff(note: Int, channel: Int = 0)
     fun setVolume(volume: Float)

@@ -17,6 +17,7 @@ actual class PlatformAudioSynth actual constructor() {
     companion object {
         internal var midiManager: AndroidMidiManager? = null
         internal var audioDeviceManager: AndroidAudioDeviceManager? = null
+        internal var perfMonitor = AndroidPerformanceMonitor()
         var globalPrefs: android.content.SharedPreferences? = null
         var optimalSampleRate: Int = 48000
         var optimalBufferFrames: Int = 256
@@ -233,5 +234,18 @@ actual class PlatformAudioSynth actual constructor() {
     fun setAssetManager(am: android.content.res.AssetManager) {
         nativeSetAssetManager(am)
     }
+    
+    actual fun startPerformanceMonitor() {
+        perfMonitor.start()
+    }
+    
+    actual fun stopPerformanceMonitor() {
+        perfMonitor.stop()
+    }
+    
+    actual fun setPerformanceListener(onStats: (PerformanceStats) -> Unit) {
+        perfMonitor.setListener(onStats)
+    }
+
     private external fun nativeSetAssetManager(am: android.content.res.AssetManager)
 }
