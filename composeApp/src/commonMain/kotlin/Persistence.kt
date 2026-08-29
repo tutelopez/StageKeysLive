@@ -6,6 +6,7 @@ expect fun deleteLocalFile(path: String)
 
 data class ChannelStripState(
     val id: Int,
+    val name: String,
     val sf2Name: String,
     val sf2Path: String?,
     val volume: Float,
@@ -18,6 +19,7 @@ data class ChannelStripState(
 
 data class PatchChannelSnapshot(
     val channelId: Int,
+    val name: String,
     val sf2Name: String,
     val sf2Path: String?,
     val volume: Float,
@@ -33,6 +35,7 @@ data class PatchState(
     val category: String,
     val programNumber: Int,
     val description: String,
+    val transposeSemitones: Int = 0,
     val id: String = "patch_${System.currentTimeMillis()}_${(0..1000).random()}",
     val channelsSnapshot: List<PatchChannelSnapshot> = emptyList()
 )
@@ -67,11 +70,13 @@ object ConcertSerializer {
                 sb.append("\"category\":\"${escape(patch.category)}\",")
                 sb.append("\"programNumber\":${patch.programNumber},")
                 sb.append("\"description\":\"${escape(patch.description)}\",")
+                sb.append("\"transposeSemitones\":${patch.transposeSemitones},")
                 sb.append("\"channelsSnapshot\":[")
                 patch.channelsSnapshot.forEachIndexed { s, snap ->
                     if (s > 0) sb.append(",")
                     sb.append("{")
                     sb.append("\"channelId\":${snap.channelId},")
+                    sb.append("\"name\":\"${escape(snap.name)}\",")
                     sb.append("\"sf2Name\":\"${escape(snap.sf2Name)}\",")
                     if (snap.sf2Path != null) {
                         sb.append("\"sf2Path\":\"${escape(snap.sf2Path)}\",")
@@ -95,6 +100,7 @@ object ConcertSerializer {
                 if (k > 0) sb.append(",")
                 sb.append("{")
                 sb.append("\"id\":${ch.id},")
+                sb.append("\"name\":\"${escape(ch.name)}\",")
                 sb.append("\"sf2Name\":\"${escape(ch.sf2Name)}\",")
                 if (ch.sf2Path != null) {
                     sb.append("\"sf2Path\":\"${escape(ch.sf2Path)}\",")
@@ -219,6 +225,7 @@ class SimpleJsonParser(private val src: String) {
         var category = ""
         var programNumber = 0
         var description = ""
+        var transposeSemitones = 0
         val channelsSnapshot = mutableListOf<PatchChannelSnapshot>()
 
         while (pos < src.length) {
@@ -237,6 +244,7 @@ class SimpleJsonParser(private val src: String) {
                 "category" -> category = parseString()
                 "programNumber" -> programNumber = parseInt()
                 "description" -> description = parseString()
+                "transposeSemitones" -> transposeSemitones = parseInt()
                 "channelsSnapshot" -> {
                     if (pos < src.length && src[pos] == '[') pos++ // skip '['
                     while (pos < src.length) {
@@ -258,12 +266,13 @@ class SimpleJsonParser(private val src: String) {
             if (pos < src.length && src[pos] == ',') pos++
         }
         if (id.isEmpty()) id = "patch_${System.currentTimeMillis()}_${(0..1000).random()}" // Fallback for old saves
-        return PatchState(name, category, programNumber, description, id, channelsSnapshot)
+        return PatchState(name, category, programNumber, description, transposeSemitones, id, channelsSnapshot)
     }
 
     private fun parsePatchChannelSnapshot(): PatchChannelSnapshot {
         pos++ // skip '{'
         var channelId = 0
+        var name: String? = null
         var sf2Name = ""
         var sf2Path: String? = null
         var volume = 1f
@@ -285,6 +294,7 @@ class SimpleJsonParser(private val src: String) {
             skipWhitespace()
             when (key) {
                 "channelId" -> channelId = parseInt()
+                "name" -> name = parseString()
                 "sf2Name" -> sf2Name = parseString()
                 "sf2Path" -> sf2Path = parseString()
                 "volume" -> volume = parseFloat()
@@ -298,12 +308,13 @@ class SimpleJsonParser(private val src: String) {
             skipWhitespace()
             if (pos < src.length && src[pos] == ',') pos++
         }
-        return PatchChannelSnapshot(channelId, sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex)
+        return PatchChannelSnapshot(channelId, name ?: "Canal $channelId", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex)
     }
 
     private fun parseChannel(): ChannelStripState {
         pos++ // skip '{'
         var id = 0
+        var name: String? = null
         var sf2Name = ""
         var sf2Path: String? = null
         var volume = 1f
@@ -325,6 +336,7 @@ class SimpleJsonParser(private val src: String) {
             skipWhitespace()
             when (key) {
                 "id" -> id = parseInt()
+                "name" -> name = parseString()
                 "sf2Name" -> sf2Name = parseString()
                 "sf2Path" -> sf2Path = parseString()
                 "volume" -> volume = parseFloat()
@@ -338,7 +350,7 @@ class SimpleJsonParser(private val src: String) {
             skipWhitespace()
             if (pos < src.length && src[pos] == ',') pos++
         }
-        return ChannelStripState(id, sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex)
+        return ChannelStripState(id, name ?: "Canal $id", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex)
     }
 
     private fun parseString(): String {

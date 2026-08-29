@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.ArrowBack
@@ -174,6 +175,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var newPatchCategory by remember { mutableStateOf("Keyboards") }
     var newPatchProgram by remember { mutableStateOf("0") }
     var newPatchDescription by remember { mutableStateOf("") }
+    var newPatchTranspose by remember { mutableStateOf(0) }
 
     // Audio & Metronome State
     var metronomeOn by remember { mutableStateOf(false) }
@@ -234,7 +236,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var selectedSampleRate by remember { mutableStateOf(48000) }
     var pendingSampleRate by remember { mutableStateOf<Int?>(null) }
     var isRestartingAudio by remember { mutableStateOf(false) }
-    var selectedAudioOutput by remember { mutableStateOf("Salida Estéreo Principal (System Default)") }
+    var selectedAudioOutput by remember { mutableStateOf("Salida EstÃƒÂ©reo Principal (System Default)") }
 
     // Live performance controls state
     var activeNote by remember { mutableStateOf<Int?>(null) }
@@ -258,6 +260,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     )}
     var mappingTarget by remember { mutableStateOf<MidiTarget?>(null) }
     var octaveShift by remember { mutableStateOf(0) }
+    var currentPatchTranspose by remember { mutableStateOf(0) }
     val modulation = remember { Animatable(0f) }
 
     // Trigger visual MIDI indicator
@@ -282,9 +285,17 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         }
     }
 
+    // Auto-save debounce for live mixer adjustments (volume, mute, solo)
+    LaunchedEffect(activeConcert?.channels) {
+        if (activeConcert != null) {
+            delay(3000)
+            saveConcertsList(concerts)
+        }
+    }
+
     
 
-    val updateChannelsAndPatchSnapshot = { newChannels: List<ChannelStripState> ->
+    val updateChannelsAndPatchSnapshotOnlyState = { newChannels: List<ChannelStripState> ->
         val concert = activeConcert
         if (concert != null) {
             val updatedPatches = if (selectedPatchIndex in concert.patches.indices) {
@@ -292,7 +303,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     if (idx == selectedPatchIndex) {
                         val newSnapshot = newChannels.map { ch ->
                             PatchChannelSnapshot(
-                                channelId = ch.id, sf2Name = ch.sf2Name, sf2Path = ch.sf2Path,
+                                channelId = ch.id, name = ch.name, sf2Name = ch.sf2Name, sf2Path = ch.sf2Path,
                                 volume = ch.volume, isMuted = ch.isMuted, isSoloed = ch.isSoloed,
                                 keyRangeStart = ch.keyRangeStart, keyRangeEnd = ch.keyRangeEnd,
                                 colorHex = ch.colorHex
@@ -305,14 +316,20 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
             val updatedConcert = concert.copy(channels = newChannels, patches = updatedPatches, lastModified = System.currentTimeMillis())
             val newList = concerts.map { if (it.id == concert.id) updatedConcert else it }
-            saveConcertsList(newList)
+            concerts = newList
             activeConcert = updatedConcert
         }
+    }
+
+    val updateChannelsAndPatchSnapshot = { newChannels: List<ChannelStripState> ->
+        updateChannelsAndPatchSnapshotOnlyState(newChannels)
+        saveConcertsList(concerts)
     }
 
     val applyPatch = { patchIndex: Int ->
         val concert = activeConcert
         if (concert != null && patchIndex in concert.patches.indices) {
+            currentPatchTranspose = concert.patches[patchIndex].transposeSemitones
             // WE DO NOT CALL allNotesOff() HERE so that active notes can keep sounding on their old channels (ping-pong shadow channels)
             
             // --- Step 1: Persist the CURRENT patch's live channels into its own snapshot ---
@@ -320,10 +337,9 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             val currentLiveChannels = concert.channels
             val currentSnapshot = currentLiveChannels.map { ch ->
                 PatchChannelSnapshot(
-                    channelId = ch.id, sf2Name = ch.sf2Name, sf2Path = ch.sf2Path,
+                    channelId = ch.id, name = ch.name, sf2Name = ch.sf2Name, sf2Path = ch.sf2Path,
                     volume = ch.volume, isMuted = ch.isMuted, isSoloed = ch.isSoloed,
-                    keyRangeStart = ch.keyRangeStart, keyRangeEnd = ch.keyRangeEnd,
-                    colorHex = ch.colorHex
+                    keyRangeStart = ch.keyRangeStart, keyRangeEnd = ch.keyRangeEnd, colorHex = ch.colorHex
                 )
             }
             val patchesWithCurrentSaved = if (selectedPatchIndex in concert.patches.indices) {
@@ -337,17 +353,17 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             val restoredChannels = if (targetPatch.channelsSnapshot.isNotEmpty()) {
                 targetPatch.channelsSnapshot.map { snap ->
                     ChannelStripState(
-                        id = snap.channelId, sf2Name = snap.sf2Name, sf2Path = snap.sf2Path,
+                        id = snap.channelId, name = snap.name, sf2Name = snap.sf2Name, sf2Path = snap.sf2Path,
                         volume = snap.volume, isMuted = snap.isMuted, isSoloed = snap.isSoloed,
                         keyRangeStart = snap.keyRangeStart, keyRangeEnd = snap.keyRangeEnd,
                         colorHex = snap.colorHex
                     )
                 }
             } else {
-                // Patch has no snapshot yet — start with a single clean channel
+                // Patch has no snapshot yet Ã¢â‚¬â€  start with a single clean channel
                 listOf(
                     ChannelStripState(
-                        id = 1, sf2Name = "Sin Asignar", sf2Path = null,
+                        id = 1, name = "Canal 1", sf2Name = "Sin Asignar", sf2Path = null,
                         volume = 0.8f, isMuted = false, isSoloed = false,
                         keyRangeStart = 0, keyRangeEnd = 127, colorHex = "#00D2FF"
                     )
@@ -380,7 +396,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
         activeConcert?.let { concert ->
             val pitchOffset = (pitchBend.value * 2).toInt()
-            val playedNote = note + pitchOffset + (octaveShift * 12)
+            val playedNote = note + pitchOffset + (octaveShift * 12) + currentPatchTranspose
             val anySolo = concert.channels.any { it.isSoloed }
 
             var noteTriggered = false
@@ -422,7 +438,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             activeNote = if (activeNote == note) null else activeNote
             activeConcert?.let { concert ->
                 val pitchOffset = (pitchBend.value * 2).toInt()
-                val playedNote = note + pitchOffset + (octaveShift * 12)
+                val playedNote = note + pitchOffset + (octaveShift * 12) + currentPatchTranspose
                 val anySolo = concert.channels.any { it.isSoloed }
 
                 concert.channels.forEachIndexed { idx, ch ->
@@ -457,7 +473,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 val anySolo = concert.channels.any { it.isSoloed }
                 
                 notesToRelease.forEach { note ->
-                    val playedNote = note + pitchOffset + (octaveShift * 12)
+                    val playedNote = note + pitchOffset + (octaveShift * 12) + currentPatchTranspose
                     concert.channels.forEachIndexed { idx, ch ->
                         val shouldPlay = if (anySolo) ch.isSoloed else !ch.isMuted
                         if (shouldPlay && playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
@@ -537,7 +553,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 val updatedChannels = concert.channels.toMutableList()
                                 val ch = updatedChannels[target.channelIndex]
                                 updatedChannels[target.channelIndex] = ch.copy(volume = floatValue)
-                                updateChannelsAndPatchSnapshot(updatedChannels)
+                                updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
                             }
                         }
                     }
@@ -548,7 +564,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 val updatedChannels = concert.channels.toMutableList()
                                 val ch = updatedChannels[target.channelIndex]
                                 updatedChannels[target.channelIndex] = ch.copy(isMuted = toggle)
-                                updateChannelsAndPatchSnapshot(updatedChannels)
+                                updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
                             }
                         }
                     }
@@ -559,7 +575,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 val updatedChannels = concert.channels.toMutableList()
                                 val ch = updatedChannels[target.channelIndex]
                                 updatedChannels[target.channelIndex] = ch.copy(isSoloed = toggle)
-                                activeConcert = concert.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
+                                updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
                             }
                         }
                     }
@@ -664,10 +680,10 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         PatchState("Deep Synth Bass", "Synths", 38, "Warm analog bass with low filter cutoff")
                     ),
                     channels = listOf(
-                        ChannelStripState(1, "Piano.sf2", null, 0.8f, false, false, 0, 127, "#00D2FF"),
-                        ChannelStripState(2, "RhodesEP.sf2", null, 0.7f, false, false, 0, 127, "#FFFF8C00"),
-                        ChannelStripState(3, "BassSynth.sf2", null, 0.6f, false, false, 0, 59, "#FF39FF14"),
-                        ChannelStripState(4, "BrassPoly.sf2", null, 0.75f, false, false, 60, 127, "#FFFF0055")
+                        ChannelStripState(1, "Canal 1", "Piano.sf2", null, 0.8f, false, false, 0, 127, "#00D2FF"),
+                        ChannelStripState(2, "Canal 2", "RhodesEP.sf2", null, 0.7f, false, false, 0, 127, "#FFFF8C00"),
+                        ChannelStripState(3, "Canal 3", "BassSynth.sf2", null, 0.6f, false, false, 0, 59, "#FF39FF14"),
+                        ChannelStripState(4, "Canal 4", "BrassPoly.sf2", null, 0.75f, false, false, 60, 127, "#FFFF0055")
                     )
                 ),
                 Concert(
@@ -680,9 +696,9 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         PatchState("Warm Strings Pad", "Strings", 49, "Slow attack pad for jazz ballads")
                     ),
                     channels = listOf(
-                        ChannelStripState(1, "TonewheelOrgan.sf2", null, 0.8f, false, false, 0, 127, "#38BDF8"),
-                        ChannelStripState(2, "VibeMallets.sf2", null, 0.65f, false, false, 0, 127, "#FBBF24"),
-                        ChannelStripState(3, "AmbientStrings.sf2", null, 0.7f, false, false, 0, 127, "#39FF14")
+                        ChannelStripState(1, "Canal 1", "TonewheelOrgan.sf2", null, 0.8f, false, false, 0, 127, "#38BDF8"),
+                        ChannelStripState(2, "Canal 2", "VibeMallets.sf2", null, 0.65f, false, false, 0, 127, "#FBBF24"),
+                        ChannelStripState(3, "Canal 3", "AmbientStrings.sf2", null, 0.7f, false, false, 0, 127, "#39FF14")
                     )
                 )
             )
@@ -783,6 +799,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         newPatchCategory = "Keyboards"
                         newPatchProgram = "0"
                         newPatchDescription = ""
+                        newPatchTranspose = 0
                         showAddPatchDialog = true 
                     },
                     onEditPatchClick = { patch ->
@@ -791,6 +808,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         newPatchCategory = patch.category
                         newPatchProgram = patch.programNumber.toString()
                         newPatchDescription = patch.description
+                        newPatchTranspose = patch.transposeSemitones
                         showAddPatchDialog = true
                     },
                     onDeletePatch = { patch ->
@@ -868,25 +886,26 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         val updatedChannels = concert.channels.map {
                             if (it.id == chId) it.copy(volume = vol) else it
                         }
-                        updateChannelsAndPatchSnapshot(updatedChannels)
+                        updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
                     },
                     onMuteToggle = { chId ->
                         val updatedChannels = concert.channels.map {
                             if (it.id == chId) it.copy(isMuted = !it.isMuted) else it
                         }
-                        updateChannelsAndPatchSnapshot(updatedChannels)
+                        updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
                     },
                     onSoloToggle = { chId ->
                         val updatedChannels = concert.channels.map {
                             if (it.id == chId) it.copy(isSoloed = !it.isSoloed) else it
                         }
-                        updateChannelsAndPatchSnapshot(updatedChannels)
+                        updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
                     },
                     onAddChannelClick = {
                         if (concert.channels.size < 8) {
                             val nextId = (concert.channels.maxOfOrNull { it.id } ?: 0) + 1
                             val newChannel = ChannelStripState(
                                 id = nextId,
+                                name = "Canal $nextId",
                                 sf2Name = "SynthPreset_${nextId}.sf2",
                                 sf2Path = null,
                                 volume = 0.8f,
@@ -993,7 +1012,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         AlertDialog(
             onDismissRequest = { pendingSampleRate = null },
             title = { Text("Cambiar Sample Rate", style = MaterialTheme.typography.titleMedium) },
-            text = { Text("Cambiar la frecuencia de muestreo a $newRate Hz cortará brevemente el audio mientras se reinicia el motor. ¿Deseas continuar?") },
+            text = { Text("Cambiar la frecuencia de muestreo a $newRate Hz cortarÃƒÂ¡ brevemente el audio mientras se reinicia el motor. Ã‚Â¿Deseas continuar?") },
             confirmButton = {
                 TextButton(onClick = {
                     pendingSampleRate = null
@@ -1064,7 +1083,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         PatchState("Default Piano", "Keyboards", 0, "Acoustic Grand Piano")
                                     ),
                                     channels = listOf(
-                                        ChannelStripState(1, "PianoDefault.sf2", null, 0.8f, false, false, 0, 127, "#38BDF8")
+                                        ChannelStripState(1, "Canal 1", "PianoDefault.sf2", null, 0.8f, false, false, 0, 127, "#38BDF8")
                                     )
                                 )
                                 val newList = concerts + newConcert
@@ -1097,7 +1116,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     if (showAddPatchDialog) {
         AlertDialog(
             onDismissRequest = { showAddPatchDialog = false },
-            title = { Text(if (patchToEdit != null) "EDITAR PATCH" else "AÑADIR NUEVO PATCH", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
+            title = { Text(if (patchToEdit != null) "EDITAR PATCH" else "AÃƒâ€˜ADIR NUEVO PATCH", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
             text = {
                 Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                     val tfColors = OutlinedTextFieldDefaults.colors(
@@ -1116,24 +1135,41 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     OutlinedTextField(
                         value = newPatchCategory,
                         onValueChange = { newPatchCategory = it },
-                        label = { Text("Categoría") },
+                        label = { Text("CategorÃƒÂ­a") },
                         colors = tfColors,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
                         value = newPatchProgram,
                         onValueChange = { newPatchProgram = it },
-                        label = { Text("Número de Programa MIDI (0-127)") },
+                        label = { Text("NÃƒÂºmero de Programa MIDI (0-127)") },
                         colors = tfColors,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
                         value = newPatchDescription,
                         onValueChange = { newPatchDescription = it },
-                        label = { Text("Descripción") },
+                        label = { Text("DescripciÃƒÂ³n") },
                         colors = tfColors,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                     )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Transpose (Semitonos):", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { if (newPatchTranspose > -12) newPatchTranspose-- }) {
+                                Text("-", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Text("${if (newPatchTranspose > 0) "+" else ""}$newPatchTranspose", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 8.dp))
+                            IconButton(onClick = { if (newPatchTranspose < 12) newPatchTranspose++ }) {
+                                Text("+", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -1143,11 +1179,12 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         if (active != null && newPatchName.isNotBlank()) {
                             val program = newPatchProgram.toIntOrNull() ?: 0
                             val updatedPatches = if (patchToEdit != null) {
-                                active.patches.map { if (it.id == patchToEdit!!.id) it.copy(name = newPatchName, category = newPatchCategory, programNumber = program, description = newPatchDescription) else it }
+                                active.patches.map { if (it.id == patchToEdit!!.id) it.copy(name = newPatchName, category = newPatchCategory, programNumber = program, description = newPatchDescription, transposeSemitones = newPatchTranspose) else it }
                             } else {
                                 val defaultSnapshot = listOf(
                                     PatchChannelSnapshot(
                                         channelId = 1,
+                                        name = "Canal 1",
                                         sf2Name = "Sin Asignar",
                                         sf2Path = null,
                                         volume = 0.8f,
@@ -1158,7 +1195,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         colorHex = "#38BDF8"
                                     )
                                 )
-                                val newPatch = PatchState(newPatchName, newPatchCategory, program, newPatchDescription, channelsSnapshot = defaultSnapshot)
+                                val newPatch = PatchState(newPatchName, newPatchCategory, program, newPatchDescription, transposeSemitones = newPatchTranspose, channelsSnapshot = defaultSnapshot)
                                 active.patches + newPatch
                             }
                             
@@ -1182,7 +1219,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary, contentColor = MaterialTheme.colorScheme.onTertiary),
                     shape = AppShapes.medium
                 ) {
-                    Text(if (patchToEdit != null) "Guardar" else "Añadir", style = MaterialTheme.typography.labelLarge)
+                    Text(if (patchToEdit != null) "Guardar" else "AÃƒÂ±adir", style = MaterialTheme.typography.labelLarge)
                 }
             },
             dismissButton = {
@@ -1202,6 +1239,22 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             title = { Text("CONFIGURAR CANAL ${chState.id}", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
             text = {
                 Column {
+                    OutlinedTextField(
+                        value = chState.name,
+                        onValueChange = { newValue ->
+                            val active = activeConcert
+                            if (active != null) {
+                                val updatedChannels = active.channels.map {
+                                    if (it.id == chState.id) it.copy(name = newValue) else it
+                                }
+                                updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
+                                showChannelSettingsDialog = activeConcert?.channels?.find { it.id == chState.id }
+                            }
+                        },
+                        label = { Text("Nombre del canal") },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                    )
+
                     Text("SoundFont Actual: ${chState.sf2Name}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 12.dp))
                     
                     if (isLoadingSf2) {
@@ -1381,7 +1434,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         connectedDevices = currentConnectedDevices,
                                         onStartMapping = { target ->
                                             mappingTarget = target
-                                            // [POINT 2 FIX] Real MIDI Learn — listens for the
+                                            // [POINT 2 FIX] Real MIDI Learn Ã¢â‚¬â€ listens for the
                                             // next CC from a physical controller (7-second window)
                                             synth.startMidiLearn(
                                                 target = target,
@@ -1588,7 +1641,7 @@ fun MidiMappingSettingsScreen(
 
         Text("ASIGNACION DE CONTROLADORES MIDI CC (MIDI LEARN)", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Text(
-            "Haz clic en \"Mapear\" al lado del control correspondiente y mueve el potenciómetro o fader de tu teclado físico para enlazarlo.",
+            "Haz clic en \"Mapear\" al lado del control correspondiente y mueve el potenciÃƒÂ³metro o fader de tu teclado fÃƒÂ­sico para enlazarlo.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 8.dp)
@@ -1619,7 +1672,7 @@ fun MidiMappingSettingsScreen(
                 is MidiTarget.FilterCutoff -> "Filtro (Cutoff)"
                 is MidiTarget.ReverbMix -> "Mezcla de Reverb"
                 is MidiTarget.Sustain -> "Pedal Sustain"
-                is MidiTarget.Modulation -> "Rueda de Modulación"
+                is MidiTarget.Modulation -> "Rueda de ModulaciÃƒÂ³n"
                 is MidiTarget.OctaveUp -> "Octava Arriba"
                 is MidiTarget.OctaveDown -> "Octava Abajo"
                 is MidiTarget.NextPatch -> "Siguiente Patch"

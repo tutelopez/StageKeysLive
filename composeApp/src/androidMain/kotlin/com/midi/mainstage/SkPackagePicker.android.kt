@@ -113,6 +113,7 @@ actual fun SkPackagePicker(show: Boolean, onPackageSelected: (Concert?, PatchSta
                             parsedSnaps.add(
                                 PatchChannelSnapshot(
                                     channelId = sObj.getInt("channelId"),
+                                    name = if (sObj.has("name")) sObj.getString("name") else "Canal ${sObj.getInt("channelId")} ",
                                     sf2Name = sObj.getString("sf2Name"),
                                     sf2Path = absPath,
                                     volume = sObj.getDouble("volume").toFloat(),

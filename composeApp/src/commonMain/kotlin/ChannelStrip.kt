@@ -64,7 +64,7 @@ fun ChannelStripItem(
             )
 
             Text(
-                text = state.sf2Name.substringBefore(".sf2").take(7).uppercase(),
+                text = state.name.take(9).uppercase(),
                 color = accentColor.copy(alpha = 0.9f),
                 fontSize = 7.sp,
                 fontWeight = FontWeight.Bold,
@@ -110,6 +110,17 @@ fun ChannelStripItem(
             color = Color(0xFF5A5A7A),
             fontSize = 8.sp,
             textAlign = TextAlign.Center
+        )
+
+        // ── Loaded Patch Name ────────────────────────────────────
+        Text(
+            text = state.sf2Name.substringBefore(".sf2").take(10),
+            color = Color(0xFF8A8A9A),
+            fontSize = 7.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(bottom = 2.dp)
         )
 
         // ── Mute / Solo ──────────────────────────────────────────
