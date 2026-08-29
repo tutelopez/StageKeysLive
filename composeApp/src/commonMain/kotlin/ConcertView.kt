@@ -57,6 +57,7 @@ fun ConcertViewScreen(
     metronomeBpm: Int,
     onBpmChange: (Int) -> Unit,
     onBpmChangeFinished: () -> Unit,
+    onTapTempo: () -> Unit,
     metronomeVolume: Float,
     onMetronomeVolumeChange: (Float) -> Unit,
     metronomeTick: Boolean,
@@ -129,6 +130,7 @@ fun ConcertViewScreen(
                 metronomeBpm = metronomeBpm,
                 onBpmChange = onBpmChange,
                 onBpmChangeFinished = onBpmChangeFinished,
+                onTapTempo = onTapTempo,
                 isRecording = isRecording,
                 onRecordToggle = onRecordToggle,
                 isPlayingRecording = isPlayingRecording,
@@ -271,6 +273,7 @@ private fun TopBar(
     metronomeBpm: Int,
     onBpmChange: (Int) -> Unit,
     onBpmChangeFinished: () -> Unit,
+    onTapTempo: () -> Unit,
     isRecording: Boolean,
     onRecordToggle: () -> Unit,
     isPlayingRecording: Boolean,
@@ -404,29 +407,56 @@ private fun TopBar(
             Spacer(Modifier.width(6.dp))
 
             // Metronome button
+            var showMetroPopup by remember { mutableStateOf(false) }
+            Box {
+                PillButton(
+                    label = if (metronomeOn) "$metronomeBpm BPM" else "METRO",
+                    active = metronomeOn,
+                    activeColor = Color(0xFF39FF14),
+                    onClick = onMetronomeToggle,
+                    onLongClick = { showMetroPopup = true }
+                )
+                
+                DropdownMenu(
+                    expanded = showMetroPopup,
+                    onDismissRequest = { showMetroPopup = false },
+                    modifier = Modifier.background(Color(0xFF1A1A26))
+                ) {
+                    Slider(
+                        value = metronomeBpm.toFloat(),
+                        onValueChange = { onBpmChange(it.toInt()) },
+                        onValueChangeFinished = onBpmChangeFinished,
+                        valueRange = 40f..240f,
+                        modifier = Modifier.width(150.dp).padding(horizontal = 16.dp),
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color(0xFF39FF14),
+                            activeTrackColor = Color(0xFF39FF14),
+                            inactiveTrackColor = Color(0xFF2A2A3A)
+                        )
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(6.dp))
+
+            // Tap Tempo button
+            var tapPulse by remember { mutableStateOf(false) }
+            LaunchedEffect(tapPulse) {
+                if (tapPulse) {
+                    delay(150)
+                    tapPulse = false
+                }
+            }
             PillButton(
-                label = if (metronomeOn) "$metronomeBpm BPM" else "METRO",
-                active = metronomeOn,
-                activeColor = Color(0xFF39FF14),
-                onClick = onMetronomeToggle
+                label = "TAP",
+                active = tapPulse,
+                activeColor = Color(0xFF38BDF8),
+                onClick = { 
+                    tapPulse = true
+                    onTapTempo() 
+                }
             )
 
-            // BPM Slider (only when metronome on)
-            if (metronomeOn) {
-                Spacer(Modifier.width(6.dp))
-                Slider(
-                    value = metronomeBpm.toFloat(),
-                    onValueChange = { onBpmChange(it.toInt()) },
-                    onValueChangeFinished = onBpmChangeFinished,
-                    valueRange = 40f..240f,
-                    modifier = Modifier.width(72.dp),
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFF39FF14),
-                        activeTrackColor = Color(0xFF39FF14),
-                        inactiveTrackColor = Color(0xFF2A2A3A)
-                    )
-                )
-            }
 
             Spacer(Modifier.width(8.dp))
 
@@ -470,19 +500,24 @@ private fun PillButton(
     label: String,
     active: Boolean,
     activeColor: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
 ) {
     val bgColor = if (active) activeColor.copy(alpha = 0.18f) else Color(0xFF252535)
     val borderColor = if (active) activeColor else Color(0xFF353548)
     val textColor = if (active) activeColor else Color(0xFF8080A0)
 
+    @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
     Box(
         modifier = Modifier
             .height(28.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(bgColor)
             .border(1.dp, borderColor, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .padding(horizontal = 10.dp),
         contentAlignment = Alignment.Center
     ) {

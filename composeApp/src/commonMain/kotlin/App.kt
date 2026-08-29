@@ -180,6 +180,28 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var metronomeBpm by remember { mutableStateOf(120) }
     var metronomeBpmEffective by remember { mutableStateOf(120) }
     var metronomeVolume by remember { mutableStateOf(0.7f) }
+    val tapTimestamps = remember { androidx.compose.runtime.mutableStateListOf<Long>() }
+
+    val onTapTempo = {
+        val now = System.currentTimeMillis()
+        if (tapTimestamps.isNotEmpty() && now - tapTimestamps.last() > 2000) {
+            tapTimestamps.clear()
+        }
+        tapTimestamps.add(now)
+        if (tapTimestamps.size > 8) {
+            tapTimestamps.removeAt(0)
+        }
+        if (tapTimestamps.size >= 2) {
+            val intervals = tapTimestamps.zipWithNext { a, b -> b - a }
+            val avgInterval = intervals.average()
+            if (avgInterval > 0) {
+                var bpm = (60000 / avgInterval).toInt()
+                bpm = bpm.coerceIn(40, 240)
+                metronomeBpm = bpm
+                metronomeBpmEffective = bpm
+            }
+        }
+    }
 
     // Continuous Pad Engine State
     var padEnabled by remember { mutableStateOf(false) }
@@ -805,6 +827,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     metronomeBpm = metronomeBpm,
                     onBpmChange = { metronomeBpm = it },
                     onBpmChangeFinished = { metronomeBpmEffective = metronomeBpm },
+                    onTapTempo = onTapTempo,
                     metronomeVolume = metronomeVolume,
                     onMetronomeVolumeChange = { metronomeVolume = it },
                     metronomeTick = metronomeTickLight,
