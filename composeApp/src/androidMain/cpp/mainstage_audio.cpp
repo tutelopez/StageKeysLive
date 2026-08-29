@@ -5,10 +5,12 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include <vector>
 
 #define LOG_TAG "StageKeysAudio"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN,  LOG_TAG, __VA_ARGS__)
 
 #include <fluidsynth.h>
 #include <android/asset_manager_jni.h>
@@ -26,8 +28,10 @@ private:
     std::map<int, int> sfidRefCount;
 
     int activeNotes[16]; 
-    int physicalActive[16]; 
-    int physicalShadow[16];
+    int physicalActive[8]; 
+    std::vector<int> shadowChannelsOf[8];
+    bool physicalInUse[16];
+    long long shadowTimestamp[16];
     float masterVolume = 0.8f;
     float reverbMix = 0.3f;
     float filterCutoff = 0.5f;
@@ -43,8 +47,12 @@ public:
             sfids[i] = -1;
             currentPrograms[i] = 0;
             activeNotes[i] = 0;
+            physicalInUse[i] = false;
+            shadowTimestamp[i] = 0;
+        }
+        for (int i = 0; i < 8; i++) {
             physicalActive[i] = i; // Map logical channel i to physical channel i initially
-            physicalShadow[i] = -1;
+            physicalInUse[i] = true;
         }
     }
 
@@ -135,24 +143,82 @@ public:
             
             // Ping-pong if there are active notes on current physical channel
             if (activeNotes[oldPhys] > 0) {
-                targetPhys = (oldPhys < 8) ? (oldPhys + 8) : (oldPhys - 8);
-                // If target is busy, force kill it
-                if (activeNotes[targetPhys] > 0) {
-                    fluid_synth_all_sounds_off(fluidSynth, targetPhys);
-                    activeNotes[targetPhys] = 0;
+                targetPhys = -1;
+                
+                // 1. Search for a free physical channel
+                for (int i = 0; i < 16; i++) {
+                    if (!physicalInUse[i]) {
+                        targetPhys = i;
+                        break;
+                    }
                 }
                 
-                physicalShadow[logicalChannel] = oldPhys;
+                // 2. If no free channel, evict the oldest shadow
+                if (targetPhys == -1) {
+                    long long oldestTime = -1;
+                    int oldestPhys = -1;
+                    int oldestLogicalOwner = -1;
+                    
+                    for (int l = 0; l < 8; l++) {
+                        for (int s : shadowChannelsOf[l]) {
+                            if (oldestTime == -1 || shadowTimestamp[s] < oldestTime) {
+                                oldestTime = shadowTimestamp[s];
+                                oldestPhys = s;
+                                oldestLogicalOwner = l;
+                            }
+                        }
+                    }
+                    
+                    if (oldestPhys != -1) {
+                        LOGW("FluidSynth: Canales físicos agotados. Cortando sombra %d del lógico %d", oldestPhys, oldestLogicalOwner);
+                        fluid_synth_all_sounds_off(fluidSynth, oldestPhys);
+                        activeNotes[oldestPhys] = 0;
+                        targetPhys = oldestPhys;
+                        
+                        // Remove from its logical owner's shadow list
+                        auto& list = shadowChannelsOf[oldestLogicalOwner];
+                        for (auto it = list.begin(); it != list.end(); ++it) {
+                            if (*it == oldestPhys) {
+                                list.erase(it);
+                                break;
+                            }
+                        }
+                    } else {
+                        // Extreme fallback if there are no shadows at all, just active channels
+                        targetPhys = (oldPhys < 8) ? (oldPhys + 8) : (oldPhys - 8);
+                        fluid_synth_all_sounds_off(fluidSynth, targetPhys);
+                        activeNotes[targetPhys] = 0;
+                    }
+                }
+                
+                // Register the old physical channel as a shadow
+                shadowChannelsOf[logicalChannel].push_back(oldPhys);
+                auto now = std::chrono::steady_clock::now().time_since_epoch();
+                shadowTimestamp[oldPhys] = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
+                
                 physicalActive[logicalChannel] = targetPhys;
+                physicalInUse[targetPhys] = true;
                 
                 // Spawn deferred cleanup thread for the old physical channel
                 std::thread([this, logicalChannel, oldPhys]() {
                     std::this_thread::sleep_for(std::chrono::seconds(8));
                     std::lock_guard<std::mutex> lock(synthMutex);
-                    if (physicalShadow[logicalChannel] == oldPhys) {
+                    
+                    // Check if it's still in the shadow list for this logical channel
+                    bool stillShadow = false;
+                    auto& list = shadowChannelsOf[logicalChannel];
+                    for (auto it = list.begin(); it != list.end(); ++it) {
+                        if (*it == oldPhys) {
+                            list.erase(it);
+                            stillShadow = true;
+                            break;
+                        }
+                    }
+                    
+                    if (stillShadow) {
                         fluid_synth_all_sounds_off(fluidSynth, oldPhys);
                         activeNotes[oldPhys] = 0;
-                        physicalShadow[logicalChannel] = -1;
+                        physicalInUse[oldPhys] = false;
                         
                         int sfidToRelease = sfids[oldPhys];
                         if (sfidToRelease != -1) {
@@ -227,8 +293,7 @@ public:
             fluid_synth_noteoff(fluidSynth, activePhys, note);
             if (activeNotes[activePhys] > 0) activeNotes[activePhys]--;
             
-            int shadowPhys = physicalShadow[logicalChannel];
-            if (shadowPhys != -1) {
+            for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
                 fluid_synth_noteoff(fluidSynth, shadowPhys, note);
                 if (activeNotes[shadowPhys] > 0) activeNotes[shadowPhys]--;
             }
@@ -247,8 +312,8 @@ public:
         std::lock_guard<std::mutex> lock(synthMutex);
         if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
              fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 7, (int)(volume * 127.0f));
-             if (physicalShadow[logicalChannel] != -1) {
-                 fluid_synth_cc(fluidSynth, physicalShadow[logicalChannel], 7, (int)(volume * 127.0f));
+             for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
+                 fluid_synth_cc(fluidSynth, shadowPhys, 7, (int)(volume * 127.0f));
              }
         }
     }
@@ -269,8 +334,8 @@ public:
         filterCutoff = cutoff;
         if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
             fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 74, (int)(cutoff * 127.0f));
-            if (physicalShadow[logicalChannel] != -1) {
-                 fluid_synth_cc(fluidSynth, physicalShadow[logicalChannel], 74, (int)(cutoff * 127.0f));
+            for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
+                 fluid_synth_cc(fluidSynth, shadowPhys, 74, (int)(cutoff * 127.0f));
             }
         }
     }
@@ -301,8 +366,8 @@ public:
         std::lock_guard<std::mutex> lock(synthMutex);
         if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
             fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 1, (int)(value * 127.0f));
-            if (physicalShadow[logicalChannel] != -1) {
-                 fluid_synth_cc(fluidSynth, physicalShadow[logicalChannel], 1, (int)(value * 127.0f));
+            for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
+                 fluid_synth_cc(fluidSynth, shadowPhys, 1, (int)(value * 127.0f));
             }
         }
     }
