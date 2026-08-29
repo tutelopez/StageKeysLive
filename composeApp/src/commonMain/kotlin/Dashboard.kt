@@ -36,10 +36,10 @@ fun DashboardScreen(
     // Saludo dinÃ¡mico segÃºn hora del dÃ­a usando expect/actual (100% nativo)
     val greeting = remember {
         when (getCurrentHourOfDay()) {
-            in 5..11  -> "Buenos dÃ­as, hora de tocar ðŸŒ…"
-            in 12..18 -> "Buenas tardes, hora de tocar ðŸŽ¹"
-            in 19..23 -> "Buenas noches, hora de tocar ðŸŒ™"
-            else      -> "Hora de tocar ðŸŽ¹"  // 0â€“4 AM
+            in 5..11  -> "Buenos días, hora de tocar 🌄"
+            in 12..18 -> "Buenas tardes, hora de tocar 🎹"
+            in 19..23 -> "Buenas noches, hora de tocar 🌙"
+            else      -> "Hora de tocar 🎹" // 0â€“4 AM
         }
     }
 
@@ -156,7 +156,7 @@ fun DashboardScreen(
                 ) {
                     Icon(TablerIcons.PlayerPlay, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Abrir Ãºltimo", fontWeight = FontWeight.Bold)
+                    Text("Abrir Último", fontWeight = FontWeight.Bold)
                 }
                 
                 Button(

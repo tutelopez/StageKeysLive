@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -104,6 +105,10 @@ fun ConcertViewScreen(
     val scrollState = rememberScrollState()
 
     // Use BoxWithConstraints to detect screen width (KMP-safe, no LocalConfiguration needed)
+    // Tablets (>=600dp) start expanded; phones start collapsed to maximize mixer space
+    var isKeyboardVisible by rememberSaveable { mutableStateOf(true) }
+
+    // Use BoxWithConstraints to detect screen width (KMP-safe, no LocalConfiguration needed)
     androidx.compose.foundation.layout.BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -113,8 +118,9 @@ fun ConcertViewScreen(
                 )
             )
     ) {
-    // Tablets (>=600dp) start expanded; phones start collapsed to maximize mixer space
-    var isKeyboardVisible by remember { mutableStateOf(maxWidth >= 600.dp) }
+        LaunchedEffect(Unit) {
+            isKeyboardVisible = maxWidth >= 600.dp
+        }
 
         Column(
             modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
