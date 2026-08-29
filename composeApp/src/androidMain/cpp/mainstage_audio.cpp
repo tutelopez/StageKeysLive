@@ -1,6 +1,10 @@
 #include <jni.h>
 #include <android/log.h>
 #include <mutex>
+#include <map>
+#include <string>
+#include <thread>
+#include <chrono>
 
 #define LOG_TAG "StageKeysAudio"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
@@ -17,6 +21,13 @@ private:
     // Internal synth settings per channel
     int sfids[16];
     int currentPrograms[16];
+    
+    std::map<std::string, int> loadedSfPaths;
+    std::map<int, int> sfidRefCount;
+
+    int activeNotes[16]; 
+    int physicalActive[16]; 
+    int physicalShadow[16];
     float masterVolume = 0.8f;
     float reverbMix = 0.3f;
     float filterCutoff = 0.5f;
@@ -31,6 +42,9 @@ public:
         for (int i = 0; i < 16; i++) {
             sfids[i] = -1;
             currentPrograms[i] = 0;
+            activeNotes[i] = 0;
+            physicalActive[i] = i; // Map logical channel i to physical channel i initially
+            physicalShadow[i] = -1;
         }
     }
 
@@ -106,39 +120,118 @@ public:
         }
     }
 
-    bool loadSoundFont(const char* sf2Path, int channel) {
-        std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
-            LOGI("FluidSynth: loading SF2 from path: %s for channel: %d", sf2Path, channel);
-            if (sfids[channel] != -1) {
-                fluid_synth_sfunload(fluidSynth, sfids[channel], 0);
-                sfids[channel] = -1;
+    bool loadSoundFont(const char* sf2Path, int logicalChannel) {
+        std::string path(sf2Path);
+        int newSfid = -1;
+        int targetPhys = -1;
+
+        {
+            std::lock_guard<std::mutex> lock(synthMutex);
+            if (fluidSynth == nullptr || logicalChannel < 0 || logicalChannel > 7) {
+                return false;
             }
-            sfids[channel] = fluid_synth_sfload(fluidSynth, sf2Path, 0);
-            if (sfids[channel] != -1) {
-                LOGI("FluidSynth: SF2 loaded OK — sfid=%d for channel=%d", sfids[channel], channel);
-                // Program select bank 0, program 0 on this channel
-                fluid_synth_program_select(fluidSynth, channel, sfids[channel], 0, currentPrograms[channel]);
-                return true;
+            
+            int oldPhys = physicalActive[logicalChannel];
+            
+            // Ping-pong if there are active notes on current physical channel
+            if (activeNotes[oldPhys] > 0) {
+                targetPhys = (oldPhys < 8) ? (oldPhys + 8) : (oldPhys - 8);
+                // If target is busy, force kill it
+                if (activeNotes[targetPhys] > 0) {
+                    fluid_synth_all_sounds_off(fluidSynth, targetPhys);
+                    activeNotes[targetPhys] = 0;
+                }
+                
+                physicalShadow[logicalChannel] = oldPhys;
+                physicalActive[logicalChannel] = targetPhys;
+                
+                // Spawn deferred cleanup thread for the old physical channel
+                std::thread([this, logicalChannel, oldPhys]() {
+                    std::this_thread::sleep_for(std::chrono::seconds(8));
+                    std::lock_guard<std::mutex> lock(synthMutex);
+                    if (physicalShadow[logicalChannel] == oldPhys) {
+                        fluid_synth_all_sounds_off(fluidSynth, oldPhys);
+                        activeNotes[oldPhys] = 0;
+                        physicalShadow[logicalChannel] = -1;
+                        
+                        int sfidToRelease = sfids[oldPhys];
+                        if (sfidToRelease != -1) {
+                            sfidRefCount[sfidToRelease]--;
+                            if (sfidRefCount[sfidToRelease] <= 0) {
+                                fluid_synth_sfunload(fluidSynth, sfidToRelease, 0);
+                                sfidRefCount.erase(sfidToRelease);
+                                for (auto it = loadedSfPaths.begin(); it != loadedSfPaths.end(); ) {
+                                    if (it->second == sfidToRelease) it = loadedSfPaths.erase(it);
+                                    else ++it;
+                                }
+                            }
+                            sfids[oldPhys] = -1;
+                        }
+                    }
+                }).detach();
+            } else {
+                targetPhys = oldPhys;
+            }
+
+            int oldTargetSfid = sfids[targetPhys];
+            
+            if (loadedSfPaths.find(path) != loadedSfPaths.end()) {
+                newSfid = loadedSfPaths[path];
+                LOGI("FluidSynth: Reusing sfid %d for %s on channel %d", newSfid, sf2Path, targetPhys);
+            } else {
+                newSfid = fluid_synth_sfload(fluidSynth, sf2Path, 0);
+                if (newSfid != -1) {
+                    loadedSfPaths[path] = newSfid;
+                    sfidRefCount[newSfid] = 0;
+                    LOGI("FluidSynth: Loaded new SF2 - sfid=%d for path=%s", newSfid, sf2Path);
+                }
+            }
+
+            if (newSfid != -1) {
+                sfids[targetPhys] = newSfid;
+                sfidRefCount[newSfid]++;
+                fluid_synth_program_select(fluidSynth, targetPhys, newSfid, 0, currentPrograms[logicalChannel]);
             } else {
                 LOGE("FluidSynth: fluid_synth_sfload FAILED for path: %s", sf2Path);
                 return false;
             }
+
+            if (oldTargetSfid != -1 && oldTargetSfid != newSfid) {
+                sfidRefCount[oldTargetSfid]--;
+                if (sfidRefCount[oldTargetSfid] <= 0) {
+                    fluid_synth_sfunload(fluidSynth, oldTargetSfid, 0);
+                    sfidRefCount.erase(oldTargetSfid);
+                    for (auto it = loadedSfPaths.begin(); it != loadedSfPaths.end(); ) {
+                        if (it->second == oldTargetSfid) it = loadedSfPaths.erase(it);
+                        else ++it;
+                    }
+                }
+            }
         }
-        return false;
+        return newSfid != -1;
     }
 
-    void noteOn(int note, int velocity, int channel) {
+    void noteOn(int note, int velocity, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
-            fluid_synth_noteon(fluidSynth, channel, note, velocity);
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+            int targetPhys = physicalActive[logicalChannel];
+            fluid_synth_noteon(fluidSynth, targetPhys, note, velocity);
+            activeNotes[targetPhys]++;
         }
     }
 
-    void noteOff(int note, int channel) {
+    void noteOff(int note, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
-            fluid_synth_noteoff(fluidSynth, channel, note);
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+            int activePhys = physicalActive[logicalChannel];
+            fluid_synth_noteoff(fluidSynth, activePhys, note);
+            if (activeNotes[activePhys] > 0) activeNotes[activePhys]--;
+            
+            int shadowPhys = physicalShadow[logicalChannel];
+            if (shadowPhys != -1) {
+                fluid_synth_noteoff(fluidSynth, shadowPhys, note);
+                if (activeNotes[shadowPhys] > 0) activeNotes[shadowPhys]--;
+            }
         }
     }
 
@@ -150,10 +243,13 @@ public:
         }
     }
     
-    void setChannelVolume(float volume, int channel) {
+    void setChannelVolume(float volume, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
-             fluid_synth_cc(fluidSynth, channel, 7, (int)(volume * 127.0f));
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+             fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 7, (int)(volume * 127.0f));
+             if (physicalShadow[logicalChannel] != -1) {
+                 fluid_synth_cc(fluidSynth, physicalShadow[logicalChannel], 7, (int)(volume * 127.0f));
+             }
         }
     }
 
@@ -168,20 +264,24 @@ public:
         }
     }
 
-    void setFilterCutoff(float cutoff, int channel) {
+    void setFilterCutoff(float cutoff, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        filterCutoff = cutoff; // We can track per channel if needed, global variable for now
-        if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
-            fluid_synth_cc(fluidSynth, channel, 74, (int)(cutoff * 127.0f));
+        filterCutoff = cutoff;
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+            fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 74, (int)(cutoff * 127.0f));
+            if (physicalShadow[logicalChannel] != -1) {
+                 fluid_synth_cc(fluidSynth, physicalShadow[logicalChannel], 74, (int)(cutoff * 127.0f));
+            }
         }
     }
 
-    void setPatch(int programNumber, int channel) {
+    void setPatch(int programNumber, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (channel >= 0 && channel < 16) {
-            currentPrograms[channel] = programNumber;
-            if (fluidSynth != nullptr && sfids[channel] != -1) {
-                fluid_synth_program_select(fluidSynth, channel, sfids[channel], 0, programNumber);
+        if (logicalChannel >= 0 && logicalChannel < 8) {
+            currentPrograms[logicalChannel] = programNumber;
+            int targetPhys = physicalActive[logicalChannel];
+            if (fluidSynth != nullptr && sfids[targetPhys] != -1) {
+                fluid_synth_program_select(fluidSynth, targetPhys, sfids[targetPhys], 0, programNumber);
             }
         }
     }
@@ -192,14 +292,18 @@ public:
             for (int i = 0; i < 16; ++i) {
                 fluid_synth_all_notes_off(fluidSynth, i);
                 fluid_synth_all_sounds_off(fluidSynth, i);
+                activeNotes[i] = 0;
             }
         }
     }
 
-    void setModulation(float value, int channel) {
+    void setModulation(float value, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr && channel >= 0 && channel < 16) {
-            fluid_synth_cc(fluidSynth, channel, 1, (int)(value * 127.0f));
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+            fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 1, (int)(value * 127.0f));
+            if (physicalShadow[logicalChannel] != -1) {
+                 fluid_synth_cc(fluidSynth, physicalShadow[logicalChannel], 1, (int)(value * 127.0f));
+            }
         }
     }
 

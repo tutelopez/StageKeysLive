@@ -313,11 +313,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     val applyPatch = { patchIndex: Int ->
         val concert = activeConcert
         if (concert != null && patchIndex in concert.patches.indices) {
-            synth.allNotesOff()
-            heldKeys.clear()
-            sustainedKeys.clear()
-            activeNote = null
-
+            // WE DO NOT CALL allNotesOff() HERE so that active notes can keep sounding on their old channels (ping-pong shadow channels)
+            
             // --- Step 1: Persist the CURRENT patch's live channels into its own snapshot ---
             // This ensures that any unsaved edits to the current patch are not lost when switching.
             val currentLiveChannels = concert.channels
