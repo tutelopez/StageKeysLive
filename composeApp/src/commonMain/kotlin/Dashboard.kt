@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
 @Composable
@@ -32,31 +33,57 @@ fun DashboardScreen(
     onImportClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
-    // Saludo dinÃƒÂ¡mico segÃƒÂºn hora del dÃƒÂ­a usando expect/actual (100% nativo)
+    // Saludo dinÃ¡mico segÃºn hora del dÃ­a usando expect/actual (100% nativo)
     val greeting = remember {
         when (getCurrentHourOfDay()) {
-            in 5..11  -> "Buenos dÃƒÂ­as, hora de tocar Ã°Å¸Å’â€¦"
-            in 12..18 -> "Buenas tardes, hora de tocar Ã°Å¸Å½Â¹"
-            in 19..23 -> "Buenas noches, hora de tocar Ã°Å¸Å’â„¢"
-            else      -> "Hora de tocar Ã°Å¸Å½Â¹"  // 0Ã¢â‚¬â€œ4 AM
+            in 5..11  -> "Buenos dÃ­as, hora de tocar ðŸŒ…"
+            in 12..18 -> "Buenas tardes, hora de tocar ðŸŽ¹"
+            in 19..23 -> "Buenas noches, hora de tocar ðŸŒ™"
+            else      -> "Hora de tocar ðŸŽ¹"  // 0â€“4 AM
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0.0f to DarkBackground,
-                        0.45f to DarkPanel,
-                        1.0f to SurfaceElevated
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        val density = LocalDensity.current
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to DashboardGradientTop,
+                            0.5f to DashboardGradientMid,
+                            1.0f to DashboardGradientBottom
+                        )
                     )
                 )
-            )
-            .padding(32.dp)
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)) {
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(AccentPurple.copy(alpha = 0.16f), Color.Transparent),
+                        center = with(density) { Offset(maxWidth.toPx() * 0.12f, maxHeight.toPx() * 0.08f) },
+                        radius = with(density) { maxWidth.toPx() * 0.55f }
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(AccentSky.copy(alpha = 0.14f), Color.Transparent),
+                        center = with(density) { Offset(maxWidth.toPx() * 0.88f, maxHeight.toPx() * 0.92f) },
+                        radius = with(density) { maxWidth.toPx() * 0.6f }
+                    )
+                )
+        )
+
+        Column(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(32.dp)) {
             // Header
             Column(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 36.dp)
@@ -96,7 +123,7 @@ fun DashboardScreen(
                         Icon(TablerIcons.Settings, contentDescription = "Ajustes", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                // Dynamic greeting Ã¢â‚¬â€ primary hierarchy
+                // Dynamic greeting â€” primary hierarchy
                 Text(
                     text = greeting,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -129,7 +156,7 @@ fun DashboardScreen(
                 ) {
                     Icon(TablerIcons.PlayerPlay, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Abrir ÃƒÅ¡ltimo", fontWeight = FontWeight.Bold)
+                    Text("Abrir Ãºltimo", fontWeight = FontWeight.Bold)
                 }
                 
                 Button(

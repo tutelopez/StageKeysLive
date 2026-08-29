@@ -23,6 +23,11 @@ val DarkPanel        = Color(0xFF181824)
 val SurfaceElevated  = Color(0xFF1E1E2C) // Replaces #1E1E2C, #141420, #0C0C14, #12121E, #0E0E18, #1A1424, #110E1A, #161A16, #101410, #1A1A28, #1A1A26
 val LightPanel       = Color(0xFF252535)
 val OutlineVariant   = Color(0xFF2A2A3A)
+
+val DashboardGradientTop    = Color(0xFF0A0B10)
+val DashboardGradientMid    = Color(0xFF0D1220)
+val DashboardGradientBottom = Color(0xFF101B33)
+
 val TextLight        = Color(0xFFFFFFFF)
 val TextDark         = Color(0xFF9090B0)
 
