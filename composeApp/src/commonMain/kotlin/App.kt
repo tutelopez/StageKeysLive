@@ -124,6 +124,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
     // Dialog flags
     var showCreateConcertDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf<Concert?>(null) }
     var concertToEdit by remember { mutableStateOf<Concert?>(null) }
     var newConcertName by remember { mutableStateOf("") }
     
@@ -764,12 +765,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     currentScreen = ScreenState.CONCERT
                 },
                 onDeleteConcert = { concert ->
-                    val newList = concerts.filter { it.id != concert.id }
-                    saveConcertsList(newList)
-                    if (activeConcert?.id == concert.id) {
-                        stopConcert()
-                        activeConcert = null
-                    }
+                    showDeleteConfirmDialog = concert
                 },
                 onExportConcertClick = { concertToExport = it },
                 onImportClick = { showPackagePicker = true },
@@ -1233,13 +1229,67 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         )
     }
 
+    // Delete Concert Confirmation Dialog
+    showDeleteConfirmDialog?.let { concert ->
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = null },
+            title = {
+                Text(
+                    "¿Eliminar concierto?",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    "¿Estás seguro de que deseas eliminar \"${concert.name}\"? Esta acción no se puede deshacer.",
+                    color = TextDark,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val newList = concerts.filter { it.id != concert.id }
+                        saveConcertsList(newList)
+                        if (activeConcert?.id == concert.id) {
+                            stopConcert()
+                            activeConcert = null
+                        }
+                        showDeleteConfirmDialog = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = StatusError,
+                        contentColor = Color.White
+                    ),
+                    shape = AppShapes.medium
+                ) {
+                    Text("Eliminar", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = null }) {
+                    Text("Cancelar", color = TextDark)
+                }
+            },
+            containerColor = DarkPanel,
+            shape = AppShapes.large
+        )
+    }
+
     // 3. Channel Settings Dialog (Gear Menu on Channel Strip)
     showChannelSettingsDialog?.let { chState ->
         AlertDialog(
             onDismissRequest = { showChannelSettingsDialog = null },
             title = { Text("CONFIGURAR CANAL ${chState.id}", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
             text = {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 480.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
                     OutlinedTextField(
                         value = chState.name,
                         onValueChange = { newValue ->
@@ -1366,7 +1416,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "GEAR DE CONFIGURACION GLOBAL",
+                            text = "Configuración de Concierto y Patches",
                             color = TextLight,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
