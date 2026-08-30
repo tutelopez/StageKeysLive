@@ -207,6 +207,7 @@ fun ConcertViewScreen(
                 activePadNote = activePadNote,
                 onPadNoteToggle = onPadNoteToggle
             )
+        } // End scrollable column
             
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -264,7 +265,6 @@ fun ConcertViewScreen(
                     coroutineScope = coroutineScope
                 )
             }
-        } // End scrollable column
     } // End Column inside BoxWithConstraints
     } // End BoxWithConstraints
 }
