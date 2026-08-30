@@ -1,5 +1,15 @@
 package com.midi.mainstage
 
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.background
+
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -146,4 +156,53 @@ fun StageKeysTheme(content: @Composable () -> Unit) {
         shapes      = AppShapes,
         content     = content
     )
+}
+
+
+
+@Composable
+fun AppBackground(
+    modifier: Modifier = Modifier,
+    glowOpacityFactor: Float = 1.0f,
+    content: @Composable BoxScope.() -> Unit
+) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to DashboardGradientTop,
+                            0.5f to DashboardGradientMid,
+                            1.0f to DashboardGradientBottom
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(AccentPurple.copy(alpha = 0.16f * glowOpacityFactor), Color.Transparent),
+                        center = with(density) { Offset(maxWidth.toPx() * 0.12f, maxHeight.toPx() * 0.08f) },
+                        radius = with(density) { maxWidth.toPx() * 0.55f }
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(AccentSky.copy(alpha = 0.14f * glowOpacityFactor), Color.Transparent),
+                        center = with(density) { Offset(maxWidth.toPx() * 0.88f, maxHeight.toPx() * 0.92f) },
+                        radius = with(density) { maxWidth.toPx() * 0.6f }
+                    )
+                )
+        )
+        content()
+    }
 }

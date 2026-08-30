@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.text.font.*
 import androidx.compose.ui.text.style.TextAlign
@@ -31,6 +32,12 @@ fun ChannelStripItem(
         modifier = Modifier
             .width(80.dp)
             .fillMaxHeight()
+            .shadow(
+                elevation = 8.dp, 
+                shape = RoundedCornerShape(14.dp), 
+                ambientColor = accentColor.copy(alpha = 0.35f), 
+                spotColor = accentColor.copy(alpha = 0.45f)
+            )
             .clip(RoundedCornerShape(14.dp))
             .background(
                 Brush.verticalGradient(
@@ -39,9 +46,7 @@ fun ChannelStripItem(
             )
             .border(
                 width = 1.dp,
-                brush = Brush.verticalGradient(
-                    listOf(accentColor.copy(alpha = 0.4f), LightPanel)
-                ),
+                color = accentColor.copy(alpha = 0.55f),
                 shape = RoundedCornerShape(14.dp)
             )
             .padding(horizontal = 5.dp, vertical = 6.dp),
@@ -157,9 +162,15 @@ private fun MuteSoloButton(
     Box(
         modifier = modifier
             .height(20.dp)
+            .shadow(
+                elevation = if (active) 6.dp else 0.dp,
+                shape = RoundedCornerShape(4.dp),
+                ambientColor = if (active) activeColor else Color.Transparent,
+                spotColor = if (active) activeColor else Color.Transparent
+            )
             .clip(RoundedCornerShape(4.dp))
             .background(
-                if (active) activeColor.copy(alpha = 0.2f) else SurfaceElevated
+                if (active) activeColor.copy(alpha = 0.85f) else SurfaceElevated
             )
             .border(
                 1.dp,
@@ -171,7 +182,7 @@ private fun MuteSoloButton(
     ) {
         Text(
             label,
-            color = if (active) activeColor else TextDark,
+            color = if (active) Color.White else TextDark,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold
         )

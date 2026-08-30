@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.input.pointer.pointerInput
@@ -49,7 +50,7 @@ fun VolumeFader(
                 .clip(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
                 .background(
                     Brush.verticalGradient(
-                        listOf(accentColor.copy(alpha = 0.5f), accentColor.copy(alpha = 0.1f))
+                        listOf(accentColor.copy(alpha = 1.0f), accentColor.copy(alpha = 0.55f))
                     )
                 )
         )
@@ -80,13 +81,10 @@ fun VolumeFader(
                 .height(handleHeight)
                 .align(Alignment.TopCenter)
                 .offset(y = handleOffset)
+                .shadow(elevation = 6.dp, shape = RoundedCornerShape(4.dp), ambientColor = accentColor, spotColor = accentColor)
                 .clip(RoundedCornerShape(4.dp))
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(LightPanel, accentColor.copy(alpha = 0.8f), LightPanel)
-                    )
-                )
-                .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                .background(SurfaceElevated)
+                .border(2.dp, accentColor, RoundedCornerShape(4.dp))
         )
     }
 }

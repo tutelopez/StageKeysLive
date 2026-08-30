@@ -1,24 +1,48 @@
-﻿import io
+import re
+import os
 
-filepath = "composeApp/src/commonMain/kotlin/ConcertView.kt"
-with io.open(filepath, "r", encoding="utf-8") as f:
+path = 'composeApp/src/commonMain/kotlin/ConcertView.kt'
+with open(path, 'r', encoding='utf-8') as f:
     content = f.read()
 
-# Add missing imports
-imports = "\nimport kotlinx.coroutines.launch\nimport androidx.compose.animation.core.spring\nimport androidx.compose.animation.core.Spring\nimport androidx.compose.foundation.lazy.itemsIndexed\nimport androidx.compose.foundation.lazy.LazyColumn\nimport androidx.compose.material.icons.filled.*\nimport androidx.compose.material.icons.Icons\nimport androidx.compose.foundation.lazy.rememberLazyListState\n"
-if "import kotlinx.coroutines.launch" not in content:
-    content = content.replace("import androidx.compose.ui.Alignment\n", f"import androidx.compose.ui.Alignment\n{imports}")
+# Add import
+if 'import androidx.compose.runtime.saveable.rememberSaveable' not in content:
+    content = content.replace('import androidx.compose.runtime.*', 'import androidx.compose.runtime.*\nimport androidx.compose.runtime.saveable.rememberSaveable')
 
-# Color replacements
-content = content.replace("NeonGreen", "AccentNeonGreen")
-content = content.replace("MainstageBlue", "AccentSky")
-content = content.replace("BrightOrange", "AccentWarmYellow")
-content = content.replace("import androidx.compose.foundation.lazy.items\n", "")
+# Replace the block
+old_block = """    androidx.compose.foundation.layout.BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(DarkBackground, DarkPanel)
+                )
+            )
+    ) {
+    // Tablets (>=600dp) start expanded; phones start collapsed to maximize mixer space
+    var isKeyboardVisible by remember { mutableStateOf(maxWidth >= 600.dp) }"""
 
-# Fix itemsIndexed issue which was giving: Cannot infer type for value parameter 'index'.
-# Wait, the error was in `items { index, item -> }` instead of `itemsIndexed`.
-# We need to make sure we imported `itemsIndexed` properly if it's used.
-# Let's check `ConcertView.kt` around line 283 where `items` is used.
+new_block = """    // Tablets (>=600dp) start expanded; phones start collapsed to maximize mixer space
+    var isKeyboardVisible by rememberSaveable { mutableStateOf(true) }
 
-with io.open(filepath, "w", encoding="utf-8") as f:
+    // Use BoxWithConstraints to detect screen width (KMP-safe, no LocalConfiguration needed)
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(DarkBackground, DarkPanel)
+                )
+            )
+    ) {
+        LaunchedEffect(Unit) {
+            isKeyboardVisible = maxWidth >= 600.dp
+        }"""
+
+if old_block in content:
+    content = content.replace(old_block, new_block)
+else:
+    print("Could not find the target block to replace.")
+
+with open(path, 'w', encoding='utf-8', newline='\n') as f:
     f.write(content)

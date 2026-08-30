@@ -43,45 +43,9 @@ fun DashboardScreen(
         }
     }
 
-    BoxWithConstraints(
+    AppBackground(
         modifier = Modifier.fillMaxSize()
     ) {
-        val density = LocalDensity.current
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to DashboardGradientTop,
-                            0.5f to DashboardGradientMid,
-                            1.0f to DashboardGradientBottom
-                        )
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(AccentPurple.copy(alpha = 0.16f), Color.Transparent),
-                        center = with(density) { Offset(maxWidth.toPx() * 0.12f, maxHeight.toPx() * 0.08f) },
-                        radius = with(density) { maxWidth.toPx() * 0.55f }
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(AccentSky.copy(alpha = 0.14f), Color.Transparent),
-                        center = with(density) { Offset(maxWidth.toPx() * 0.88f, maxHeight.toPx() * 0.92f) },
-                        radius = with(density) { maxWidth.toPx() * 0.6f }
-                    )
-                )
-        )
 
         Column(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(32.dp)) {
             // Header

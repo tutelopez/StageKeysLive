@@ -109,15 +109,10 @@ fun ConcertViewScreen(
     // Tablets (>=600dp) start expanded; phones start collapsed to maximize mixer space
     var isKeyboardVisible by rememberSaveable { mutableStateOf(false) }
 
-    // Use BoxWithConstraints to detect screen width (KMP-safe, no LocalConfiguration needed)
-    androidx.compose.foundation.layout.BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(DarkBackground, DarkPanel)
-                )
-            )
+    // AppBackground handles the BoxWithConstraints and gradient glows
+    AppBackground(
+        modifier = Modifier.fillMaxSize(),
+        glowOpacityFactor = 0.5f
     ) {
 
         Column(
@@ -266,7 +261,7 @@ fun ConcertViewScreen(
                 )
             }
     } // End Column inside BoxWithConstraints
-    } // End BoxWithConstraints
+    } // End AppBackground
 }
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1013,19 +1008,25 @@ fun PadStrip(
             val scrollState = rememberScrollState()
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 notes.forEachIndexed { index, noteName ->
                     val isActive = activePadNote == index
                     Box(
                         modifier = Modifier
-                            .size(50.dp, 40.dp)
-                            .clip(RoundedCornerShape(6.dp))
+                            .size(64.dp, 54.dp)
+                            .shadow(
+                                elevation = if (isActive) 6.dp else 0.dp,
+                                shape = RoundedCornerShape(12.dp),
+                                ambientColor = if (isActive) StatusSuccess.copy(alpha = 0.5f) else Color.Transparent,
+                                spotColor = if (isActive) StatusSuccess.copy(alpha = 0.5f) else Color.Transparent
+                            )
+                            .clip(RoundedCornerShape(12.dp))
                             .background(
                                 if (isActive) Brush.verticalGradient(listOf(StatusSuccess, StatusSuccess.copy(alpha=0.7f)))
                                 else Brush.verticalGradient(listOf(LightPanel, DarkPanel))
                             )
-                            .border(1.dp, if (isActive) StatusSuccess else Color.Transparent, RoundedCornerShape(6.dp))
+                            .border(1.dp, if (isActive) StatusSuccess else Color.Transparent, RoundedCornerShape(12.dp))
                             .clickable(enabled = enabled) { onPadNoteToggle(index) },
                         contentAlignment = Alignment.Center
                     ) {
