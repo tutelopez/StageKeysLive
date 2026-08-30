@@ -550,7 +550,7 @@ private fun PatchesPanel(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = DarkPanel,
+        color = DarkPanel.copy(alpha = 0.88f),
         tonalElevation = 2.dp,
         modifier = Modifier.width(168.dp).fillMaxHeight()
     ) {
@@ -669,7 +669,7 @@ private fun MixerPanel(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = DarkBackground,
+        color = DarkBackground.copy(alpha = 0.88f),
         modifier = modifier.fillMaxHeight()
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
