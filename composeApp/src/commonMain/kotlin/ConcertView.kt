@@ -246,7 +246,7 @@ fun ConcertViewScreen(
 
                 // Keyboard panel directly attached underneath
                 val keyboardHeight by androidx.compose.animation.core.animateDpAsState(
-                    targetValue = if (isKeyboardVisible) 136.dp else 0.dp
+                    targetValue = if (isKeyboardVisible) 142.dp else 0.dp
                 )
                 Box(
                     modifier = Modifier
@@ -255,6 +255,7 @@ fun ConcertViewScreen(
                         .clipToBounds()
                 ) {
                     KeyboardPanel(
+                        channels = concert.channels,
                         activeNote = activeNote,
                         onNoteDown = onNoteDown,
                         onNoteUp = onNoteUp,
@@ -741,8 +742,45 @@ private fun VerticalDividerLine() {
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // KEYBOARD PANEL
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+private val whitePianoNotes = listOf(
+    21, 23, 
+    24, 26, 28, 29, 31, 33, 35, // Octave 1
+    36, 38, 40, 41, 43, 45, 47, // Octave 2
+    48, 50, 52, 53, 55, 57, 59, // Octave 3
+    60, 62, 64, 65, 67, 69, 71, // Octave 4
+    72, 74, 76, 77, 79, 81, 83, // Octave 5
+    84, 86, 88, 89, 91, 93, 95, // Octave 6
+    96, 98, 100, 101, 103, 105, 107, // Octave 7
+    108 // C8
+)
+
+private fun getMidiNoteStartX(note: Int, keyWidth: Dp = 32.dp): Dp {
+    val clamped = note.coerceIn(21, 108)
+    val whiteIdx = whitePianoNotes.indexOf(clamped)
+    return if (whiteIdx >= 0) {
+        keyWidth * whiteIdx
+    } else {
+        val prevWhite = whitePianoNotes.filter { it < clamped }.maxOrNull() ?: 21
+        val prevIdx = whitePianoNotes.indexOf(prevWhite)
+        keyWidth * (prevIdx + 0.5f)
+    }
+}
+
+private fun getMidiNoteEndX(note: Int, keyWidth: Dp = 32.dp): Dp {
+    val clamped = note.coerceIn(21, 108)
+    val whiteIdx = whitePianoNotes.indexOf(clamped)
+    return if (whiteIdx >= 0) {
+        keyWidth * (whiteIdx + 1)
+    } else {
+        val prevWhite = whitePianoNotes.filter { it < clamped }.maxOrNull() ?: 21
+        val prevIdx = whitePianoNotes.indexOf(prevWhite)
+        keyWidth * (prevIdx + 1.5f)
+    }
+}
+
 @Composable
 private fun KeyboardPanel(
+    channels: List<ChannelStripState> = emptyList(),
     activeNote: Int?,
     onNoteDown: (Int) -> Unit,
     onNoteUp: (Int) -> Unit,
@@ -757,10 +795,10 @@ private fun KeyboardPanel(
         shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
         color = DarkBackground.copy(alpha = 0.85f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.04f)),
-        modifier = Modifier.fillMaxWidth().height(136.dp)
+        modifier = Modifier.fillMaxWidth().height(142.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Left controls: Sustain + Pitch/Mod
@@ -773,7 +811,7 @@ private fun KeyboardPanel(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(30.dp)
+                        .height(28.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .then(
                             if (sustainActive) {
@@ -827,22 +865,74 @@ private fun KeyboardPanel(
 
             Spacer(Modifier.width(6.dp))
 
-            // Piano with Split Zone Color Strip
+            // Piano with MainStage-style Channel Layer Bars
             val keyboardScrollState = rememberScrollState()
+            val totalKeyboardWidth = 32.dp * 52
+
+            val barHeight = when {
+                channels.size <= 2 -> 5.dp
+                channels.size <= 4 -> 4.dp
+                channels.size <= 6 -> 3.2.dp
+                else -> 2.6.dp
+            }
+            val barSpacing = when {
+                channels.size <= 3 -> 2.dp
+                channels.size <= 6 -> 1.5.dp
+                else -> 1.dp
+            }
+
             Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                // Multi-zone color strip (Purple, Mint, Coral) matching mockup
-                Row(
+                // ─── CHANNEL LAYER BARS STACK (MAINSTAGE STYLE) ───────────────
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        .horizontalScroll(keyboardScrollState)
                 ) {
-                    Box(modifier = Modifier.weight(1.2f).fillMaxHeight().background(AccentPurple))
-                    Box(modifier = Modifier.weight(1.5f).fillMaxHeight().background(AccentMint))
-                    Box(modifier = Modifier.weight(1.3f).fillMaxHeight().background(AccentCoral))
+                    Column(
+                        modifier = Modifier
+                            .width(totalKeyboardWidth)
+                            .padding(vertical = 1.dp),
+                        verticalArrangement = Arrangement.spacedBy(barSpacing)
+                    ) {
+                        channels.forEach { ch ->
+                            val accentColor = parseColorHex(ch.colorHex)
+                            val alpha = if (ch.isMuted) 0.28f else 0.95f
+                            val startX = getMidiNoteStartX(ch.keyRangeStart)
+                            val endX = getMidiNoteEndX(ch.keyRangeEnd)
+                            val barWidth = (endX - startX).coerceAtLeast(6.dp)
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(barHeight)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .offset(x = startX)
+                                        .width(barWidth)
+                                        .fillMaxHeight()
+                                        .shadow(
+                                            elevation = if (ch.isMuted) 0.dp else 4.dp,
+                                            shape = RoundedCornerShape(2.dp),
+                                            ambientColor = accentColor.copy(alpha = 0.4f),
+                                            spotColor = accentColor.copy(alpha = 0.5f)
+                                        )
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(accentColor.copy(alpha = alpha))
+                                        .border(
+                                            0.5.dp,
+                                            Color.White.copy(alpha = if (ch.isMuted) 0.1f else 0.35f),
+                                            RoundedCornerShape(2.dp)
+                                        )
+                                )
+                            }
+                        }
+                    }
                 }
-                Spacer(Modifier.height(4.dp))
+
+                Spacer(Modifier.height(3.dp))
+
+                // ─── SCROLLABLE PIANO KEYBOARD ────────────────────────────────
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     ScrollablePianoKeyboard(
                         scrollState = keyboardScrollState,

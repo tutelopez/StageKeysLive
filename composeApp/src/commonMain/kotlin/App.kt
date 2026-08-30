@@ -1361,11 +1361,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                             val updatedChannels = active.channels.map {
                                                 if (it.id == chState.id) it.copy(colorHex = hexColor) else it
                                             }
-                                            val updatedConcert = active.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
-                                            val newList = concerts.map { if (it.id == active.id) updatedConcert else it }
-                                            saveConcertsList(newList)
-                                            activeConcert = updatedConcert
-                                            showChannelSettingsDialog = updatedConcert.channels.find { it.id == chState.id }
+                                            updateChannelsAndPatchSnapshot(updatedChannels)
+                                            showChannelSettingsDialog = activeConcert?.channels?.find { it.id == chState.id }
                                         }
                                     }
                             )
