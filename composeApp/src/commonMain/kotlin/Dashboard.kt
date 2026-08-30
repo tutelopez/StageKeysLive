@@ -1,4 +1,4 @@
-﻿package com.midi.mainstage
+package com.midi.mainstage
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -6,21 +6,19 @@ import androidx.compose.foundation.shape.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.*
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.*
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.input.pointer.*
-import androidx.compose.foundation.gestures.*
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.LazyColumn
+
 @Composable
 fun DashboardScreen(
     concerts: List<Concert>,
@@ -33,171 +31,471 @@ fun DashboardScreen(
     onImportClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
-    // Saludo dinÃ¡mico segÃºn hora del dÃ­a usando expect/actual (100% nativo)
-    val greeting = remember {
-        when (getCurrentHourOfDay()) {
-            in 5..11  -> "Buenos días, hora de tocar 🌄"
-            in 12..18 -> "Buenas tardes, hora de tocar 🎹"
-            in 19..23 -> "Buenas noches, hora de tocar 🌙"
-            else      -> "Hora de tocar 🎹" // 0â€“4 AM
+    val hour = getCurrentHourOfDay()
+    val (greetingEyebrow, greetingEmoji) = remember(hour) {
+        when (hour) {
+            in 5..11  -> Pair("Buenos días", "🌅")
+            in 12..18 -> Pair("Buenas tardes", "🎹")
+            in 19..23 -> Pair("Buenas noches", "🌙")
+            else      -> Pair("Buenas noches", "🎹")
         }
     }
 
-    AppBackground(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    val scrollState = rememberScrollState()
 
-        Column(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(32.dp)) {
-            // Header
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 36.dp)
+    AppBackground(
+        modifier = Modifier.fillMaxSize(),
+        glowOpacityFactor = 0.65f
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 22.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // ─── HEADER / WORDMARK ───────────────────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Brand row
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    // Glowing SK Monogram (36dp)
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(36.dp)
+                            .shadow(
+                                elevation = 18.dp,
+                                shape = RoundedCornerShape(11.dp),
+                                ambientColor = AccentSky.copy(alpha = 0.45f),
+                                spotColor = AccentSky.copy(alpha = 0.55f)
+                            )
+                            .clip(RoundedCornerShape(11.dp))
                             .background(
-                                brush = Brush.linearGradient(
-                                    colors = listOf(AccentSky, AccentPurple)
-                                ),
-                                shape = RoundedCornerShape(8.dp)
+                                Brush.linearGradient(listOf(AccentSky, AccentPurple))
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "SK",
+                            text = "SK",
                             color = Color.White,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Black
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 0.5.sp
                         )
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
+
+                    // Wordmark
                     Text(
-                        text = "STAGEKEYS LIVE",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelLarge,
-                        letterSpacing = 2.sp
+                        text = buildAnnotatedString {
+                            withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.ExtraBold)) {
+                                append("STAGE")
+                            }
+                            withStyle(SpanStyle(color = AccentSky, fontWeight = FontWeight.ExtraBold)) {
+                                append("KEYS")
+                            }
+                            withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.ExtraBold)) {
+                                append(" LIVE")
+                            }
+                        },
+                        fontSize = 15.sp,
+                        letterSpacing = 0.5.sp
                     )
-                    Spacer(modifier = Modifier.weight(1f))
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(TablerIcons.Settings, contentDescription = "Ajustes", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                 }
-                // Dynamic greeting â€” primary hierarchy
+
+                // Settings Button
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(SurfaceElevated.copy(alpha = 0.75f))
+                        .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(10.dp))
+                        .clickable(onClick = onSettingsClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = TablerIcons.Settings,
+                        contentDescription = "Ajustes",
+                        tint = TextDark,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
+            }
+
+            // ─── GREETING ───────────────────────────────────────────────────
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = greeting,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    style = MaterialTheme.typography.titleLarge,
-                    letterSpacing = 0.sp
+                    text = greetingEyebrow,
+                    color = AccentSky,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Hora de tocar $greetingEmoji",
+                    color = Color.White,
+                    fontSize = 25.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.5).sp
                 )
             }
 
-            // Quick Actions
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            // ─── ACTIONS (PRIMARY + SECONDARY ROW) ───────────────────────────
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Button(
-                    onClick = onCreateConcertClick,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = DarkBackground),
-                    modifier = Modifier.height(56.dp).weight(1f)
-                ) {
-                    Icon(TablerIcons.Plus, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Nuevo Concierto", fontWeight = FontWeight.Bold)
-                }
-                
-                Button(
-                    onClick = onOpenLastConcertClick,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onBackground),
-                    modifier = Modifier.height(56.dp).weight(1f)
-                ) {
-                    Icon(TablerIcons.PlayerPlay, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Abrir Último", fontWeight = FontWeight.Bold)
-                }
-                
-                Button(
-                    onClick = onImportClick,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onBackground),
-                    modifier = Modifier.height(56.dp).weight(1f)
-                ) {
-                    Icon(TablerIcons.Download, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Importar Concierto", fontWeight = FontWeight.Bold)
-                }
-            }
-
-            Text(
-                text = "TUS CONCIERTOS",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelLarge,
-                letterSpacing = 1.5.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            if (concerts.isEmpty()) {
+                // Primary Action: Nuevo Concierto
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
-                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp)),
-                    contentAlignment = Alignment.Center
+                        .shadow(
+                            elevation = 16.dp,
+                            shape = RoundedCornerShape(18.dp),
+                            ambientColor = AccentSky.copy(alpha = 0.25f),
+                            spotColor = AccentSky.copy(alpha = 0.35f)
+                        )
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    AccentSky.copy(alpha = 0.24f),
+                                    AccentPurple.copy(alpha = 0.16f)
+                                )
+                            )
+                        )
+                        .border(1.dp, AccentSky.copy(alpha = 0.4f), RoundedCornerShape(18.dp))
+                        .clickable(onClick = onCreateConcertClick)
+                        .padding(14.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(TablerIcons.Music, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(48.dp))
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("No hay conciertos creados.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        // Plus Icon
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .shadow(
+                                    elevation = 12.dp,
+                                    shape = RoundedCornerShape(12.dp),
+                                    ambientColor = AccentSky.copy(alpha = 0.5f),
+                                    spotColor = AccentSky.copy(alpha = 0.6f)
+                                )
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    Brush.linearGradient(listOf(AccentSky, AccentPurple))
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                TablerIcons.Plus,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Column {
+                            Text(
+                                text = "Nuevo Concierto",
+                                color = Color.White,
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = "Arma un set desde cero",
+                                color = Color.White.copy(alpha = 0.65f),
+                                fontSize = 11.5.sp
+                            )
+                        }
                     }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+
+                // Secondary Actions Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(concerts) { concert ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth().clickable { onSelectConcert(concert) },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(20.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                    // Abrir Último
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(SurfaceElevated.copy(alpha = 0.65f))
+                            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(16.dp))
+                            .clickable(onClick = onOpenLastConcertClick)
+                            .padding(14.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .background(DarkPanel)
+                                    .border(1.dp, OutlineVariant, RoundedCornerShape(9.dp)),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Box(
-                                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
-                                    contentAlignment = Alignment.Center
+                                Icon(
+                                    TablerIcons.PlayerPlay,
+                                    contentDescription = null,
+                                    tint = AccentMint,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
+                            Text(
+                                text = "Abrir Último",
+                                color = Color.White,
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    // Importar Concierto
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(SurfaceElevated.copy(alpha = 0.65f))
+                            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(16.dp))
+                            .clickable(onClick = onImportClick)
+                            .padding(14.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .background(DarkPanel)
+                                    .border(1.dp, OutlineVariant, RoundedCornerShape(9.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    TablerIcons.Download,
+                                    contentDescription = null,
+                                    tint = AccentCoral,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
+                            Text(
+                                text = "Importar Concierto",
+                                color = Color.White,
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ─── RECENT CONCERTS SECTION ─────────────────────────────────────
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "TUS CONCIERTOS",
+                        color = TextDark,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp
+                    )
+
+                    // Count Badge
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(SurfaceElevated)
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "${concerts.size}",
+                            color = TextDark,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                if (concerts.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(DarkPanel.copy(alpha = 0.5f))
+                            .border(1.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(16.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                TablerIcons.Music,
+                                contentDescription = null,
+                                tint = TextDark.copy(alpha = 0.6f),
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "No hay conciertos creados aún.",
+                                color = TextDark,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        concerts.forEachIndexed { index, concert ->
+                            // Rotating cover accents (Sky, Purple, Coral)
+                            val (coverColor, coverBg) = when (index % 3) {
+                                0 -> Pair(
+                                    AccentSky,
+                                    Brush.linearGradient(
+                                        listOf(AccentSky.copy(alpha = 0.3f), AccentSky.copy(alpha = 0.08f))
+                                    )
+                                )
+                                1 -> Pair(
+                                    AccentPurple,
+                                    Brush.linearGradient(
+                                        listOf(AccentPurple.copy(alpha = 0.3f), AccentPurple.copy(alpha = 0.08f))
+                                    )
+                                )
+                                else -> Pair(
+                                    AccentCoral,
+                                    Brush.linearGradient(
+                                        listOf(AccentCoral.copy(alpha = 0.3f), AccentCoral.copy(alpha = 0.08f))
+                                    )
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .shadow(
+                                        elevation = 6.dp,
+                                        shape = RoundedCornerShape(16.dp),
+                                        ambientColor = coverColor.copy(alpha = 0.15f),
+                                        spotColor = coverColor.copy(alpha = 0.2f)
+                                    )
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(DarkPanel.copy(alpha = 0.72f))
+                                    .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                                    .clickable { onSelectConcert(concert) }
+                                    .padding(horizontal = 14.dp, vertical = 11.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Icon(TablerIcons.Music, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(concert.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text("${concert.patches.size} Patches", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-                                }
-                                IconButton(onClick = { onEditConcertClick(concert) }) {
-                                    Icon(TablerIcons.Edit, contentDescription = "Editar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                IconButton(onClick = { onExportConcertClick(concert) }) {
-                                    Icon(TablerIcons.Share, contentDescription = "Exportar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                IconButton(onClick = { onDeleteConcert(concert) }) {
-                                    Icon(TablerIcons.Trash, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+                                    // Cover Badge
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .shadow(
+                                                elevation = 8.dp,
+                                                shape = RoundedCornerShape(11.dp),
+                                                ambientColor = coverColor.copy(alpha = 0.25f),
+                                                spotColor = coverColor.copy(alpha = 0.35f)
+                                            )
+                                            .clip(RoundedCornerShape(11.dp))
+                                            .background(coverBg),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            TablerIcons.Music,
+                                            contentDescription = null,
+                                            tint = coverColor,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+
+                                    // Info
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = concert.name,
+                                            color = Color.White,
+                                            fontSize = 13.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        val patchCount = concert.patches.size
+                                        Text(
+                                            text = if (patchCount == 1) "1 patch" else "$patchCount patches",
+                                            color = TextDark,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+
+                                    // Actions Mini
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        IconButton(
+                                            onClick = { onEditConcertClick(concert) },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                TablerIcons.Edit,
+                                                contentDescription = "Editar",
+                                                tint = TextDark,
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { onExportConcertClick(concert) },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                TablerIcons.Share,
+                                                contentDescription = "Exportar",
+                                                tint = TextDark,
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { onDeleteConcert(concert) },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                TablerIcons.Trash,
+                                                contentDescription = "Eliminar",
+                                                tint = StatusError,
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+
+            // ─── FOOTER HINT ─────────────────────────────────────────────────
+            Text(
+                text = "StageKeysLive · listo para tocar",
+                color = TextDark.copy(alpha = 0.5f),
+                fontSize = 10.5.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+            )
         }
     }
 }
