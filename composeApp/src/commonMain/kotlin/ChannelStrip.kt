@@ -30,32 +30,28 @@ fun ChannelStripItem(
 
     Column(
         modifier = Modifier
-            .width(80.dp)
+            .width(82.dp)
             .fillMaxHeight()
             .shadow(
-                elevation = 10.dp, 
-                shape = RoundedCornerShape(14.dp), 
-                ambientColor = accentColor.copy(alpha = 0.5f), 
-                spotColor = accentColor.copy(alpha = 0.6f)
+                elevation = 8.dp, 
+                shape = RoundedCornerShape(16.dp), 
+                ambientColor = accentColor.copy(alpha = 0.35f), 
+                spotColor = accentColor.copy(alpha = 0.45f)
             )
-            .clip(RoundedCornerShape(14.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(SurfaceElevated, DarkBackground)
-                )
-            )
+            .clip(RoundedCornerShape(16.dp))
+            .background(DarkBackground.copy(alpha = 0.6f))
             .border(
-                width = 1.dp,
+                width = 1.2.dp,
                 color = accentColor.copy(alpha = 0.7f),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(16.dp)
             )
-            .padding(horizontal = 5.dp, vertical = 6.dp),
+            .padding(horizontal = 6.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // â”€â”€ Channel name + gear â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Channel name + gear ──────────────────────────────────────────
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -63,15 +59,15 @@ fun ChannelStripItem(
             Box(
                 modifier = Modifier
                     .width(3.dp)
-                    .height(16.dp)
+                    .height(14.dp)
                     .clip(RoundedCornerShape(2.dp))
                     .background(accentColor)
             )
 
             Text(
-                text = state.name.take(9).uppercase(),
-                color = accentColor.copy(alpha = 0.9f),
-                fontSize = 7.sp,
+                text = state.name.take(10).uppercase(),
+                color = accentColor,
+                fontSize = 7.5.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp,
                 textAlign = TextAlign.Center,
@@ -80,17 +76,17 @@ fun ChannelStripItem(
                 modifier = Modifier.weight(1f).padding(horizontal = 2.dp)
             )
 
-            IconButton(onClick = onGearClick, modifier = Modifier.size(16.dp)) {
+            IconButton(onClick = onGearClick, modifier = Modifier.size(14.dp)) {
                 Icon(
                     TablerIcons.Settings,
                     contentDescription = "Configure",
-                    tint = TextDark,
-                    modifier = Modifier.size(12.dp)
+                    tint = TextDark.copy(alpha = 0.7f),
+                    modifier = Modifier.size(11.dp)
                 )
             }
         }
 
-        // â”€â”€ Fader + VU meter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Fader + VU meter ────────────────────────────────────────────
         Row(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -102,14 +98,16 @@ fun ChannelStripItem(
                 onValueChange = onVolumeChange,
                 modifier = Modifier.weight(1f).fillMaxHeight()
             )
-            LevelMeter(
-                level = level,
-                accentColor = accentColor,
-                modifier = Modifier.width(8.dp).fillMaxHeight()
-            )
+            if (level > 0.01f) {
+                LevelMeter(
+                    level = level,
+                    accentColor = accentColor,
+                    modifier = Modifier.width(6.dp).fillMaxHeight()
+                )
+            }
         }
 
-        // â”€â”€ Volume % label â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Volume % label ──────────────────────────────────────────────
         Text(
             text = "${(state.volume * 100).toInt()}%",
             color = TextDark,
@@ -117,18 +115,7 @@ fun ChannelStripItem(
             textAlign = TextAlign.Center
         )
 
-        // â”€â”€ Loaded Patch Name â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        Text(
-            text = state.sf2Name.substringBefore(".sf2").take(10),
-            color = TextDark,
-            fontSize = 7.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(bottom = 2.dp)
-        )
-
-        // â”€â”€ Mute / Solo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Mute / Solo ──────────────────────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -164,18 +151,18 @@ private fun MuteSoloButton(
             .height(20.dp)
             .shadow(
                 elevation = if (active) 6.dp else 0.dp,
-                shape = RoundedCornerShape(4.dp),
+                shape = RoundedCornerShape(6.dp),
                 ambientColor = if (active) activeColor else Color.Transparent,
                 spotColor = if (active) activeColor else Color.Transparent
             )
-            .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(
-                if (active) activeColor.copy(alpha = 0.85f) else SurfaceElevated
+                if (active) activeColor else SurfaceElevated
             )
             .border(
                 1.dp,
-                if (active) activeColor else LightPanel,
-                RoundedCornerShape(4.dp)
+                if (active) activeColor else OutlineVariant.copy(alpha = 0.5f),
+                RoundedCornerShape(6.dp)
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center

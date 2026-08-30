@@ -1,4 +1,4 @@
-﻿package com.midi.mainstage
+package com.midi.mainstage
 
 import androidx.compose.ui.draw.clip
 
@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
@@ -1561,11 +1562,14 @@ fun ScrollablePianoKeyboard(
                     modifier = Modifier
                         .width(keyWidth)
                         .fillMaxHeight()
+                        .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
                         .background(
-                            if (isPressed) AccentSky.copy(alpha = 0.6f) else Color.White,
-                            RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp)
+                            if (isPressed)
+                                Brush.verticalGradient(listOf(Color.White, AccentSky.copy(alpha = 0.9f)))
+                            else
+                                Brush.verticalGradient(listOf(Color.White, Color(0xFFF0F4F8)))
                         )
-                        .border(1.dp, Color.Black)
+                        .border(1.dp, Color(0xFF12141A), RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
                         .pointerInput(note) {
                             detectDragGestures(
                                 onDragStart = { onNoteDown(note) },
@@ -1591,12 +1595,15 @@ fun ScrollablePianoKeyboard(
                     Box(
                         modifier = Modifier
                             .width(18.dp)
-                            .fillMaxHeight(0.6f)
+                            .fillMaxHeight(0.62f)
+                            .clip(RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
                             .background(
-                                if (isPressed) AccentSky else SurfaceElevated,
-                                RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp)
+                                if (isPressed)
+                                    Brush.verticalGradient(listOf(AccentSky, AccentSky.copy(alpha = 0.8f)))
+                                else
+                                    Brush.verticalGradient(listOf(Color(0xFF282C37), Color(0xFF151820)))
                             )
-                            .border(1.dp, Color.Black)
+                            .border(1.dp, Color(0xFF0D0F14), RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
                             .pointerInput(blackNote) {
                                 detectDragGestures(
                                     onDragStart = { onNoteDown(blackNote) },

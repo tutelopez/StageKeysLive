@@ -32,8 +32,7 @@ fun VolumeFader(
     BoxWithConstraints(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(DarkPanel)
-            .border(1.dp, LightPanel, RoundedCornerShape(8.dp))
+            .background(Color.Transparent)
             .pointerInput(Unit) {
                 detectDragGestures { change, _ ->
                     val newValue = 1f - (change.position.y / size.height).coerceIn(0f, 1f)
@@ -42,49 +41,43 @@ fun VolumeFader(
             },
         contentAlignment = Alignment.BottomCenter
     ) {
-        // Track fill (gradient from bottom)
+        // Subtle track background line / glow
         Box(
             modifier = Modifier
-                .fillMaxWidth()
+                .width(4.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(2.dp))
+                .background(OutlineVariant.copy(alpha = 0.3f))
+        )
+
+        // Active fill on the center rail
+        Box(
+            modifier = Modifier
+                .width(4.dp)
                 .fillMaxHeight(value.coerceIn(0.01f, 1f))
-                .clip(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
+                .clip(RoundedCornerShape(2.dp))
                 .background(
                     Brush.verticalGradient(
-                        listOf(accentColor.copy(alpha = 1.0f), accentColor.copy(alpha = 0.55f))
+                        listOf(accentColor.copy(alpha = 0.8f), accentColor.copy(alpha = 0.3f))
                     )
                 )
         )
 
-        // Tick marks
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val step = size.height / 8f
-            for (i in 1..7) {
-                val y = i * step
-                val w = if (i % 2 == 0) size.width * 0.55f else size.width * 0.3f
-                drawLine(
-                    color = OutlineVariant,
-                    start = Offset((size.width - w) / 2f, y),
-                    end = Offset((size.width + w) / 2f, y),
-                    strokeWidth = 1.5f
-                )
-            }
-        }
-
-        // Handle
-        val handleHeight = 14.dp
+        // Handle (sleek thumb bar matching mockup)
+        val handleHeight = 8.dp
         val usableHeight = maxHeight - handleHeight
         val handleOffset = usableHeight * (1f - value)
 
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.85f)
+                .fillMaxWidth(0.7f)
                 .height(handleHeight)
                 .align(Alignment.TopCenter)
                 .offset(y = handleOffset)
                 .shadow(elevation = 6.dp, shape = RoundedCornerShape(4.dp), ambientColor = accentColor, spotColor = accentColor)
                 .clip(RoundedCornerShape(4.dp))
                 .background(SurfaceElevated)
-                .border(2.dp, accentColor, RoundedCornerShape(4.dp))
+                .border(1.5.dp, accentColor, RoundedCornerShape(4.dp))
         )
     }
 }

@@ -144,18 +144,13 @@ fun ConcertViewScreen(
                 audioDiagnostics = audioDiagnostics
             )
 
-            // â”€â”€â”€ MAIN AREA: PATCHES + MIXER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            Column(
+            // ─── MAIN AREA: PATCHES + MIXER ───────────────────────────────
+            Row(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    modifier = Modifier.heightIn(min = 320.dp, max = 500.dp).fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
                 // PATCHES PANEL
                 PatchesPanel(
                     patches = concert.patches,
@@ -188,53 +183,47 @@ fun ConcertViewScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // --- PAD STRIP ---
-            PadStrip(
-                enabled = padEnabled,
-                onEnabledChange = onPadEnabledChange,
-                volume = padVolume,
-                onVolumeChange = onPadVolumeChange,
-                bank = padBank,
-                onBankChange = onPadBankChange,
-                availableBanks = availablePadBanks,
-                activePadNote = activePadNote,
-                onPadNoteToggle = onPadNoteToggle
-            )
-        } // End scrollable column
-            
-            Spacer(modifier = Modifier.height(12.dp))
+            // --- PAD STRIP (visible when keyboard is collapsed) ---
+            if (!isKeyboardVisible) {
+                PadStrip(
+                    enabled = padEnabled,
+                    onEnabledChange = onPadEnabledChange,
+                    volume = padVolume,
+                    onVolumeChange = onPadVolumeChange,
+                    bank = padBank,
+                    onBankChange = onPadBankChange,
+                    availableBanks = availablePadBanks,
+                    activePadNote = activePadNote,
+                    onPadNoteToggle = onPadNoteToggle
+                )
+            }
 
             // â”€â”€â”€ KEYBOARD TOGGLE + PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            // Chevron toggle bar
-            Surface(
-                shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-                color = DarkPanel,
+            // Chevron toggle bar (matching mockup centered text)
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { isKeyboardVisible = !isKeyboardVisible }
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 5.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        imageVector = if (isKeyboardVisible) TablerIcons.ChevronDown else TablerIcons.ChevronUp,
+                        imageVector = if (isKeyboardVisible) TablerIcons.ChevronUp else TablerIcons.ChevronDown,
                         contentDescription = if (isKeyboardVisible) "Colapsar teclado" else "Expandir teclado",
-                        tint = TextDark,
-                        modifier = Modifier.size(18.dp)
+                        tint = AccentSky,
+                        modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (isKeyboardVisible) "TECLADO" else "TECLADO (oculto)",
-                        color = TextDark,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 1.sp
+                        text = "TECLADO",
+                        color = if (isKeyboardVisible) Color.White else TextDark,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp
                     )
                 }
             }
@@ -260,13 +249,13 @@ fun ConcertViewScreen(
                     coroutineScope = coroutineScope
                 )
             }
-    } // End Column inside BoxWithConstraints
+        } // End Column inside BoxWithConstraints
     } // End AppBackground
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // TOP BAR
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun TopBar(
     concertName: String,
@@ -291,37 +280,28 @@ private fun TopBar(
     audioDiagnostics: String
 ) {
     var panicBlink by remember { mutableStateOf(false) }
-    var showSysPopup by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(panicBlink) {
-        if (panicBlink) {
-            delay(300)
-            panicBlink = false
-        }
-    }
 
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = DarkPanel,
+        color = DarkPanel.copy(alpha = 0.8f),
         tonalElevation = 4.dp,
-        shadowElevation = 8.dp,
-        modifier = Modifier.fillMaxWidth().height(56.dp)
+        modifier = Modifier.fillMaxWidth().height(54.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Back
-            IconButton(onClick = onBackClick, modifier = Modifier.size(40.dp)) {
+            // Back button
+            IconButton(onClick = onBackClick, modifier = Modifier.size(36.dp)) {
                 Icon(
                     TablerIcons.ArrowLeft,
                     contentDescription = "Back",
-                    tint = TextDark,
-                    modifier = Modifier.size(22.dp)
+                    tint = TextLight,
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(6.dp))
 
             // Concert name
             Text(
@@ -329,96 +309,36 @@ private fun TopBar(
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp,
-                    fontSize = 14.sp
+                    fontSize = 15.sp
                 ),
                 color = Color.White,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 180.dp)
+                overflow = TextOverflow.Ellipsis
             )
 
             Spacer(Modifier.weight(1f))
 
-            // MIDI Activity dot
-            if (midiActive) {
-                Box(
-                    modifier = Modifier.size(8.dp)
-                        .background(AccentSky, CircleShape)
-                )
-                Spacer(Modifier.width(6.dp))
-            }
-
-            // System status dot
-            val audioDegraded = audioDiagnostics.contains("xrun", ignoreCase = true) || audioDiagnostics.contains("underflow", ignoreCase = true)
-            val sysColor = when {
-                batteryLevel < 10 -> StatusError
-                batteryLevel < 20 || audioDegraded -> StatusWarning // Amber
-                else -> StatusSuccess // Green
-            }
+            // Metronome / BPM pill button
+            var showMetroPopup by remember { mutableStateOf(false) }
             Box {
                 Box(
                     modifier = Modifier
-                        .size(16.dp)
-                        .clickable { showSysPopup = true },
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(DarkPanel)
+                        .border(1.2.dp, if (metronomeOn) AccentNeonGreen else AccentSky.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+                        .clickable { onMetronomeToggle() }
+                        .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Box(modifier = Modifier.size(8.dp).background(sysColor, CircleShape))
-                }
-                
-                DropdownMenu(
-                    expanded = showSysPopup,
-                    onDismissRequest = { showSysPopup = false },
-                    modifier = Modifier.background(DarkPanel)
-                ) {
-                    Text("Battery: $batteryLevel% ${if (batteryCharging) "(Charging)" else ""}", modifier = Modifier.padding(8.dp), color = Color.White)
-                    if (performanceStats != null) {
-                        Text("CPU: ${performanceStats.cpuPercent ?: "?"}%", modifier = Modifier.padding(8.dp), color = Color.White)
-                        Text("RAM: ${performanceStats.ramMb} MB", modifier = Modifier.padding(8.dp), color = Color.White)
-                    }
-                    Text("Audio: $audioDiagnostics", modifier = Modifier.padding(8.dp), color = Color.White)
-                }
-            }
-            
-            Spacer(Modifier.width(6.dp))
-            
-            // Panic Button
-            IconButton(
-                onClick = { 
-                    onPanicClick()
-                    panicBlink = true
-                },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    TablerIcons.AlertTriangle,
-                    contentDescription = "Panic",
-                    tint = if (panicBlink) StatusError else TextDark,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            
-            Spacer(Modifier.width(6.dp))
-
-            // Metronome beat dot
-            Box(
-                modifier = Modifier.size(8.dp)
-                    .background(
-                        if (metronomeTick && metronomeOn) AccentNeonGreen else OutlineVariant,
-                        CircleShape
+                    Text(
+                        text = "$metronomeBpm BPM",
+                        color = if (metronomeOn) AccentNeonGreen else AccentSky,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
                     )
-            )
-            Spacer(Modifier.width(6.dp))
-
-            // Metronome button
-            var showMetroPopup by remember { mutableStateOf(false) }
-            Box {
-                PillButton(
-                    label = if (metronomeOn) "$metronomeBpm BPM" else "METRO",
-                    active = metronomeOn,
-                    activeColor = AccentNeonGreen,
-                    onClick = onMetronomeToggle,
-                    onLongClick = { showMetroPopup = true }
-                )
+                }
                 
                 DropdownMenu(
                     expanded = showMetroPopup,
@@ -440,58 +360,77 @@ private fun TopBar(
                 }
             }
 
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
 
-            // Tap Tempo button
-            var tapPulseKey by remember { mutableStateOf(0L) }
-            LaunchedEffect(tapPulseKey) {
-                if (tapPulseKey > 0L) {
-                    delay(150)
-                    tapPulseKey = 0L
+            // Record button (Pill)
+            Box(
+                modifier = Modifier
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(DarkPanel)
+                    .border(1.2.dp, StatusError.copy(alpha = if (isRecording) 0.9f else 0.45f), RoundedCornerShape(16.dp))
+                    .clickable { onRecordToggle() }
+                    .padding(horizontal = 14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(StatusError)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "REC",
+                        color = StatusError,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
                 }
             }
-            PillButton(
-                label = "TAP",
-                active = (System.currentTimeMillis() - tapPulseKey) < 150,
-                activeColor = AccentSky,
-                onClick = { 
-                    tapPulseKey = System.currentTimeMillis()
-                    onTapTempo() 
-                }
-            )
-
 
             Spacer(Modifier.width(8.dp))
 
-            // Record button
-            PillButton(
-                label = if (isRecording) "â— REC" else "REC",
-                active = isRecording,
-                activeColor = StatusError,
-                onClick = onRecordToggle
-            )
-
-            Spacer(Modifier.width(4.dp))
-
-            // Play recording
-            IconButton(onClick = onPlayRecordingClick, modifier = Modifier.size(36.dp)) {
+            // Panic Button
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(StatusError.copy(alpha = 0.15f))
+                    .border(1.dp, StatusError.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                    .clickable { 
+                        onPanicClick()
+                        panicBlink = true
+                    },
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
-                    if (isPlayingRecording) TablerIcons.PlayerStop else TablerIcons.PlayerPlay,
-                    contentDescription = "Play",
-                    tint = if (isPlayingRecording) AccentSky else TextDark,
-                    modifier = Modifier.size(18.dp)
+                    TablerIcons.AlertTriangle,
+                    contentDescription = "Panic",
+                    tint = StatusError,
+                    modifier = Modifier.size(16.dp)
                 )
             }
 
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(8.dp))
 
             // Settings gear
-            IconButton(onClick = onSettingsClick, modifier = Modifier.size(40.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(DarkPanel)
+                    .border(1.dp, OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                    .clickable(onClick = onSettingsClick),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     TablerIcons.Settings,
                     contentDescription = "Settings",
                     tint = TextDark,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
@@ -579,7 +518,10 @@ private fun PatchesPanel(
             Divider(color = LightPanel, thickness = 1.dp)
             Spacer(Modifier.height(4.dp))
 
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 items(patches) { patch ->
                     val idx = patches.indexOf(patch)
                     val isSelected = idx == selectedIndex
@@ -590,8 +532,28 @@ private fun PatchesPanel(
                         onEdit = { onEdit(patch) },
                         onDelete = { onDelete(patch) }
                     )
-                    Spacer(Modifier.height(2.dp))
                 }
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            // + Nuevo button at bottom of list
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SurfaceElevated.copy(alpha = 0.5f))
+                    .border(1.dp, OutlineVariant.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                    .clickable(onClick = onAdd),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "+ Nuevo",
+                    color = TextDark,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
@@ -605,42 +567,50 @@ private fun PatchRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val bgColor = if (isSelected)
-        Brush.horizontalGradient(listOf(AccentSky.copy(alpha = 0.2f), AccentPurple.copy(alpha = 0.1f)))
-    else
-        Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))
-    val borderColor = if (isSelected) AccentSky.copy(alpha = 0.7f) else Color.Transparent
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(bgColor)
-            .border(1.dp, borderColor, RoundedCornerShape(10.dp))
+            .then(
+                if (isSelected) {
+                    Modifier.shadow(
+                        elevation = 8.dp,
+                        shape = RoundedCornerShape(12.dp),
+                        ambientColor = AccentSky.copy(alpha = 0.4f),
+                        spotColor = AccentSky.copy(alpha = 0.5f)
+                    )
+                } else Modifier
+            )
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) DarkPanel else SurfaceElevated.copy(alpha = 0.4f))
+            .border(
+                width = if (isSelected) 1.5.dp else 1.dp,
+                color = if (isSelected) AccentSky else OutlineVariant.copy(alpha = 0.25f),
+                shape = RoundedCornerShape(12.dp)
+            )
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 7.dp),
+            .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = patch.name,
                 color = if (isSelected) Color.White else TextDark,
-                fontSize = 11.sp,
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                fontSize = 12.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             if (patch.category.isNotBlank()) {
                 Text(
                     text = patch.category,
-                    color = TextDark,
+                    color = if (isSelected) AccentSky.copy(alpha = 0.8f) else TextDark.copy(alpha = 0.7f),
                     fontSize = 9.sp
                 )
             }
         }
         if (isSelected) {
             IconButton(onClick = onEdit, modifier = Modifier.size(20.dp)) {
-                Icon(TablerIcons.Edit, contentDescription = "Edit", tint = AccentSky, modifier = Modifier.size(12.dp))
+                Icon(TablerIcons.Edit, contentDescription = "Edit", tint = AccentSky, modifier = Modifier.size(13.dp))
             }
         }
     }
@@ -755,18 +725,17 @@ private fun KeyboardPanel(
     coroutineScope: kotlinx.coroutines.CoroutineScope
 ) {
     Surface(
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 12.dp, bottomEnd = 12.dp),
-        color = DarkPanel,
-        tonalElevation = 4.dp,
+        shape = RoundedCornerShape(20.dp),
+        color = DarkBackground.copy(alpha = 0.72f),
         modifier = Modifier.fillMaxWidth().height(140.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(6.dp),
+            modifier = Modifier.fillMaxSize().padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Left controls: Sustain + Pitch/Mod
             Column(
-                modifier = Modifier.fillMaxHeight().width(76.dp).padding(4.dp),
+                modifier = Modifier.fillMaxHeight().width(76.dp).padding(2.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -776,15 +745,18 @@ private fun KeyboardPanel(
                         .fillMaxWidth()
                         .height(30.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (sustainActive)
-                                Brush.horizontalGradient(listOf(AccentWarmYellow, AccentCoral))
-                            else
-                                Brush.horizontalGradient(listOf(LightPanel, DarkPanel))
+                        .then(
+                            if (sustainActive) {
+                                Modifier.background(
+                                    Brush.horizontalGradient(listOf(AccentWarmYellow, AccentCoral))
+                                )
+                            } else {
+                                Modifier.background(SurfaceElevated.copy(alpha = 0.6f))
+                            }
                         )
                         .border(
                             1.dp,
-                            if (sustainActive) AccentWarmYellow else OutlineVariant,
+                            if (sustainActive) AccentWarmYellow else OutlineVariant.copy(alpha = 0.3f),
                             RoundedCornerShape(8.dp)
                         )
                         .clickable(onClick = onSustainToggle),
@@ -823,17 +795,32 @@ private fun KeyboardPanel(
                 }
             }
 
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(6.dp))
 
-            // Piano
+            // Piano with Split Zone Color Strip
             val keyboardScrollState = rememberScrollState()
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                ScrollablePianoKeyboard(
-                    scrollState = keyboardScrollState,
-                    activeNote = activeNote,
-                    onNoteDown = onNoteDown,
-                    onNoteUp = onNoteUp
-                )
+            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                // Multi-zone color strip (Purple, Mint, Coral) matching mockup
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Box(modifier = Modifier.weight(1.2f).fillMaxHeight().background(AccentPurple))
+                    Box(modifier = Modifier.weight(1.5f).fillMaxHeight().background(AccentMint))
+                    Box(modifier = Modifier.weight(1.3f).fillMaxHeight().background(AccentCoral))
+                }
+                Spacer(Modifier.height(4.dp))
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    ScrollablePianoKeyboard(
+                        scrollState = keyboardScrollState,
+                        activeNote = activeNote,
+                        onNoteDown = onNoteDown,
+                        onNoteUp = onNoteUp
+                    )
+                }
             }
 
             Spacer(Modifier.width(4.dp))
@@ -908,7 +895,12 @@ private fun OctaveButton(label: String, onClick: () -> Unit) {
             lineHeight = 11.sp
         )
     }
-}@Composable
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAD STRIP
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
 fun PadStrip(
     enabled: Boolean,
     onEnabledChange: (Boolean) -> Unit,
@@ -921,11 +913,11 @@ fun PadStrip(
     onPadNoteToggle: (Int) -> Unit
 ) {
     Surface(
-        color = SurfaceElevated,
-        shape = RoundedCornerShape(8.dp),
+        color = DarkBackground.copy(alpha = 0.72f),
+        shape = RoundedCornerShape(20.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -935,25 +927,26 @@ fun PadStrip(
                 Box {
                     Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(OutlineVariant)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(DarkPanel)
+                            .border(1.dp, OutlineVariant.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
                             .clickable { expanded = true }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(horizontal = 14.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = bank.ifEmpty { "Bank" },
+                            text = bank.ifEmpty { "Bank A" },
                             color = Color.White,
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.Bold
                         )
-                        Spacer(Modifier.width(4.dp))
-                        Icon(TablerIcons.ChevronDown, contentDescription = null, tint = TextDark, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Icon(TablerIcons.ChevronDown, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                     }
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
-                        modifier = Modifier.background(OutlineVariant)
+                        modifier = Modifier.background(DarkPanel)
                     ) {
                         availableBanks.forEach { b ->
                             DropdownMenuItem(
@@ -967,11 +960,9 @@ fun PadStrip(
                     }
                 }
 
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(14.dp))
 
-                // Volume Slider
-                Icon(TablerIcons.Volume, contentDescription = null, tint = TextDark, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
+                // Volume Slider (Sleek cyan line)
                 Slider(
                     value = volume,
                     onValueChange = onVolumeChange,
@@ -980,28 +971,24 @@ fun PadStrip(
                     colors = SliderDefaults.colors(
                         thumbColor = AccentSky,
                         activeTrackColor = AccentSky,
-                        inactiveTrackColor = OutlineVariant
+                        inactiveTrackColor = OutlineVariant.copy(alpha = 0.4f)
                     )
                 )
 
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(14.dp))
 
-                // Toggle
-                Text("PAD", color = TextDark, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.width(8.dp))
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = onEnabledChange,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = AccentSky,
-                        uncheckedThumbColor = TextDark,
-                        uncheckedTrackColor = OutlineVariant
-                    )
+                // PAD Label
+                Text(
+                    "PAD",
+                    color = if (enabled) TextLight else TextDark,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.clickable { onEnabledChange(!enabled) }
                 )
             }
             
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Pad note triggers
             val notes = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
@@ -1014,26 +1001,34 @@ fun PadStrip(
                     val isActive = activePadNote == index
                     Box(
                         modifier = Modifier
-                            .size(64.dp, 54.dp)
-                            .shadow(
-                                elevation = if (isActive) 6.dp else 0.dp,
-                                shape = RoundedCornerShape(12.dp),
-                                ambientColor = if (isActive) StatusSuccess.copy(alpha = 0.5f) else Color.Transparent,
-                                spotColor = if (isActive) StatusSuccess.copy(alpha = 0.5f) else Color.Transparent
+                            .size(56.dp, 46.dp)
+                            .then(
+                                if (isActive) {
+                                    Modifier.shadow(
+                                        elevation = 10.dp,
+                                        shape = RoundedCornerShape(12.dp),
+                                        ambientColor = StatusSuccess.copy(alpha = 0.6f),
+                                        spotColor = StatusSuccess.copy(alpha = 0.7f)
+                                    )
+                                } else Modifier
                             )
                             .clip(RoundedCornerShape(12.dp))
                             .background(
-                                if (isActive) Brush.verticalGradient(listOf(StatusSuccess, StatusSuccess.copy(alpha=0.7f)))
-                                else Brush.verticalGradient(listOf(LightPanel, DarkPanel))
+                                if (isActive) StatusSuccess
+                                else SurfaceElevated.copy(alpha = 0.5f)
                             )
-                            .border(1.dp, if (isActive) StatusSuccess else Color.Transparent, RoundedCornerShape(12.dp))
+                            .border(
+                                width = 1.dp,
+                                color = if (isActive) StatusSuccess else OutlineVariant.copy(alpha = 0.25f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
                             .clickable(enabled = enabled) { onPadNoteToggle(index) },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = noteName,
-                            color = if (isActive || !enabled) Color.White else TextDark,
-                            fontSize = 14.sp,
+                            color = if (isActive) Color.White else TextDark,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
