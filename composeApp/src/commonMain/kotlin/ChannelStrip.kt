@@ -1,4 +1,4 @@
-﻿package com.midi.mainstage
+package com.midi.mainstage
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -33,10 +33,10 @@ fun ChannelStripItem(
             .width(80.dp)
             .fillMaxHeight()
             .shadow(
-                elevation = 8.dp, 
+                elevation = 10.dp, 
                 shape = RoundedCornerShape(14.dp), 
-                ambientColor = accentColor.copy(alpha = 0.35f), 
-                spotColor = accentColor.copy(alpha = 0.45f)
+                ambientColor = accentColor.copy(alpha = 0.5f), 
+                spotColor = accentColor.copy(alpha = 0.6f)
             )
             .clip(RoundedCornerShape(14.dp))
             .background(
@@ -46,7 +46,7 @@ fun ChannelStripItem(
             )
             .border(
                 width = 1.dp,
-                color = accentColor.copy(alpha = 0.55f),
+                color = accentColor.copy(alpha = 0.7f),
                 shape = RoundedCornerShape(14.dp)
             )
             .padding(horizontal = 5.dp, vertical = 6.dp),

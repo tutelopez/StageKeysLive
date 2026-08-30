@@ -1,4 +1,4 @@
-﻿package com.midi.mainstage
+package com.midi.mainstage
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -210,6 +210,12 @@ fun MetronomeChannelItem(
         modifier = Modifier
             .width(72.dp)
             .fillMaxHeight()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(14.dp),
+                ambientColor = accent.copy(alpha = 0.4f),
+                spotColor = accent.copy(alpha = 0.5f)
+            )
             .clip(RoundedCornerShape(14.dp))
             .background(
                 Brush.verticalGradient(listOf(DarkPanel, DarkBackground))
@@ -217,7 +223,7 @@ fun MetronomeChannelItem(
             .border(
                 1.dp,
                 Brush.verticalGradient(
-                    listOf(accent.copy(alpha = 0.3f), DarkBackground)
+                    listOf(accent.copy(alpha = 0.5f), DarkBackground)
                 ),
                 RoundedCornerShape(14.dp)
             )
@@ -272,6 +278,12 @@ fun MasterOutputChannelItem(
         modifier = Modifier
             .width(88.dp)
             .fillMaxHeight()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(14.dp),
+                ambientColor = accent.copy(alpha = 0.4f),
+                spotColor = accent.copy(alpha = 0.5f)
+            )
             .clip(RoundedCornerShape(14.dp))
             .background(
                 Brush.verticalGradient(listOf(DarkPanel, DarkBackground))

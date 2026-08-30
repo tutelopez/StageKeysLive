@@ -1,4 +1,4 @@
-﻿package com.midi.mainstage
+package com.midi.mainstage
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -550,7 +550,7 @@ private fun PatchesPanel(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = DarkPanel.copy(alpha = 0.88f),
+        color = DarkPanel.copy(alpha = 0.78f),
         tonalElevation = 2.dp,
         modifier = Modifier.width(168.dp).fillMaxHeight()
     ) {
@@ -669,7 +669,7 @@ private fun MixerPanel(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = DarkBackground.copy(alpha = 0.88f),
+        color = DarkBackground.copy(alpha = 0.72f),
         modifier = modifier.fillMaxHeight()
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
