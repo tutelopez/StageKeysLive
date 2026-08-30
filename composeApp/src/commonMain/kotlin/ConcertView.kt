@@ -121,8 +121,13 @@ fun ConcertViewScreen(
         ) {
 
             // â”€â”€â”€ TOP BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            val nextPatchName = if (concert.patches.size > 1) {
+                concert.patches.getOrNull((selectedPatchIndex + 1) % concert.patches.size)?.name
+            } else null
+
             TopBar(
                 concertName = concert.name,
+                nextPatchName = nextPatchName,
                 metronomeOn = metronomeOn,
                 onMetronomeToggle = onMetronomeToggle,
                 metronomeTick = metronomeTick,
@@ -278,6 +283,7 @@ fun ConcertViewScreen(
 @Composable
 private fun TopBar(
     concertName: String,
+    nextPatchName: String? = null,
     metronomeOn: Boolean,
     onMetronomeToggle: () -> Unit,
     metronomeTick: Boolean,
@@ -322,18 +328,30 @@ private fun TopBar(
 
             Spacer(Modifier.width(6.dp))
 
-            // Concert name
-            Text(
-                text = concertName.uppercase(),
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                    fontSize = 15.sp
-                ),
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            // Concert name + Next patch preview
+            Column {
+                Text(
+                    text = concertName.uppercase(),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp,
+                        fontSize = 14.sp
+                    ),
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (nextPatchName != null) {
+                    Text(
+                        text = "Siguiente: $nextPatchName",
+                        color = TextDark,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
 
             Spacer(Modifier.weight(1f))
 
@@ -532,6 +550,19 @@ private fun PatchesPanel(
                 IconButton(onClick = onAdd, modifier = Modifier.size(22.dp)) {
                     Icon(TablerIcons.Plus, contentDescription = "Add patch", tint = AccentSky, modifier = Modifier.size(15.dp))
                 }
+            }
+
+            if (patches.size > 1) {
+                val nextPatch = patches.getOrNull((selectedIndex + 1) % patches.size)
+                Text(
+                    text = "Siguiente: ${nextPatch?.name ?: "—"}",
+                    color = TextDark.copy(alpha = 0.65f),
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                )
             }
 
             Spacer(Modifier.height(4.dp))
