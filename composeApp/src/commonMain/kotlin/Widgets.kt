@@ -31,8 +31,9 @@ fun VolumeFader(
 ) {
     BoxWithConstraints(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.Transparent)
+            .clip(RoundedCornerShape(7.dp))
+            .background(DarkPanel)
+            .border(1.dp, LightPanel, RoundedCornerShape(7.dp))
             .pointerInput(Unit) {
                 detectDragGestures { change, _ ->
                     val newValue = 1f - (change.position.y / size.height).coerceIn(0f, 1f)
@@ -41,43 +42,34 @@ fun VolumeFader(
             },
         contentAlignment = Alignment.BottomCenter
     ) {
-        // Subtle track background line / glow
+        // Gradient fill
         Box(
             modifier = Modifier
-                .width(4.dp)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(2.dp))
-                .background(OutlineVariant.copy(alpha = 0.3f))
-        )
-
-        // Active fill on the center rail
-        Box(
-            modifier = Modifier
-                .width(4.dp)
+                .fillMaxWidth()
                 .fillMaxHeight(value.coerceIn(0.01f, 1f))
-                .clip(RoundedCornerShape(2.dp))
+                .clip(RoundedCornerShape(6.dp))
                 .background(
                     Brush.verticalGradient(
-                        listOf(accentColor.copy(alpha = 0.8f), accentColor.copy(alpha = 0.3f))
+                        listOf(accentColor, accentColor.copy(alpha = 0.45f))
                     )
                 )
         )
 
-        // Handle (sleek thumb bar matching mockup)
-        val handleHeight = 8.dp
+        // Thumb handle (matching HTML .fader-thumb)
+        val handleHeight = 6.dp
         val usableHeight = maxHeight - handleHeight
         val handleOffset = usableHeight * (1f - value)
 
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.7f)
+                .fillMaxWidth(0.84f)
                 .height(handleHeight)
                 .align(Alignment.TopCenter)
                 .offset(y = handleOffset)
-                .shadow(elevation = 6.dp, shape = RoundedCornerShape(4.dp), ambientColor = accentColor, spotColor = accentColor)
-                .clip(RoundedCornerShape(4.dp))
-                .background(SurfaceElevated)
-                .border(1.5.dp, accentColor, RoundedCornerShape(4.dp))
+                .shadow(elevation = 8.dp, shape = RoundedCornerShape(3.dp), ambientColor = accentColor, spotColor = accentColor)
+                .clip(RoundedCornerShape(3.dp))
+                .background(DarkBackground)
+                .border(1.8.dp, accentColor, RoundedCornerShape(3.dp))
         )
     }
 }
@@ -201,43 +193,49 @@ fun MetronomeChannelItem(
     val accent = AccentNeonGreen
     Column(
         modifier = Modifier
-            .width(72.dp)
+            .width(74.dp)
             .fillMaxHeight()
             .shadow(
-                elevation = 8.dp,
+                elevation = 12.dp,
                 shape = RoundedCornerShape(14.dp),
-                ambientColor = accent.copy(alpha = 0.4f),
-                spotColor = accent.copy(alpha = 0.5f)
+                ambientColor = accent.copy(alpha = 0.35f),
+                spotColor = accent.copy(alpha = 0.45f)
             )
             .clip(RoundedCornerShape(14.dp))
             .background(
-                Brush.verticalGradient(listOf(DarkPanel, DarkBackground))
+                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
             )
             .border(
                 1.dp,
-                Brush.verticalGradient(
-                    listOf(accent.copy(alpha = 0.5f), DarkBackground)
-                ),
+                accent.copy(alpha = 0.45f),
                 RoundedCornerShape(14.dp)
             )
-            .padding(horizontal = 5.dp, vertical = 6.dp),
+            .padding(horizontal = 5.dp, vertical = 7.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         // Icon + label
-        Icon(
-            TablerIcons.Music,
-            contentDescription = "Metronome",
-            tint = accent.copy(alpha = 0.7f),
-            modifier = Modifier.size(16.dp)
-        )
-        Text(
-            "CLICK",
-            color = accent.copy(alpha = 0.6f),
-            fontSize = 7.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(13.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accent)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                "CLICK",
+                color = Color(0xFF7DFFB0),
+                fontSize = 7.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.5.sp
+            )
+        }
 
         // Fader
         VolumeFader(
@@ -256,9 +254,9 @@ fun MetronomeChannelItem(
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // MASTER OUTPUT CHANNEL ITEM
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 fun MasterOutputChannelItem(
     volume: Float,
@@ -269,45 +267,46 @@ fun MasterOutputChannelItem(
     val accent = AccentPurple
     Column(
         modifier = Modifier
-            .width(88.dp)
+            .width(82.dp)
             .fillMaxHeight()
             .shadow(
-                elevation = 8.dp,
+                elevation = 14.dp,
                 shape = RoundedCornerShape(14.dp),
-                ambientColor = accent.copy(alpha = 0.4f),
-                spotColor = accent.copy(alpha = 0.5f)
+                ambientColor = accent.copy(alpha = 0.35f),
+                spotColor = accent.copy(alpha = 0.45f)
             )
             .clip(RoundedCornerShape(14.dp))
             .background(
-                Brush.verticalGradient(listOf(DarkPanel, DarkBackground))
+                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
             )
             .border(
                 1.dp,
-                Brush.verticalGradient(
-                    listOf(accent.copy(alpha = 0.5f), DarkBackground)
-                ),
+                accent.copy(alpha = 0.45f),
                 RoundedCornerShape(14.dp)
             )
-            .padding(horizontal = 5.dp, vertical = 6.dp),
+            .padding(horizontal = 5.dp, vertical = 7.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                TablerIcons.Volume,
-                contentDescription = "Master",
-                tint = accent,
-                modifier = Modifier.size(14.dp)
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(13.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accent)
             )
+            Spacer(Modifier.width(4.dp))
             Text(
                 "MASTER",
-                color = accent.copy(alpha = 0.9f),
+                color = Color(0xFFC9A3F7),
                 fontSize = 7.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.5.sp
             )
         }
         Text(

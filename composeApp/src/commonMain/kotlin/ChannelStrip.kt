@@ -30,22 +30,24 @@ fun ChannelStripItem(
 
     Column(
         modifier = Modifier
-            .width(82.dp)
+            .width(74.dp)
             .fillMaxHeight()
             .shadow(
-                elevation = 8.dp, 
-                shape = RoundedCornerShape(16.dp), 
-                ambientColor = accentColor.copy(alpha = 0.35f), 
-                spotColor = accentColor.copy(alpha = 0.45f)
+                elevation = 12.dp, 
+                shape = RoundedCornerShape(14.dp), 
+                ambientColor = accentColor.copy(alpha = 0.4f), 
+                spotColor = accentColor.copy(alpha = 0.55f)
             )
-            .clip(RoundedCornerShape(16.dp))
-            .background(DarkBackground.copy(alpha = 0.6f))
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
+            )
             .border(
-                width = 1.2.dp,
-                color = accentColor.copy(alpha = 0.7f),
-                shape = RoundedCornerShape(16.dp)
+                width = 1.dp,
+                color = accentColor.copy(alpha = 0.55f),
+                shape = RoundedCornerShape(14.dp)
             )
-            .padding(horizontal = 6.dp, vertical = 8.dp),
+            .padding(horizontal = 5.dp, vertical = 7.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
