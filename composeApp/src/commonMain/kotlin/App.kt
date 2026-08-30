@@ -1,6 +1,8 @@
 package com.midi.mainstage
 
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.zIndex
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -1507,16 +1509,15 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 }
                                 SettingsTab.SPLIT_ZONES -> {
                                     activeConcert?.let { concert ->
+                                        val currentPatch = concert.patches.getOrNull(selectedPatchIndex)
                                         SplitKeyboardSettingsScreen(
                                             concert = concert,
+                                            selectedPatchName = currentPatch?.name,
                                             onUpdateRange = { channelId, start, end ->
                                                 val updatedChannels = concert.channels.map {
                                                     if (it.id == channelId) it.copy(keyRangeStart = start, keyRangeEnd = end) else it
                                                 }
-                                                val updatedConcert = concert.copy(channels = updatedChannels, lastModified = System.currentTimeMillis())
-                                                val newList = concerts.map { if (it.id == concert.id) updatedConcert else it }
-                                                saveConcertsList(newList)
-                                                activeConcert = updatedConcert
+                                                updateChannelsAndPatchSnapshot(updatedChannels)
                                             }
                                         )
                                     }
@@ -1770,6 +1771,199 @@ fun MidiMappingSettingsScreen(
     }
 }
 
+private val splitWhitePianoNotes = listOf(
+    21, 23, 
+    24, 26, 28, 29, 31, 33, 35, // Octave 1
+    36, 38, 40, 41, 43, 45, 47, // Octave 2
+    48, 50, 52, 53, 55, 57, 59, // Octave 3
+    60, 62, 64, 65, 67, 69, 71, // Octave 4
+    72, 74, 76, 77, 79, 81, 83, // Octave 5
+    84, 86, 88, 89, 91, 93, 95, // Octave 6
+    96, 98, 100, 101, 103, 105, 107, // Octave 7
+    108 // C8
+)
+
+private val splitBlackPianoNotesMap = mapOf(
+    21 to 22, 24 to 25, 26 to 27, 29 to 30, 31 to 32, 33 to 34, 36 to 37, 38 to 39,
+    41 to 42, 43 to 44, 45 to 46, 48 to 49, 50 to 51, 53 to 54, 55 to 56, 57 to 58,
+    60 to 61, 62 to 63, 65 to 66, 67 to 68, 69 to 70, 72 to 73, 74 to 75, 77 to 78,
+    79 to 80, 81 to 82, 84 to 85, 86 to 87, 89 to 90, 91 to 92, 93 to 94, 96 to 97,
+    98 to 99, 101 to 102, 103 to 104, 105 to 106
+)
+
+private fun getSplitMidiNoteFractionStart(note: Int): Float {
+    if (note <= 21) return 0f
+    if (note >= 108) return 1f
+    val whiteIdx = splitWhitePianoNotes.indexOf(note)
+    return if (whiteIdx >= 0) {
+        whiteIdx / 52f
+    } else {
+        val prevWhite = splitWhitePianoNotes.filter { it < note }.maxOrNull() ?: 21
+        val prevIdx = splitWhitePianoNotes.indexOf(prevWhite)
+        (prevIdx + 0.45f) / 52f
+    }
+}
+
+private fun getSplitMidiNoteFractionEnd(note: Int): Float {
+    if (note <= 21) return 1f / 52f
+    if (note >= 108) return 1f
+    val whiteIdx = splitWhitePianoNotes.indexOf(note)
+    return if (whiteIdx >= 0) {
+        (whiteIdx + 1) / 52f
+    } else {
+        val prevWhite = splitWhitePianoNotes.filter { it < note }.maxOrNull() ?: 21
+        val prevIdx = splitWhitePianoNotes.indexOf(prevWhite)
+        (prevIdx + 1.45f) / 52f
+    }
+}
+
+@Composable
+fun SplitKeyboardVisualizer(
+    channels: List<ChannelStripState>,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF0F1117))
+            .border(1.dp, Color(0xFF232733), RoundedCornerShape(12.dp))
+            .padding(10.dp)
+    ) {
+        val totalWidth = maxWidth
+        val barHeight = when {
+            channels.size <= 2 -> 6.dp
+            channels.size <= 4 -> 4.5.dp
+            else -> 3.5.dp
+        }
+        val barSpacing = when {
+            channels.size <= 3 -> 2.dp
+            else -> 1.5.dp
+        }
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            // 1. Stacked Channel Layer Bars (MainStage style)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(barSpacing)
+            ) {
+                channels.forEach { ch ->
+                    val accentColor = parseColorHex(ch.colorHex)
+                    val alpha = if (ch.isMuted) 0.3f else 0.95f
+                    val startFrac = getSplitMidiNoteFractionStart(ch.keyRangeStart)
+                    val endFrac = getSplitMidiNoteFractionEnd(ch.keyRangeEnd)
+                    val startX = totalWidth * startFrac
+                    val barWidth = (totalWidth * (endFrac - startFrac)).coerceAtLeast(6.dp)
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(barHeight)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .offset(x = startX)
+                                .width(barWidth)
+                                .fillMaxHeight()
+                                .shadow(
+                                    elevation = if (ch.isMuted) 0.dp else 4.dp,
+                                    shape = RoundedCornerShape(2.dp),
+                                    ambientColor = accentColor.copy(alpha = 0.4f),
+                                    spotColor = accentColor.copy(alpha = 0.5f)
+                                )
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(accentColor.copy(alpha = alpha))
+                                .border(0.5.dp, Color.White.copy(alpha = if (ch.isMuted) 0.1f else 0.4f), RoundedCornerShape(2.dp))
+                        )
+                    }
+                }
+            }
+
+            // 2. Mini 88-Key Piano Keyboard with Color Overlays for Overlaps
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF0F1115))
+                    .border(1.dp, Color(0xFF1E222D), RoundedCornerShape(6.dp))
+            ) {
+                // White Keys
+                Row(modifier = Modifier.fillMaxSize()) {
+                    splitWhitePianoNotes.forEach { _ ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(Color(0xFFE2E8F0))
+                                .border(0.5.dp, Color(0xFF0F1115))
+                        )
+                    }
+                }
+
+                // Black Keys
+                Row(modifier = Modifier.fillMaxSize()) {
+                    splitWhitePianoNotes.forEachIndexed { idx, note ->
+                        val hasBlack = splitBlackPianoNotesMap.containsKey(note) && idx < 51
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            if (hasBlack) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = 3.dp)
+                                        .zIndex(2f)
+                                        .width(7.dp)
+                                        .fillMaxHeight(0.62f)
+                                        .clip(RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
+                                        .background(Color(0xFF1E222D))
+                                        .border(0.5.dp, Color.Black, RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Semi-transparent Channel Range Overlays (blends overlapping zones automatically)
+                channels.forEach { ch ->
+                    val accentColor = parseColorHex(ch.colorHex)
+                    val alpha = if (ch.isMuted) 0.18f else 0.42f
+                    val startFrac = getSplitMidiNoteFractionStart(ch.keyRangeStart)
+                    val endFrac = getSplitMidiNoteFractionEnd(ch.keyRangeEnd)
+                    val startX = totalWidth * startFrac
+                    val barWidth = (totalWidth * (endFrac - startFrac)).coerceAtLeast(4.dp)
+
+                    Box(
+                        modifier = Modifier
+                            .offset(x = startX)
+                            .width(barWidth)
+                            .fillMaxHeight()
+                            .background(accentColor.copy(alpha = alpha))
+                            .border(1.dp, accentColor.copy(alpha = if (ch.isMuted) 0.3f else 0.85f))
+                    )
+                }
+
+                // Octave C Labels at Bottom
+                val cNotes = listOf(24 to "C1", 36 to "C2", 48 to "C3", 60 to "C4", 72 to "C5", 84 to "C6", 96 to "C7", 108 to "C8")
+                cNotes.forEach { (note, label) ->
+                    val frac = getSplitMidiNoteFractionStart(note)
+                    Text(
+                        text = label,
+                        fontSize = 7.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black.copy(alpha = 0.55f),
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .offset(x = totalWidth * frac + 1.dp, y = (-1).dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun SplitKeyboardSettingsScreen(
     concert: Concert,
@@ -1793,30 +1987,11 @@ fun SplitKeyboardSettingsScreen(
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .background(Color.Black, AppShapes.small)
-                .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, AppShapes.small)
-        ) {
-            concert.channels.forEach { ch ->
-                val startPercent = ch.keyRangeStart / 127f
-                val endPercent = ch.keyRangeEnd / 127f
-                val widthPercent = endPercent - startPercent
-                
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight(0.3f)
-                        .fillMaxWidth(widthPercent)
-                        .align(Alignment.CenterStart)
-                        .offset(x = (startPercent * 280).dp)
-                        .background(parseColorHex(ch.colorHex), RoundedCornerShape(1.dp))
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
+        // Mini Keyboard with MainStage-style Layer Bars and Overlap Tint
+        SplitKeyboardVisualizer(
+            channels = concert.channels,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
 
         concert.channels.forEach { ch ->
             Row(
