@@ -1,4 +1,8 @@
+@file:JvmName("CommonPersistence")
+
 package com.midi.mainstage
+
+import kotlin.jvm.JvmName
 
 expect fun saveTextToFile(filename: String, text: String)
 expect fun readTextFromFile(filename: String): String?
@@ -14,7 +18,8 @@ data class ChannelStripState(
     val isSoloed: Boolean,
     val keyRangeStart: Int,
     val keyRangeEnd: Int,
-    val colorHex: String
+    val colorHex: String,
+    val velocityCurve: String = "LINEAR"
 )
 
 data class PatchChannelSnapshot(
@@ -27,8 +32,21 @@ data class PatchChannelSnapshot(
     val isSoloed: Boolean,
     val keyRangeStart: Int,
     val keyRangeEnd: Int,
-    val colorHex: String
+    val colorHex: String,
+    val velocityCurve: String = "LINEAR"
 )
+
+fun applyCurve(velocity: Int, curve: String): Int {
+    if (velocity <= 0) return 0
+    if (velocity >= 127) return 127
+    val norm = velocity / 127.0
+    val transformed = when (curve.uppercase()) {
+        "SOFT" -> kotlin.math.sqrt(norm)
+        "HARD" -> norm * norm
+        else -> norm // LINEAR
+    }
+    return kotlin.math.round(transformed * 127.0).toInt().coerceIn(0, 127)
+}
 
 data class PatchState(
     val name: String,
@@ -86,7 +104,8 @@ object ConcertSerializer {
                     sb.append("\"isSoloed\":${snap.isSoloed},")
                     sb.append("\"keyRangeStart\":${snap.keyRangeStart},")
                     sb.append("\"keyRangeEnd\":${snap.keyRangeEnd},")
-                    sb.append("\"colorHex\":\"${snap.colorHex}\"")
+                    sb.append("\"colorHex\":\"${snap.colorHex}\",")
+                    sb.append("\"velocityCurve\":\"${snap.velocityCurve}\"")
                     sb.append("}")
                 }
                 sb.append("]")
@@ -110,7 +129,8 @@ object ConcertSerializer {
                 sb.append("\"isSoloed\":${ch.isSoloed},")
                 sb.append("\"keyRangeStart\":${ch.keyRangeStart},")
                 sb.append("\"keyRangeEnd\":${ch.keyRangeEnd},")
-                sb.append("\"colorHex\":\"${ch.colorHex}\"")
+                sb.append("\"colorHex\":\"${ch.colorHex}\",")
+                sb.append("\"velocityCurve\":\"${ch.velocityCurve}\"")
                 sb.append("}")
             }
             sb.append("]")
@@ -281,9 +301,11 @@ class SimpleJsonParser(private val src: String) {
         var keyRangeStart = 0
         var keyRangeEnd = 127
         var colorHex = "#00D2FF"
+        var velocityCurve = "LINEAR"
 
         while (pos < src.length) {
             skipWhitespace()
+            if (pos >= src.length) break
             if (src[pos] == '}') {
                 pos++
                 break
@@ -303,12 +325,13 @@ class SimpleJsonParser(private val src: String) {
                 "keyRangeStart" -> keyRangeStart = parseInt()
                 "keyRangeEnd" -> keyRangeEnd = parseInt()
                 "colorHex" -> colorHex = parseString()
+                "velocityCurve" -> velocityCurve = parseString()
                 else -> skipValue()
             }
             skipWhitespace()
             if (pos < src.length && src[pos] == ',') pos++
         }
-        return PatchChannelSnapshot(channelId, name ?: "Canal $channelId", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex)
+        return PatchChannelSnapshot(channelId, name ?: "Canal $channelId", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex, velocityCurve)
     }
 
     private fun parseChannel(): ChannelStripState {
@@ -323,9 +346,11 @@ class SimpleJsonParser(private val src: String) {
         var keyRangeStart = 0
         var keyRangeEnd = 127
         var colorHex = "#00D2FF"
+        var velocityCurve = "LINEAR"
 
         while (pos < src.length) {
             skipWhitespace()
+            if (pos >= src.length) break
             if (src[pos] == '}') {
                 pos++
                 break
@@ -345,12 +370,13 @@ class SimpleJsonParser(private val src: String) {
                 "keyRangeStart" -> keyRangeStart = parseInt()
                 "keyRangeEnd" -> keyRangeEnd = parseInt()
                 "colorHex" -> colorHex = parseString()
+                "velocityCurve" -> velocityCurve = parseString()
                 else -> skipValue()
             }
             skipWhitespace()
             if (pos < src.length && src[pos] == ',') pos++
         }
-        return ChannelStripState(id, name ?: "Canal $id", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex)
+        return ChannelStripState(id, name ?: "Canal $id", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex, velocityCurve)
     }
 
     private fun parseString(): String {

@@ -78,12 +78,18 @@ fun ChannelStripItem(
                 modifier = Modifier.weight(1f).padding(horizontal = 2.dp)
             )
 
-            IconButton(onClick = onGearClick, modifier = Modifier.size(14.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onGearClick),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     TablerIcons.Settings,
                     contentDescription = "Configure",
-                    tint = TextDark.copy(alpha = 0.7f),
-                    modifier = Modifier.size(11.dp)
+                    tint = TextDark.copy(alpha = 0.85f),
+                    modifier = Modifier.size(13.dp)
                 )
             }
         }

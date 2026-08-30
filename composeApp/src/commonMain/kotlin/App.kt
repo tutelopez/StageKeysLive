@@ -311,7 +311,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 channelId = ch.id, name = ch.name, sf2Name = ch.sf2Name, sf2Path = ch.sf2Path,
                                 volume = ch.volume, isMuted = ch.isMuted, isSoloed = ch.isSoloed,
                                 keyRangeStart = ch.keyRangeStart, keyRangeEnd = ch.keyRangeEnd,
-                                colorHex = ch.colorHex
+                                colorHex = ch.colorHex,
+                                velocityCurve = ch.velocityCurve
                             )
                         }
                         patch.copy(channelsSnapshot = newSnapshot)
@@ -345,7 +346,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 PatchChannelSnapshot(
                     channelId = ch.id, name = ch.name, sf2Name = ch.sf2Name, sf2Path = ch.sf2Path,
                     volume = ch.volume, isMuted = ch.isMuted, isSoloed = ch.isSoloed,
-                    keyRangeStart = ch.keyRangeStart, keyRangeEnd = ch.keyRangeEnd, colorHex = ch.colorHex
+                    keyRangeStart = ch.keyRangeStart, keyRangeEnd = ch.keyRangeEnd, colorHex = ch.colorHex,
+                    velocityCurve = ch.velocityCurve
                 )
             }
             val patchesWithCurrentSaved = if (selectedPatchIndex in concert.patches.indices) {
@@ -362,7 +364,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         id = snap.channelId, name = snap.name, sf2Name = snap.sf2Name, sf2Path = snap.sf2Path,
                         volume = snap.volume, isMuted = snap.isMuted, isSoloed = snap.isSoloed,
                         keyRangeStart = snap.keyRangeStart, keyRangeEnd = snap.keyRangeEnd,
-                        colorHex = snap.colorHex
+                        colorHex = snap.colorHex,
+                        velocityCurve = snap.velocityCurve
                     )
                 }
             } else {
@@ -371,7 +374,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     ChannelStripState(
                         id = 1, name = "Canal 1", sf2Name = "Sin Asignar", sf2Path = null,
                         volume = 0.8f, isMuted = false, isSoloed = false,
-                        keyRangeStart = 0, keyRangeEnd = 127, colorHex = "#00D2FF"
+                        keyRangeStart = 0, keyRangeEnd = 127, colorHex = "#00D2FF",
+                        velocityCurve = "LINEAR"
                     )
                 )
             }
@@ -409,11 +413,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             concert.channels.forEachIndexed { idx, ch ->
                 val shouldPlay = if (anySolo) ch.isSoloed else !ch.isMuted
                 if (shouldPlay && playedNote >= ch.keyRangeStart && playedNote <= ch.keyRangeEnd) {
-                    synth.noteOn(playedNote, (ch.volume * velocity).toInt(), ch.id)
+                    val curvedVelocity = applyCurve(velocity, ch.velocityCurve)
+                    val effectiveVelocity = (ch.volume * curvedVelocity).toInt().coerceIn(0, 127)
+                    println("[VELOCITY_DEBUG] Note=$playedNote rawVel=$velocity curve=${ch.velocityCurve} -> curvedVel=$curvedVelocity effectiveVel=$effectiveVelocity (vol=${ch.volume})")
+                    synth.noteOn(playedNote, effectiveVelocity, ch.id)
                     noteTriggered = true
                     
                     coroutineScope.launch {
-                        vuLevels[idx].animateTo(ch.volume * (velocity / 127f), tween(50))
+                        vuLevels[idx].animateTo(ch.volume * (curvedVelocity / 127f), tween(50))
                     }
                 }
             }
@@ -1376,6 +1383,55 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         }
                                     }
                             )
+                        }
+                    }
+
+                    // Velocity Curve Selector (Suave / Normal / Dura)
+                    Text("CURVA DE SENSIBILIDAD (VELOCITY):", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(bottom = 8.dp))
+
+                    val curves = listOf(
+                        "SOFT" to "Suave",
+                        "LINEAR" to "Normal",
+                        "HARD" to "Dura"
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        curves.forEach { (curveKey, label) ->
+                            val isSelected = (chState.velocityCurve == curveKey) || (curveKey == "LINEAR" && chState.velocityCurve.isBlank())
+                            val accentColor = parseColorHex(chState.colorHex)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) accentColor.copy(alpha = 0.22f) else DarkBackground)
+                                    .border(
+                                        width = if (isSelected) 1.5.dp else 1.dp,
+                                        color = if (isSelected) accentColor else Color.White.copy(alpha = 0.08f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable {
+                                        val active = activeConcert
+                                        if (active != null) {
+                                            val updatedChannels = active.channels.map {
+                                                if (it.id == chState.id) it.copy(velocityCurve = curveKey) else it
+                                            }
+                                            updateChannelsAndPatchSnapshot(updatedChannels)
+                                            showChannelSettingsDialog = activeConcert?.channels?.find { it.id == chState.id }
+                                        }
+                                    }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = if (isSelected) Color.White else TextDark,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                )
+                            }
                         }
                     }
 
