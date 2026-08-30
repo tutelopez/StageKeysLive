@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
@@ -106,7 +107,7 @@ fun ConcertViewScreen(
 
     // Use BoxWithConstraints to detect screen width (KMP-safe, no LocalConfiguration needed)
     // Tablets (>=600dp) start expanded; phones start collapsed to maximize mixer space
-    var isKeyboardVisible by rememberSaveable { mutableStateOf(true) }
+    var isKeyboardVisible by rememberSaveable { mutableStateOf(false) }
 
     // Use BoxWithConstraints to detect screen width (KMP-safe, no LocalConfiguration needed)
     androidx.compose.foundation.layout.BoxWithConstraints(
@@ -118,9 +119,6 @@ fun ConcertViewScreen(
                 )
             )
     ) {
-        LaunchedEffect(Unit) {
-            isKeyboardVisible = maxWidth >= 600.dp
-        }
 
         Column(
             modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
@@ -244,11 +242,15 @@ fun ConcertViewScreen(
                     )
                 }
             }
-            // Animated keyboard panel
-            AnimatedVisibility(
-                visible = isKeyboardVisible,
-                enter = expandVertically(),
-                exit = shrinkVertically()
+            // Animated keyboard panel (Fixed expansion issue)
+            val keyboardHeight by androidx.compose.animation.core.animateDpAsState(
+                targetValue = if (isKeyboardVisible) 140.dp else 0.dp
+            )
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(keyboardHeight)
+                    .clipToBounds()
             ) {
                 KeyboardPanel(
                     activeNote = activeNote,
