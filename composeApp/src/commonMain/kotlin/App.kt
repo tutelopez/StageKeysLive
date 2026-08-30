@@ -301,6 +301,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
     val updateChannelsAndPatchSnapshotOnlyState = { newChannels: List<ChannelStripState> ->
         val concert = activeConcert
+        println("[COLOR_DEBUG] updateChannelsAndPatchSnapshotOnlyState: newChannels=${newChannels.map { "Ch${it.id}:${it.colorHex}" }} (activeConcert was ${concert?.channels?.map { "Ch${it.id}:${it.colorHex}" }})")
         if (concert != null) {
             val updatedPatches = if (selectedPatchIndex in concert.patches.indices) {
                 concert.patches.mapIndexed { idx, patch ->
@@ -322,6 +323,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             val newList = concerts.map { if (it.id == concert.id) updatedConcert else it }
             concerts = newList
             activeConcert = updatedConcert
+            println("[COLOR_DEBUG] activeConcert set to: ${updatedConcert.channels.map { "Ch${it.id}:${it.colorHex}" }}")
         }
     }
 
@@ -811,9 +813,10 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         showAddPatchDialog = true
                     },
                     onDeletePatch = { patch ->
-                        val updatedPatches = concert.patches.filter { it.id != patch.id }
-                        val updatedConcert = concert.copy(patches = updatedPatches, lastModified = System.currentTimeMillis())
-                        val newList = concerts.map { if (it.id == concert.id) updatedConcert else it }
+                        val active = activeConcert ?: return@ConcertViewScreen
+                        val updatedPatches = active.patches.filter { it.id != patch.id }
+                        val updatedConcert = active.copy(patches = updatedPatches, lastModified = System.currentTimeMillis())
+                        val newList = concerts.map { if (it.id == active.id) updatedConcert else it }
                         saveConcertsList(newList)
                         activeConcert = updatedConcert
                         if (selectedPatchIndex >= updatedPatches.size) {
@@ -882,26 +885,31 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
                     // Channel strip callback triggers dialog and additions
                     onVolumeChange = { chId, vol ->
-                        val updatedChannels = concert.channels.map {
+                        val active = activeConcert ?: return@ConcertViewScreen
+                        println("[COLOR_DEBUG] onVolumeChange: chId=$chId, vol=$vol. Current activeConcert colors: ${active.channels.map { "Ch${it.id}:${it.colorHex}" }}")
+                        val updatedChannels = active.channels.map {
                             if (it.id == chId) it.copy(volume = vol) else it
                         }
                         updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
                     },
                     onMuteToggle = { chId ->
-                        val updatedChannels = concert.channels.map {
+                        val active = activeConcert ?: return@ConcertViewScreen
+                        val updatedChannels = active.channels.map {
                             if (it.id == chId) it.copy(isMuted = !it.isMuted) else it
                         }
                         updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
                     },
                     onSoloToggle = { chId ->
-                        val updatedChannels = concert.channels.map {
+                        val active = activeConcert ?: return@ConcertViewScreen
+                        val updatedChannels = active.channels.map {
                             if (it.id == chId) it.copy(isSoloed = !it.isSoloed) else it
                         }
                         updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
                     },
                     onAddChannelClick = {
-                        if (concert.channels.size < 8) {
-                            val nextId = (concert.channels.maxOfOrNull { it.id } ?: 0) + 1
+                        val active = activeConcert ?: return@ConcertViewScreen
+                        if (active.channels.size < 8) {
+                            val nextId = (active.channels.maxOfOrNull { it.id } ?: 0) + 1
                             val newChannel = ChannelStripState(
                                 id = nextId,
                                 name = "Canal $nextId",
@@ -914,7 +922,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 keyRangeEnd = 127,
                                 colorHex = listOf("#38BDF8", "#39FF14", "#9D4EDD", "#FB7185", "#2DD4BF", "#F472B6", "#FBBF24").random()
                             )
-                            val updatedChannels = concert.channels + newChannel
+                            val updatedChannels = active.channels + newChannel
                             updateChannelsAndPatchSnapshot(updatedChannels)
                         }
                     },
