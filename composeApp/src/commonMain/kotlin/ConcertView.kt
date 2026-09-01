@@ -67,6 +67,8 @@ fun ConcertViewScreen(
     onRecordToggle: () -> Unit,
     isPlayingRecording: Boolean,
     onPlayRecordingClick: () -> Unit,
+    hasRecording: Boolean = false,
+    onExportMidiClick: () -> Unit = {},
 
     // Channels logic
     onVolumeChange: (Int, Float) -> Unit,
@@ -139,6 +141,8 @@ fun ConcertViewScreen(
                 onRecordToggle = onRecordToggle,
                 isPlayingRecording = isPlayingRecording,
                 onPlayRecordingClick = onPlayRecordingClick,
+                hasRecording = hasRecording,
+                onExportMidiClick = onExportMidiClick,
                 midiActive = midiActivityIndicator,
                 onBackClick = onBackClick,
                 onSettingsClick = onSettingsClick,
@@ -295,6 +299,8 @@ private fun TopBar(
     onRecordToggle: () -> Unit,
     isPlayingRecording: Boolean,
     onPlayRecordingClick: () -> Unit,
+    hasRecording: Boolean = false,
+    onExportMidiClick: () -> Unit = {},
     midiActive: Boolean,
     onBackClick: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -407,7 +413,7 @@ private fun TopBar(
                     .background(DarkPanel)
                     .border(1.2.dp, StatusError.copy(alpha = if (isRecording) 0.9f else 0.45f), RoundedCornerShape(16.dp))
                     .clickable { onRecordToggle() }
-                    .padding(horizontal = 14.dp),
+                    .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -421,6 +427,76 @@ private fun TopBar(
                     Text(
                         text = "REC",
                         color = StatusError,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            // Play / Stop Recording button (Pill)
+            Box(
+                modifier = Modifier
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(DarkPanel)
+                    .border(
+                        1.2.dp,
+                        if (isPlayingRecording) AccentNeonGreen else if (hasRecording) AccentSky.copy(alpha = 0.7f) else OutlineVariant.copy(alpha = 0.35f),
+                        RoundedCornerShape(16.dp)
+                    )
+                    .clickable(enabled = hasRecording || isPlayingRecording, onClick = onPlayRecordingClick)
+                    .padding(horizontal = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        if (isPlayingRecording) TablerIcons.PlayerStop else TablerIcons.PlayerPlay,
+                        contentDescription = if (isPlayingRecording) "Detener" else "Reproducir Grabación",
+                        tint = if (isPlayingRecording) AccentNeonGreen else if (hasRecording) AccentSky else TextDark.copy(alpha = 0.35f),
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = if (isPlayingRecording) "STOP" else "PLAY",
+                        color = if (isPlayingRecording) AccentNeonGreen else if (hasRecording) AccentSky else TextDark.copy(alpha = 0.35f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            // Export as MIDI button (Pill)
+            Box(
+                modifier = Modifier
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(DarkPanel)
+                    .border(
+                        1.2.dp,
+                        if (hasRecording) AccentPurple.copy(alpha = 0.85f) else OutlineVariant.copy(alpha = 0.35f),
+                        RoundedCornerShape(16.dp)
+                    )
+                    .clickable(enabled = hasRecording, onClick = onExportMidiClick)
+                    .padding(horizontal = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        TablerIcons.Share,
+                        contentDescription = "Exportar como MIDI",
+                        tint = if (hasRecording) AccentPurple else TextDark.copy(alpha = 0.35f),
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "MIDI",
+                        color = if (hasRecording) AccentPurple else TextDark.copy(alpha = 0.35f),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp

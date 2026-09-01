@@ -37,6 +37,12 @@ kotlin {
             }
         }
 
+        getByName("commonTest") {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+
         if (!disableAndroid) {
             getByName("androidMain") {
                 dependencies {

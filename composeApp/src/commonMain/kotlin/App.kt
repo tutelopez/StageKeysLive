@@ -139,6 +139,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var showPackagePicker by remember { mutableStateOf(false) }
     var concertToExport by remember { mutableStateOf<Concert?>(null) }
     var patchToExport by remember { mutableStateOf<PatchState?>(null) }
+    var midiEventsToExport by remember { mutableStateOf<List<RecordingEvent>?>(null) }
 
     SkPackagePicker(
         show = showPackagePicker,
@@ -165,6 +166,13 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         onExportComplete = {
             concertToExport = null
             patchToExport = null
+        }
+    )
+
+    MidiFileExporter(
+        eventsToExport = midiEventsToExport,
+        onExportComplete = {
+            midiEventsToExport = null
         }
     )
     var showSettingsDialog by remember { mutableStateOf(false) }
@@ -437,6 +445,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             if (isRecording) {
                 val elapsed = System.currentTimeMillis() - recordingStartTimestamp
                 recordedEvents.add(RecordingEvent(elapsed, note, velocity, true))
+                println("[REC_DEBUG] Recorded NoteOn: note=$note vel=$velocity elapsed=$elapsed. Total=${recordedEvents.size}")
             }
         }
     }
@@ -859,10 +868,12 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     onRecordToggle = {
                         if (isRecording) {
                             isRecording = false
+                            println("[REC_DEBUG] Stopped recording. Total events: ${recordedEvents.size}")
                         } else {
                             recordedEvents.clear()
                             recordingStartTimestamp = System.currentTimeMillis()
                             isRecording = true
+                            println("[REC_DEBUG] Started recording.")
                         }
                     },
                     isPlayingRecording = isPlayingRecording,
@@ -887,6 +898,13 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 }
                                 isPlayingRecording = false
                             }
+                        }
+                    },
+                    hasRecording = recordedEvents.isNotEmpty(),
+                    onExportMidiClick = {
+                        println("[REC_DEBUG] onExportMidiClick: recordedEvents=${recordedEvents.size}")
+                        if (recordedEvents.isNotEmpty()) {
+                            midiEventsToExport = recordedEvents.toList()
                         }
                     },
 
