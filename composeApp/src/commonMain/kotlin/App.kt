@@ -51,7 +51,7 @@ import kotlinx.coroutines.withContext
 
 // Data Models mapping to JSON persistence
 enum class ScreenState { DASHBOARD, CONCERT, SETTINGS }
-enum class SettingsTab { MIDI_MAP, SPLIT_ZONES, AUDIO }
+enum class SettingsTab { MIDI_MAP, SPLIT_ZONES, AUDIO, BACKUP }
 
 data class RecordingEvent(
     val deltaMs: Long,
@@ -130,9 +130,28 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var concertToEdit by remember { mutableStateOf<Concert?>(null) }
     var newConcertName by remember { mutableStateOf("") }
     
+    val autoBackupController = rememberAutoBackupController()
+    var autoBackupJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+
+    val scheduleAutoBackup: (List<Concert>) -> Unit = { list ->
+        if (autoBackupController.state.isConfigured) {
+            autoBackupJob?.cancel()
+            autoBackupJob = coroutineScope.launch {
+                delay(30_000L) // 30-second debounce
+                val result = autoBackupController.backupToFolder(list)
+                result.onFailure { error ->
+                    snackbarHostState.showSnackbar(
+                        "El respaldo automático falló: ${error.message ?: "Permiso revocado"}. Por favor reconfigura la carpeta."
+                    )
+                }
+            }
+        }
+    }
+
     val saveConcertsList: (List<Concert>) -> Unit = { list ->
         concerts = list
         saveTextToFile("concerts.json", ConcertSerializer.serialize(list))
+        scheduleAutoBackup(list)
     }
 
     // Import / Export states
@@ -1518,12 +1537,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             val tabs = if (settingsOpenedFromConcert) {
                                 listOf(
                                     SettingsTab.SPLIT_ZONES to " Keyboard Zones",
-                                    SettingsTab.AUDIO to "Interfaces de Audio"
+                                    SettingsTab.AUDIO to "Interfaces de Audio",
+                                    SettingsTab.BACKUP to "Respaldo Automático"
                                 )
                             } else {
                                 listOf(
                                     SettingsTab.MIDI_MAP to "Mapear MIDI",
-                                    SettingsTab.AUDIO to "Interfaces de Audio"
+                                    SettingsTab.AUDIO to "Interfaces de Audio",
+                                    SettingsTab.BACKUP to "Respaldo Automático"
                                 )
                             }
                             tabs.forEach { (tab, label) ->
@@ -1566,7 +1587,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         connectedDevices = currentConnectedDevices,
                                         onStartMapping = { target ->
                                             mappingTarget = target
-                                            // [POINT 2 FIX] Real MIDI Learn ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â listens for the
+                                            // [POINT 2 FIX] Real MIDI Learn – listens for the
                                             // next CC from a physical controller (7-second window)
                                             synth.startMidiLearn(
                                                 target = target,
@@ -1613,6 +1634,17 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         onRefreshDevices = { synth.refreshAudioDevices() },
                                         audioDiagnostics = audioDiagnostics,
                                         isRestartingAudio = isRestartingAudio
+                                    )
+                                }
+                                SettingsTab.BACKUP -> {
+                                    AutoBackupSettingsScreen(
+                                        controller = autoBackupController,
+                                        concerts = concerts,
+                                        onShowSnackbar = { msg ->
+                                            coroutineScope.launch {
+                                                snackbarHostState.showSnackbar(msg)
+                                            }
+                                        }
                                     )
                                 }
                             }
