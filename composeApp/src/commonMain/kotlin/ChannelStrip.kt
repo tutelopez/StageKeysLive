@@ -106,13 +106,11 @@ fun ChannelStripItem(
                 onValueChange = onVolumeChange,
                 modifier = Modifier.weight(1f).fillMaxHeight()
             )
-            if (level > 0.01f) {
-                LevelMeter(
-                    level = level,
-                    accentColor = accentColor,
-                    modifier = Modifier.width(6.dp).fillMaxHeight()
-                )
-            }
+            LevelMeter(
+                level = level,
+                accentColor = accentColor,
+                modifier = Modifier.width(6.dp).fillMaxHeight()
+            )
         }
 
         // ── Volume % label ──────────────────────────────────────────────
