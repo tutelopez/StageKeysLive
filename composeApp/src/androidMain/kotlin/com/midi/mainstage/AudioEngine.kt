@@ -62,6 +62,10 @@ actual class PlatformAudioSynth actual constructor() {
         nativeSetChannelVolume(volume, channel)
     }
 
+    actual fun setPan(channel: Int, pan: Float) {
+        nativeSetPan(channel, pan)
+    }
+
     actual fun setReverb(reverb: Float) {
         nativeSetReverb(reverb)
     }
@@ -219,6 +223,7 @@ actual class PlatformAudioSynth actual constructor() {
     private external fun nativeNoteOff(note: Int, channel: Int)
     private external fun nativeSetVolume(volume: Float)
     private external fun nativeSetChannelVolume(volume: Float, channel: Int)
+    private external fun nativeSetPan(channel: Int, pan: Float)
     private external fun nativeSetReverb(reverb: Float)
     private external fun nativeSetFilterCutoff(cutoff: Float, channel: Int)
     private external fun nativeSetPatch(programNumber: Int, channel: Int)

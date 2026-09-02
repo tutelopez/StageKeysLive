@@ -1,4 +1,4 @@
-﻿package com.midi.mainstage
+package com.midi.mainstage
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,7 +19,8 @@ class AutoBackupTest {
             keyRangeStart = 21,
             keyRangeEnd = 108,
             colorHex = "#38BDF8",
-            velocityCurve = "SOFT"
+            velocityCurve = "SOFT",
+            pan = 0.25f
         )
         val snap1 = PatchChannelSnapshot(
             channelId = 1,
@@ -32,7 +33,8 @@ class AutoBackupTest {
             keyRangeStart = 21,
             keyRangeEnd = 108,
             colorHex = "#38BDF8",
-            velocityCurve = "SOFT"
+            velocityCurve = "SOFT",
+            pan = 0.25f
         )
         val patch1 = PatchState(
             id = "patch_101",
@@ -61,7 +63,8 @@ class AutoBackupTest {
             keyRangeStart = 36,
             keyRangeEnd = 96,
             colorHex = "#9D4EDD",
-            velocityCurve = "HARD"
+            velocityCurve = "HARD",
+            pan = 0.85f
         )
         val snap2 = PatchChannelSnapshot(
             channelId = 2,
@@ -74,7 +77,8 @@ class AutoBackupTest {
             keyRangeStart = 36,
             keyRangeEnd = 96,
             colorHex = "#9D4EDD",
-            velocityCurve = "HARD"
+            velocityCurve = "HARD",
+            pan = 0.85f
         )
         val patch2 = PatchState(
             id = "patch_201",
@@ -107,17 +111,21 @@ class AutoBackupTest {
         assertEquals(1, restoredList[0].channels.size)
         assertEquals("soundfonts/YamahaGrand.sf2", restoredList[0].channels[0].sf2Path)
         assertEquals("SOFT", restoredList[0].channels[0].velocityCurve)
+        assertEquals(0.25f, restoredList[0].channels[0].pan)
         assertEquals(1, restoredList[0].patches.size)
         assertEquals("Acoustic Piano", restoredList[0].patches[0].name)
         assertEquals("SOFT", restoredList[0].patches[0].channelsSnapshot[0].velocityCurve)
+        assertEquals(0.25f, restoredList[0].patches[0].channelsSnapshot[0].pan)
 
         // Validate Concert 2
         assertEquals("Live Set Night", restoredList[1].name)
         assertEquals(1, restoredList[1].channels.size)
         assertEquals("soundfonts/AnalogPad.sf2", restoredList[1].channels[0].sf2Path)
         assertEquals("HARD", restoredList[1].channels[0].velocityCurve)
+        assertEquals(0.85f, restoredList[1].channels[0].pan)
         assertEquals(1, restoredList[1].patches.size)
         assertEquals("Pad Atmosphere", restoredList[1].patches[0].name)
         assertEquals("HARD", restoredList[1].patches[0].channelsSnapshot[0].velocityCurve)
+        assertEquals(0.85f, restoredList[1].patches[0].channelsSnapshot[0].pan)
     }
 }

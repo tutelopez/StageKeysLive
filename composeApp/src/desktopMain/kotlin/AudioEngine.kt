@@ -45,6 +45,10 @@ actual class PlatformAudioSynth actual constructor() {
         synthesizer?.channels?.getOrNull(channel)?.controlChange(7, (volume * 127).toInt())
     }
 
+    actual fun setPan(channel: Int, pan: Float) {
+        synthesizer?.channels?.getOrNull(channel)?.controlChange(10, (pan * 127).toInt().coerceIn(0, 127))
+    }
+
     actual fun setReverb(reverb: Float) {
         synthesizer?.channels?.getOrNull(0)?.controlChange(91, (reverb * 127).toInt())
     }

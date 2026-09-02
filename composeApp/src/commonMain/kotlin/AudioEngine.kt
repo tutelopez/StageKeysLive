@@ -17,6 +17,7 @@ expect class PlatformAudioSynth() {
     fun noteOff(note: Int, channel: Int = 0)
     fun setVolume(volume: Float)
     fun setChannelVolume(volume: Float, channel: Int)
+    fun setPan(channel: Int, pan: Float)
     fun setReverb(reverb: Float)
     fun setFilterCutoff(cutoff: Float, channel: Int = 0)
     fun setPatch(programNumber: Int, channel: Int = 0)

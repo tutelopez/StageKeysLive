@@ -19,7 +19,8 @@ data class ChannelStripState(
     val keyRangeStart: Int,
     val keyRangeEnd: Int,
     val colorHex: String,
-    val velocityCurve: String = "LINEAR"
+    val velocityCurve: String = "LINEAR",
+    val pan: Float = 0.5f
 )
 
 data class PatchChannelSnapshot(
@@ -33,7 +34,8 @@ data class PatchChannelSnapshot(
     val keyRangeStart: Int,
     val keyRangeEnd: Int,
     val colorHex: String,
-    val velocityCurve: String = "LINEAR"
+    val velocityCurve: String = "LINEAR",
+    val pan: Float = 0.5f
 )
 
 fun applyCurve(velocity: Int, curve: String): Int {
@@ -105,7 +107,8 @@ object ConcertSerializer {
                     sb.append("\"keyRangeStart\":${snap.keyRangeStart},")
                     sb.append("\"keyRangeEnd\":${snap.keyRangeEnd},")
                     sb.append("\"colorHex\":\"${snap.colorHex}\",")
-                    sb.append("\"velocityCurve\":\"${snap.velocityCurve}\"")
+                    sb.append("\"velocityCurve\":\"${snap.velocityCurve}\",")
+                    sb.append("\"pan\":${snap.pan}")
                     sb.append("}")
                 }
                 sb.append("]")
@@ -130,7 +133,8 @@ object ConcertSerializer {
                 sb.append("\"keyRangeStart\":${ch.keyRangeStart},")
                 sb.append("\"keyRangeEnd\":${ch.keyRangeEnd},")
                 sb.append("\"colorHex\":\"${ch.colorHex}\",")
-                sb.append("\"velocityCurve\":\"${ch.velocityCurve}\"")
+                sb.append("\"velocityCurve\":\"${ch.velocityCurve}\",")
+                sb.append("\"pan\":${ch.pan}")
                 sb.append("}")
             }
             sb.append("]")
@@ -302,6 +306,7 @@ class SimpleJsonParser(private val src: String) {
         var keyRangeEnd = 127
         var colorHex = "#00D2FF"
         var velocityCurve = "LINEAR"
+        var pan = 0.5f
 
         while (pos < src.length) {
             skipWhitespace()
@@ -326,12 +331,13 @@ class SimpleJsonParser(private val src: String) {
                 "keyRangeEnd" -> keyRangeEnd = parseInt()
                 "colorHex" -> colorHex = parseString()
                 "velocityCurve" -> velocityCurve = parseString()
+                "pan" -> pan = parseFloat()
                 else -> skipValue()
             }
             skipWhitespace()
             if (pos < src.length && src[pos] == ',') pos++
         }
-        return PatchChannelSnapshot(channelId, name ?: "Canal $channelId", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex, velocityCurve)
+        return PatchChannelSnapshot(channelId, name ?: "Canal $channelId", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex, velocityCurve, pan)
     }
 
     private fun parseChannel(): ChannelStripState {
@@ -347,6 +353,7 @@ class SimpleJsonParser(private val src: String) {
         var keyRangeEnd = 127
         var colorHex = "#00D2FF"
         var velocityCurve = "LINEAR"
+        var pan = 0.5f
 
         while (pos < src.length) {
             skipWhitespace()
@@ -371,12 +378,13 @@ class SimpleJsonParser(private val src: String) {
                 "keyRangeEnd" -> keyRangeEnd = parseInt()
                 "colorHex" -> colorHex = parseString()
                 "velocityCurve" -> velocityCurve = parseString()
+                "pan" -> pan = parseFloat()
                 else -> skipValue()
             }
             skipWhitespace()
             if (pos < src.length && src[pos] == ',') pos++
         }
-        return ChannelStripState(id, name ?: "Canal $id", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex, velocityCurve)
+        return ChannelStripState(id, name ?: "Canal $id", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex, velocityCurve, pan)
     }
 
     private fun parseString(): String {

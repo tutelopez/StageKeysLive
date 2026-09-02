@@ -318,6 +318,23 @@ public:
         }
     }
 
+    void setPan(int channel, float panValue) {
+        std::lock_guard<std::mutex> lock(synthMutex);
+        if (fluidSynth != nullptr) {
+            int panCc = (int)(panValue * 127.0f);
+            if (panCc < 0) panCc = 0;
+            if (panCc > 127) panCc = 127;
+            if (channel >= 0 && channel < 8) {
+                fluid_synth_cc(fluidSynth, physicalActive[channel], 10, panCc);
+                for (int shadowPhys : shadowChannelsOf[channel]) {
+                    fluid_synth_cc(fluidSynth, shadowPhys, 10, panCc);
+                }
+            } else if (channel >= 0 && channel < 16) {
+                fluid_synth_cc(fluidSynth, channel, 10, panCc);
+            }
+        }
+    }
+
     void setReverb(float reverb) {
         std::lock_guard<std::mutex> lock(synthMutex);
         reverbMix = reverb;
@@ -425,6 +442,13 @@ JNIEXPORT void JNICALL
 Java_com_midi_mainstage_PlatformAudioSynth_nativeSetChannelVolume(JNIEnv *env, jobject thiz, jfloat volume, jint channel) {
     if (gEngine != nullptr) {
         gEngine->setChannelVolume(volume, channel);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeSetPan(JNIEnv *env, jobject thiz, jint channel, jfloat pan) {
+    if (gEngine != nullptr) {
+        gEngine->setPan(channel, pan);
     }
 }
 

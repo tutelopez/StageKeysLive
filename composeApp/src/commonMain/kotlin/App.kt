@@ -312,6 +312,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 if (ch.sf2Path != null) {
                     synth.loadSoundFont(ch.sf2Path, ch.id)
                 }
+                synth.setPan(ch.id, ch.pan)
             }
         }
     }
@@ -339,7 +340,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 volume = ch.volume, isMuted = ch.isMuted, isSoloed = ch.isSoloed,
                                 keyRangeStart = ch.keyRangeStart, keyRangeEnd = ch.keyRangeEnd,
                                 colorHex = ch.colorHex,
-                                velocityCurve = ch.velocityCurve
+                                velocityCurve = ch.velocityCurve,
+                                pan = ch.pan
                             )
                         }
                         patch.copy(channelsSnapshot = newSnapshot)
@@ -374,7 +376,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     channelId = ch.id, name = ch.name, sf2Name = ch.sf2Name, sf2Path = ch.sf2Path,
                     volume = ch.volume, isMuted = ch.isMuted, isSoloed = ch.isSoloed,
                     keyRangeStart = ch.keyRangeStart, keyRangeEnd = ch.keyRangeEnd, colorHex = ch.colorHex,
-                    velocityCurve = ch.velocityCurve
+                    velocityCurve = ch.velocityCurve,
+                    pan = ch.pan
                 )
             }
             val patchesWithCurrentSaved = if (selectedPatchIndex in concert.patches.indices) {
@@ -392,26 +395,29 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         volume = snap.volume, isMuted = snap.isMuted, isSoloed = snap.isSoloed,
                         keyRangeStart = snap.keyRangeStart, keyRangeEnd = snap.keyRangeEnd,
                         colorHex = snap.colorHex,
-                        velocityCurve = snap.velocityCurve
+                        velocityCurve = snap.velocityCurve,
+                        pan = snap.pan
                     )
                 }
             } else {
-                // Patch has no snapshot yet ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬  start with a single clean channel
+                // Patch has no snapshot yet start with a single clean channel
                 listOf(
                     ChannelStripState(
                         id = 1, name = "Canal 1", sf2Name = "Sin Asignar", sf2Path = null,
                         volume = 0.8f, isMuted = false, isSoloed = false,
                         keyRangeStart = 0, keyRangeEnd = 127, colorHex = "#00D2FF",
-                        velocityCurve = "LINEAR"
+                        velocityCurve = "LINEAR",
+                        pan = 0.5f
                     )
                 )
             }
 
-            // Load SoundFonts for the restored channels
+            // Load SoundFonts and apply pan for the restored channels
             restoredChannels.forEach { ch ->
                 if (ch.sf2Path != null) {
                     synth.loadSoundFont(ch.sf2Path, ch.id)
                 }
+                synth.setPan(ch.id, ch.pan)
             }
 
             val updatedConcert = concert.copy(
@@ -1421,6 +1427,86 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                     }
                             )
                         }
+                    }
+
+                    // Panorama (Pan) Slider: 0 = Izquierda, 0.5 = Centro, 1 = Derecha
+                    val panPercent = ((chState.pan - 0.5f) * 200).toInt()
+                    val panLabel = when {
+                        panPercent == 0 -> "Centro (0)"
+                        panPercent < 0 -> "L ${-panPercent}%"
+                        else -> "R ${panPercent}%"
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "PANORAMA (PAN):",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(DarkBackground)
+                                .clickable {
+                                    // Reset to center 0.5f on click
+                                    synth.setPan(chState.id, 0.5f)
+                                    val active = activeConcert
+                                    if (active != null) {
+                                        val updatedChannels = active.channels.map {
+                                            if (it.id == chState.id) it.copy(pan = 0.5f) else it
+                                        }
+                                        updateChannelsAndPatchSnapshot(updatedChannels)
+                                        showChannelSettingsDialog = activeConcert?.channels?.find { it.id == chState.id }
+                                    }
+                                }
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = panLabel,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = parseColorHex(chState.colorHex)
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("L", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextDark, modifier = Modifier.padding(end = 4.dp))
+                        Slider(
+                            value = chState.pan,
+                            onValueChange = { newPan ->
+                                synth.setPan(chState.id, newPan)
+                                val active = activeConcert
+                                if (active != null) {
+                                    val updatedChannels = active.channels.map {
+                                        if (it.id == chState.id) it.copy(pan = newPan) else it
+                                    }
+                                    updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
+                                    showChannelSettingsDialog = activeConcert?.channels?.find { it.id == chState.id }
+                                }
+                            },
+                            onValueChangeFinished = {
+                                val active = activeConcert
+                                if (active != null) {
+                                    saveConcertsList(concerts.map { if (it.id == active.id) active else it })
+                                }
+                            },
+                            valueRange = 0f..1f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = parseColorHex(chState.colorHex),
+                                activeTrackColor = parseColorHex(chState.colorHex),
+                                inactiveTrackColor = DarkBackground
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text("R", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextDark, modifier = Modifier.padding(start = 4.dp))
                     }
 
                     // Velocity Curve Selector (Suave / Normal / Dura)
