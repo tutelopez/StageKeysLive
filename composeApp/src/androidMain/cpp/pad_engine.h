@@ -30,6 +30,7 @@ public:
     
     void setEnabled(bool enabled);
     void setVolume(float volume);
+    void setPan(float pan);
     void setBank(const std::string& bankName);
     void noteOn(int pitchClass);
     void noteOff();
@@ -49,6 +50,7 @@ private:
     std::mutex mMutex;
     bool mEnabled;
     float mMasterVolume;
+    float mPan;
     float mCrossfadeFrames;
     float mReleaseFrames;
     int mSampleRate;

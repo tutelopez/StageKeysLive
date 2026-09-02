@@ -19,6 +19,7 @@ PadEngine::PadEngine()
     : mAssetManager(nullptr),
       mEnabled(false),
       mMasterVolume(0.5f),
+      mPan(0.5f),
       mSampleRate(48000),
       mLastPitchClass(-1)
 {
@@ -169,6 +170,11 @@ void PadEngine::setVolume(float volume) {
     mMasterVolume = volume;
 }
 
+void PadEngine::setPan(float pan) {
+    std::lock_guard<std::mutex> lock(mMutex);
+    mPan = pan;
+}
+
 void PadEngine::setCrossfadeSeconds(float seconds) {
     std::lock_guard<std::mutex> lock(mMutex);
     mCrossfadeFrames = seconds * mSampleRate;
@@ -316,6 +322,18 @@ oboe::DataCallbackResult PadEngine::onAudioReady(oboe::AudioStream* audioStream,
                 stb_vorbis_close(voice.vorbis);
                 voice.vorbis = nullptr;
             }
+        }
+    }
+
+    if (mPan != 0.5f) {
+        float pan = mPan;
+        if (pan < 0.0f) pan = 0.0f;
+        if (pan > 1.0f) pan = 1.0f;
+        float gainL = (pan <= 0.5f) ? 1.0f : 2.0f * (1.0f - pan);
+        float gainR = (pan >= 0.5f) ? 1.0f : 2.0f * pan;
+        for (int i = 0; i < numFrames; ++i) {
+            output[i * 2]     *= gainL;
+            output[i * 2 + 1] *= gainR;
         }
     }
     

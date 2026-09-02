@@ -200,6 +200,10 @@ actual class PlatformAudioSynth actual constructor() {
         nativePadSetVolume(volume)
     }
 
+    actual fun padSetPan(pan: Float) {
+        nativePadSetPan(pan)
+    }
+
     actual fun padSetBank(bankName: String) {
         nativePadSetBank(bankName)
     }
@@ -236,6 +240,7 @@ actual class PlatformAudioSynth actual constructor() {
     // Pad Engine
     private external fun nativePadSetEnabled(enabled: Boolean)
     private external fun nativePadSetVolume(volume: Float)
+    private external fun nativePadSetPan(pan: Float)
     private external fun nativePadSetBank(bankName: String)
     private external fun nativePadNoteOn(pitchClass: Int)
     private external fun nativePadNoteOff()

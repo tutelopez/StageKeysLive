@@ -53,6 +53,7 @@ expect class PlatformAudioSynth() {
     // --- Continuous Pad Engine ---
     fun padSetEnabled(enabled: Boolean)
     fun padSetVolume(volume: Float)
+    fun padSetPan(pan: Float)
     fun padSetBank(bankName: String)
     fun padNoteOn(pitchClass: Int)
     fun padNoteOff()

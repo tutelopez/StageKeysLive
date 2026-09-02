@@ -79,7 +79,9 @@ fun ConcertViewScreen(
 
     // Master output
     masterVolume: Float,
+    masterPan: Float = 0.5f,
     onMasterVolumeChange: (Float) -> Unit,
+    onMasterPanChange: (Float) -> Unit = {},
     masterVuLevel: Float,
 
     // Pad Engine
@@ -188,8 +190,10 @@ fun ConcertViewScreen(
                         metronomeVolume = metronomeVolume,
                         onMetronomeVolumeChange = onMetronomeVolumeChange,
                         masterVolume = masterVolume,
+                        masterPan = masterPan,
                         masterVuLevel = masterVuLevel,
                         onMasterVolumeChange = onMasterVolumeChange,
+                        onMasterPanChange = onMasterPanChange,
                         onVolumeChange = onVolumeChange,
                         onMuteToggle = onMuteToggle,
                         onSoloToggle = onSoloToggle,
@@ -764,8 +768,10 @@ private fun MixerPanel(
     metronomeVolume: Float,
     onMetronomeVolumeChange: (Float) -> Unit,
     masterVolume: Float,
+    masterPan: Float = 0.5f,
     masterVuLevel: Float,
     onMasterVolumeChange: (Float) -> Unit,
+    onMasterPanChange: (Float) -> Unit = {},
     onVolumeChange: (Int, Float) -> Unit,
     onMuteToggle: (Int) -> Unit,
     onSoloToggle: (Int) -> Unit,
@@ -824,7 +830,9 @@ private fun MixerPanel(
                 MasterOutputChannelItem(
                     volume = masterVolume,
                     level = masterVuLevel,
+                    pan = masterPan,
                     onVolumeChange = onMasterVolumeChange,
+                    onPanChange = onMasterPanChange,
                     onMidiMapClick = onSettingsClick
                 )
             }

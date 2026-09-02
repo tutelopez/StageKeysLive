@@ -259,8 +259,9 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     val recordedEvents = remember { mutableStateListOf<RecordingEvent>() }
     var recordingStartTimestamp by remember { mutableStateOf(0L) }
 
-    // Master Output volume and Level meters
+    // Master Output volume, pan and Level meters
     var masterVolume by remember { mutableStateOf(0.8f) }
+    var masterPan by remember { mutableStateOf(0.5f) }
     val masterVuLevel = remember { Animatable(0f) }
 
     // Audio Interfaces & Settings state
@@ -312,8 +313,10 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 if (ch.sf2Path != null) {
                     synth.loadSoundFont(ch.sf2Path, ch.id)
                 }
-                synth.setPan(ch.id, ch.pan)
+                val effectivePan = ((ch.pan - 0.5f) + (masterPan - 0.5f) + 0.5f).coerceIn(0f, 1f)
+                synth.setPan(ch.id, effectivePan)
             }
+            synth.padSetPan(masterPan)
         }
     }
 
@@ -412,13 +415,15 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 )
             }
 
-            // Load SoundFonts and apply pan for the restored channels
+            // Load SoundFonts and apply effective pan for the restored channels
             restoredChannels.forEach { ch ->
                 if (ch.sf2Path != null) {
                     synth.loadSoundFont(ch.sf2Path, ch.id)
                 }
-                synth.setPan(ch.id, ch.pan)
+                val effectivePan = ((ch.pan - 0.5f) + (masterPan - 0.5f) + 0.5f).coerceIn(0f, 1f)
+                synth.setPan(ch.id, effectivePan)
             }
+            synth.padSetPan(masterPan)
 
             val updatedConcert = concert.copy(
                 channels = restoredChannels,
@@ -782,6 +787,15 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         synth.setVolume(masterVolume)
     }
 
+    // Keep Master Pan & Channel Effective Pan updated on Audio Synth and Pad Engine
+    LaunchedEffect(masterPan, activeConcert?.channels) {
+        activeConcert?.channels?.forEach { ch ->
+            val effectivePan = ((ch.pan - 0.5f) + (masterPan - 0.5f) + 0.5f).coerceIn(0f, 1f)
+            synth.setPan(ch.id, effectivePan)
+        }
+        synth.padSetPan(masterPan)
+    }
+
     // UI SCREEN CONTROLLER
     Box(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
@@ -980,7 +994,9 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
                     // Master output configuration mapping
                     masterVolume = masterVolume,
+                    masterPan = masterPan,
                     onMasterVolumeChange = { masterVolume = it },
+                    onMasterPanChange = { masterPan = it },
                     masterVuLevel = masterVuLevel.value,
 
                     // Pad Engine
@@ -1453,7 +1469,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 .background(DarkBackground)
                                 .clickable {
                                     // Reset to center 0.5f on click
-                                    synth.setPan(chState.id, 0.5f)
+                                    val effectivePan = ((0.5f - 0.5f) + (masterPan - 0.5f) + 0.5f).coerceIn(0f, 1f)
+                                    synth.setPan(chState.id, effectivePan)
                                     val active = activeConcert
                                     if (active != null) {
                                         val updatedChannels = active.channels.map {
@@ -1482,7 +1499,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         Slider(
                             value = chState.pan,
                             onValueChange = { newPan ->
-                                synth.setPan(chState.id, newPan)
+                                val effectivePan = ((newPan - 0.5f) + (masterPan - 0.5f) + 0.5f).coerceIn(0f, 1f)
+                                synth.setPan(chState.id, effectivePan)
                                 val active = activeConcert
                                 if (active != null) {
                                     val updatedChannels = active.channels.map {

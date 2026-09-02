@@ -122,6 +122,7 @@ actual class PlatformAudioSynth actual constructor() {
     // --- Continuous Pad Engine ---
     actual fun padSetEnabled(enabled: Boolean) {}
     actual fun padSetVolume(volume: Float) {}
+    actual fun padSetPan(pan: Float) {}
     actual fun padSetBank(bankName: String) {}
     actual fun padNoteOn(pitchClass: Int) {}
     actual fun padNoteOff() {}

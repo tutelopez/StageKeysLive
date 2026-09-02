@@ -562,6 +562,11 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativePadSetVolume(JNIEnv *env, jobje
 }
 
 JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativePadSetPan(JNIEnv *env, jobject thiz, jfloat pan) {
+    if (gPadEngine != nullptr) gPadEngine->setPan(pan);
+}
+
+JNIEXPORT void JNICALL
 Java_com_midi_mainstage_PlatformAudioSynth_nativePadSetBank(JNIEnv *env, jobject thiz, jstring bankName) {
     if (gPadEngine != nullptr && bankName != nullptr) {
         const char *bankStr = env->GetStringUTFChars(bankName, nullptr);

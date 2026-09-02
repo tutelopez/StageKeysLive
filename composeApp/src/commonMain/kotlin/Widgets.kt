@@ -2,6 +2,7 @@ package com.midi.mainstage
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.*
 import androidx.compose.material3.*
@@ -9,7 +10,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.*
@@ -261,7 +264,9 @@ fun MetronomeChannelItem(
 fun MasterOutputChannelItem(
     volume: Float,
     level: Float,
+    pan: Float = 0.5f,
     onVolumeChange: (Float) -> Unit,
+    onPanChange: (Float) -> Unit = {},
     onMidiMapClick: () -> Unit
 ) {
     val accent = AccentPurple
@@ -314,6 +319,87 @@ fun MasterOutputChannelItem(
             color = TextDark,
             fontSize = 7.sp
         )
+
+        // Master Pan Control
+        val panPercent = ((pan - 0.5f) * 200).toInt()
+        val panText = when {
+            panPercent == 0 -> "C"
+            panPercent < 0 -> "L${-panPercent}"
+            else -> "R${panPercent}"
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("PAN", color = TextDark, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+            Text(
+                panText,
+                color = if (panPercent == 0) TextDark else accent,
+                fontSize = 7.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clip(RoundedCornerShape(3.dp)).clickable { onPanChange(0.5f) }
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(12.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(DarkBackground)
+                .border(0.5.dp, accent.copy(alpha = 0.3f), RoundedCornerShape(3.dp))
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onDoubleTap = { onPanChange(0.5f) },
+                        onTap = { offset ->
+                            val newPan = (offset.x / size.width).coerceIn(0f, 1f)
+                            onPanChange(newPan)
+                        }
+                    )
+                }
+                .pointerInput(Unit) {
+                    detectDragGestures { change, _ ->
+                        change.consume()
+                        val newPan = (change.position.x / size.width).coerceIn(0f, 1f)
+                        onPanChange(newPan)
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val centerX = w / 2f
+                val thumbX = pan * w
+
+                // Center line tick
+                drawLine(
+                    color = Color.White.copy(alpha = 0.3f),
+                    start = Offset(centerX, 1f),
+                    end = Offset(centerX, h - 1f),
+                    strokeWidth = 1.dp.toPx()
+                )
+
+                // Fill from center to thumb
+                if (pan != 0.5f) {
+                    drawRect(
+                        color = accent.copy(alpha = 0.5f),
+                        topLeft = Offset(if (thumbX < centerX) thumbX else centerX, 2f),
+                        size = Size(kotlin.math.abs(thumbX - centerX), h - 4f)
+                    )
+                }
+
+                // Thumb handle
+                drawRoundRect(
+                    color = accent,
+                    topLeft = Offset((thumbX - 3.dp.toPx()).coerceIn(0f, w - 6.dp.toPx()), 1.dp.toPx()),
+                    size = Size(6.dp.toPx(), h - 2.dp.toPx()),
+                    cornerRadius = CornerRadius(2.dp.toPx())
+                )
+            }
+        }
 
         Row(
             modifier = Modifier.weight(1f).fillMaxWidth(),
