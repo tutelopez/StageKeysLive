@@ -1024,7 +1024,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
         )
         
-        Sf2FilePicker(showSf2Picker) { path ->
+        Sf2FilePicker(showSf2Picker) { path, displayName ->
             showSf2Picker = false
             if (path != null) {
                 val channel = showChannelSettingsDialog
@@ -1034,7 +1034,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     coroutineScope.launch {
                         val success = synth.loadSoundFont(path, channel.id)
                         if (success) {
-                            val sf2Name = path.substringAfterLast("/")
+                            val sf2Name = displayName ?: path.substringAfterLast("/")
                             if (channel.sf2Path != null && channel.sf2Path != path) {
                                 deleteLocalFile(channel.sf2Path)
                             }
