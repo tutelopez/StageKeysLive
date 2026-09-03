@@ -128,4 +128,31 @@ class AutoBackupTest {
         assertEquals("HARD", restoredList[1].patches[0].channelsSnapshot[0].velocityCurve)
         assertEquals(0.85f, restoredList[1].patches[0].channelsSnapshot[0].pan)
     }
+
+    @Test
+    fun testMidiMappingSerializationAndDeserialization() {
+        val mappings = mapOf(
+            20 to MidiTarget.MasterVolume,
+            21 to MidiTarget.PadEnable,
+            22 to MidiTarget.PadNoteToggle(0), // C
+            23 to MidiTarget.PadNoteToggle(1), // C#
+            24 to MidiTarget.PadNoteToggle(11), // B
+            25 to MidiTarget.ChannelVolume(0),
+            26 to MidiTarget.ChannelMute(1),
+            27 to MidiTarget.ChannelSolo(2)
+        )
+
+        val serialized = MidiMappingSerializer.serialize(mappings)
+        val deserialized = MidiMappingSerializer.deserialize(serialized)
+
+        assertEquals(mappings.size, deserialized.size)
+        assertEquals(MidiTarget.MasterVolume, deserialized[20])
+        assertEquals(MidiTarget.PadEnable, deserialized[21])
+        assertEquals(MidiTarget.PadNoteToggle(0), deserialized[22])
+        assertEquals(MidiTarget.PadNoteToggle(1), deserialized[23])
+        assertEquals(MidiTarget.PadNoteToggle(11), deserialized[24])
+        assertEquals(MidiTarget.ChannelVolume(0), deserialized[25])
+        assertEquals(MidiTarget.ChannelMute(1), deserialized[26])
+        assertEquals(MidiTarget.ChannelSolo(2), deserialized[27])
+    }
 }

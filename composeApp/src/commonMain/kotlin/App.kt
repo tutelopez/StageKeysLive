@@ -639,6 +639,25 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             playNoteOff(padNote)
                         }
                     }
+                    is MidiTarget.PadNoteToggle -> {
+                        if (floatValue > 0f) {
+                            if (!padEnabled) {
+                                padEnabled = true
+                            }
+                            if (activePadNote == target.pitchClass) {
+                                synth.padNoteOff()
+                                activePadNote = null
+                            } else {
+                                synth.padNoteOn(target.pitchClass)
+                                activePadNote = target.pitchClass
+                            }
+                        }
+                    }
+                    is MidiTarget.PadEnable -> {
+                        if (floatValue > 0f) {
+                            padEnabled = !padEnabled
+                        }
+                    }
                     is MidiTarget.Pot -> {
                         // Pot implementation
                     }
@@ -1922,6 +1941,8 @@ fun MidiMappingSettingsScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        val noteNames = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+
         val controllers = listOf(
             MidiTarget.MasterVolume,
             MidiTarget.FilterCutoff,
@@ -1929,8 +1950,12 @@ fun MidiMappingSettingsScreen(
             MidiTarget.Sustain,
             MidiTarget.Modulation,
             MidiTarget.OctaveUp,
-            MidiTarget.OctaveDown
-        ) + (0 until 8).map { MidiTarget.ChannelVolume(it) }
+            MidiTarget.OctaveDown,
+            MidiTarget.NextPatch,
+            MidiTarget.PreviousPatch,
+            MidiTarget.PadEnable
+        ) + (0 until 8).map { MidiTarget.ChannelVolume(it) } +
+            (0 until 12).map { MidiTarget.PadNoteToggle(it) }
 
         controllers.forEach { target ->
             val mappedCc = mappings.entries.find { it.value == target }?.key
@@ -1941,11 +1966,16 @@ fun MidiMappingSettingsScreen(
                 is MidiTarget.ChannelSolo -> "Solo Canal ${target.channelIndex + 1}"
                 is MidiTarget.Pad -> "Pad ${target.padIndex + 1}"
                 is MidiTarget.Pot -> "Perilla ${target.potIndex + 1}"
+                is MidiTarget.PadNoteToggle -> {
+                    val noteName = noteNames.getOrElse(target.pitchClass) { "${target.pitchClass}" }
+                    "Pad Nota: $noteName"
+                }
+                is MidiTarget.PadEnable -> "Pads Continuos (ON/OFF)"
                 is MidiTarget.MasterVolume -> "Volumen Maestro"
                 is MidiTarget.FilterCutoff -> "Filtro (Cutoff)"
                 is MidiTarget.ReverbMix -> "Mezcla de Reverb"
                 is MidiTarget.Sustain -> "Pedal Sustain"
-                is MidiTarget.Modulation -> "Rueda de ModulaciÃƒÆ’Ã‚Â³n"
+                is MidiTarget.Modulation -> "Rueda de Modulación"
                 is MidiTarget.OctaveUp -> "Octava Arriba"
                 is MidiTarget.OctaveDown -> "Octava Abajo"
                 is MidiTarget.NextPatch -> "Siguiente Patch"

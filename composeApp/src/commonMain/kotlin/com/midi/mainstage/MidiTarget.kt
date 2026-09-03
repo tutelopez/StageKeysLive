@@ -7,6 +7,9 @@ sealed class MidiTarget {
     data class Pad(val padIndex: Int) : MidiTarget()
     data class Pot(val potIndex: Int) : MidiTarget()
     
+    data class PadNoteToggle(val pitchClass: Int) : MidiTarget()
+    
+    object PadEnable : MidiTarget()
     object MasterVolume : MidiTarget()
     object FilterCutoff : MidiTarget()
     object ReverbMix : MidiTarget()

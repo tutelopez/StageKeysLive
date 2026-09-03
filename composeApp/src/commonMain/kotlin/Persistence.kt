@@ -514,6 +514,8 @@ object MidiMappingSerializer {
             is MidiTarget.ChannelSolo -> "ChannelSolo-${target.channelIndex}"
             is MidiTarget.Pad -> "Pad-${target.padIndex}"
             is MidiTarget.Pot -> "Pot-${target.potIndex}"
+            is MidiTarget.PadNoteToggle -> "PadNoteToggle-${target.pitchClass}"
+            is MidiTarget.PadEnable -> "PadEnable"
             is MidiTarget.MasterVolume -> "MasterVolume"
             is MidiTarget.FilterCutoff -> "FilterCutoff"
             is MidiTarget.ReverbMix -> "ReverbMix"
@@ -534,6 +536,8 @@ object MidiMappingSerializer {
             "ChannelSolo" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.ChannelSolo(it) }
             "Pad" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.Pad(it) }
             "Pot" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.Pot(it) }
+            "PadNoteToggle" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.PadNoteToggle(it) }
+            "PadEnable" -> MidiTarget.PadEnable
             "MasterVolume" -> MidiTarget.MasterVolume
             "FilterCutoff" -> MidiTarget.FilterCutoff
             "ReverbMix" -> MidiTarget.ReverbMix
