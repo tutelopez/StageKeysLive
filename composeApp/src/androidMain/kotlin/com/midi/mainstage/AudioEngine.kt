@@ -220,6 +220,14 @@ actual class PlatformAudioSynth actual constructor() {
         nativePadHardKillAll()
     }
 
+    actual fun previewSoundFont(path: String, note: Int, velocity: Int, durationMs: Int) {
+        nativePreviewSoundFont(path, note, velocity, durationMs)
+    }
+
+    actual fun stopPreview() {
+        nativeStopPreview()
+    }
+
     // Native JNI bindings to C++ Audio/FluidSynth engine
     private external fun nativeInit(sampleRate: Int, bufferFrames: Int)
     private external fun nativeClose()
@@ -245,6 +253,10 @@ actual class PlatformAudioSynth actual constructor() {
     private external fun nativePadNoteOn(pitchClass: Int)
     private external fun nativePadNoteOff()
     private external fun nativePadHardKillAll()
+
+    // SoundFont Preview
+    private external fun nativePreviewSoundFont(path: String, note: Int, velocity: Int, durationMs: Int)
+    private external fun nativeStopPreview()
     
     fun setAssetManager(am: android.content.res.AssetManager) {
         nativeSetAssetManager(am)

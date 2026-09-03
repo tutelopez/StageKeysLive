@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
+import compose.icons.TablerIcons
+import compose.icons.tablericons.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,7 +53,7 @@ import kotlinx.coroutines.withContext
 
 // Data Models mapping to JSON persistence
 enum class ScreenState { DASHBOARD, CONCERT, SETTINGS }
-enum class SettingsTab { MIDI_MAP, SPLIT_ZONES, AUDIO, BACKUP }
+enum class SettingsTab { MIDI_MAP, SPLIT_ZONES, AUDIO, SF2_FOLDER, BACKUP }
 
 data class RecordingEvent(
     val deltaMs: Long,
@@ -131,6 +133,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var newConcertName by remember { mutableStateOf("") }
     
     val autoBackupController = rememberAutoBackupController()
+    val sf2ExplorerController = rememberSf2ExplorerController()
+    var showSf2ExplorerDialog by remember { mutableStateOf(false) }
     var autoBackupJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     val scheduleAutoBackup: (List<Concert>) -> Unit = { list ->
@@ -1065,34 +1069,49 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
         )
         
-        Sf2FilePicker(showSf2Picker) { path, displayName ->
-            showSf2Picker = false
-            if (path != null) {
-                val channel = showChannelSettingsDialog
-                val active = activeConcert
-                if (channel != null && active != null) {
-                    isLoadingSf2 = true
-                    coroutineScope.launch {
-                        val success = synth.loadSoundFont(path, channel.id)
-                        if (success) {
-                            val sf2Name = displayName ?: path.substringAfterLast("/")
-                            if (channel.sf2Path != null && channel.sf2Path != path) {
-                                deleteLocalFile(channel.sf2Path)
-                            }
-                            val updatedChannels = active.channels.map {
-                                if (it.id == channel.id) it.copy(sf2Name = sf2Name, sf2Path = path) else it
-                            }
-                            updateChannelsAndPatchSnapshot(updatedChannels)
-                            showChannelSettingsDialog = activeConcert?.channels?.find { it.id == channel.id }
-                        } else {
-                            deleteLocalFile(path)
-                            snackbarHostState.showSnackbar("Error al cargar el archivo .sf2")
+        val handleSoundFontSelected: (path: String, displayName: String) -> Unit = { path, displayName ->
+            val channel = showChannelSettingsDialog
+            val active = activeConcert
+            if (channel != null && active != null) {
+                isLoadingSf2 = true
+                coroutineScope.launch {
+                    val success = synth.loadSoundFont(path, channel.id)
+                    if (success) {
+                        val sf2Name = displayName.ifBlank { path.substringAfterLast("/") }
+                        if (channel.sf2Path != null && channel.sf2Path != path) {
+                            deleteLocalFile(channel.sf2Path)
                         }
-                        isLoadingSf2 = false
+                        val updatedChannels = active.channels.map {
+                            if (it.id == channel.id) it.copy(sf2Name = sf2Name, sf2Path = path) else it
+                        }
+                        updateChannelsAndPatchSnapshot(updatedChannels)
+                        showChannelSettingsDialog = activeConcert?.channels?.find { it.id == channel.id }
+                    } else {
+                        deleteLocalFile(path)
+                        snackbarHostState.showSnackbar("Error al cargar el archivo .sf2")
                     }
+                    isLoadingSf2 = false
                 }
             }
         }
+
+        Sf2FilePicker(showSf2Picker) { path, displayName ->
+            showSf2Picker = false
+            if (path != null) {
+                handleSoundFontSelected(path, displayName ?: path.substringAfterLast("/"))
+            }
+        }
+
+        Sf2ExplorerDialog(
+            show = showSf2ExplorerDialog,
+            channelName = showChannelSettingsDialog?.name ?: "Canal",
+            synth = synth,
+            controller = sf2ExplorerController,
+            onDismiss = { showSf2ExplorerDialog = false },
+            onSelectSoundFont = { path, displayName ->
+                handleSoundFontSelected(path, displayName)
+            }
+        )
     }
 
     // --- DIALOGS ---
@@ -1409,16 +1428,37 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             modifier = Modifier.padding(bottom = 12.dp).align(Alignment.CenterHorizontally).size(32.dp)
                         )
                     } else {
-                        // Options List
-                        Button(
-                            onClick = {
-                                showSf2Picker = true
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                            shape = AppShapes.medium,
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                        // Options List: Explorador SF2 (Carpeta) or Importar Archivo
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("Cambiar SF2 Preset", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelLarge)
+                            Button(
+                                onClick = {
+                                    showSf2ExplorerDialog = true
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentSky),
+                                shape = AppShapes.medium,
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(TablerIcons.Folders, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Explorar SF2", color = Color.Black, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    showSf2Picker = true
+                                },
+                                shape = AppShapes.medium,
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(TablerIcons.FileImport, contentDescription = null, tint = TextLight, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Importar .sf2", color = TextLight, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                            }
                         }
                     }
 
@@ -1661,12 +1701,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 listOf(
                                     SettingsTab.SPLIT_ZONES to " Keyboard Zones",
                                     SettingsTab.AUDIO to "Interfaces de Audio",
+                                    SettingsTab.SF2_FOLDER to "Carpeta SF2",
                                     SettingsTab.BACKUP to "Respaldo Automático"
                                 )
                             } else {
                                 listOf(
                                     SettingsTab.MIDI_MAP to "Mapear MIDI",
                                     SettingsTab.AUDIO to "Interfaces de Audio",
+                                    SettingsTab.SF2_FOLDER to "Carpeta SF2",
                                     SettingsTab.BACKUP to "Respaldo Automático"
                                 )
                             }
@@ -1757,6 +1799,12 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         onRefreshDevices = { synth.refreshAudioDevices() },
                                         audioDiagnostics = audioDiagnostics,
                                         isRestartingAudio = isRestartingAudio
+                                    )
+                                }
+                                SettingsTab.SF2_FOLDER -> {
+                                    Sf2FolderSettingsScreen(
+                                        controller = sf2ExplorerController,
+                                        synth = synth
                                     )
                                 }
                                 SettingsTab.BACKUP -> {

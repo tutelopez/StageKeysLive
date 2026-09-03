@@ -127,4 +127,6 @@ actual class PlatformAudioSynth actual constructor() {
     actual fun padNoteOn(pitchClass: Int) {}
     actual fun padNoteOff() {}
     actual fun padHardKillAll() {}
+    actual fun previewSoundFont(path: String, note: Int, velocity: Int, durationMs: Int) {}
+    actual fun stopPreview() {}
 }

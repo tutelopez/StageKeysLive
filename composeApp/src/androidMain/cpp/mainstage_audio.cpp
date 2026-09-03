@@ -6,6 +6,7 @@
 #include <thread>
 #include <chrono>
 #include <vector>
+#include <atomic>
 
 #define LOG_TAG "StageKeysAudio"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
@@ -37,6 +38,10 @@ private:
     float filterCutoff = 0.5f;
     bool audioReady = false;
 
+    // Scratch/Preview channel state (reserved on physical channel 15)
+    int previewSfid = -1;
+    std::atomic<int> previewGeneration{0};
+
     fluid_settings_t* fluidSettings = nullptr;
     fluid_synth_t* fluidSynth = nullptr;
     fluid_audio_driver_t* fluidAudioDriver = nullptr;
@@ -54,6 +59,8 @@ public:
             physicalActive[i] = i; // Map logical channel i to physical channel i initially
             physicalInUse[i] = true;
         }
+        // Channel 15 is reserved exclusively for scratch SoundFont preview
+        physicalInUse[15] = true;
     }
 
     ~MainstageAudioEngine() {
@@ -389,6 +396,120 @@ public:
         }
     }
 
+    void previewSoundFont(const char* sf2Path, int note, int velocity, int durationMs) {
+        int gen = ++previewGeneration;
+        std::string path(sf2Path);
+        std::thread([this, path, note, velocity, durationMs, gen]() {
+            int tempSfid = -1;
+            {
+                std::lock_guard<std::mutex> lock(synthMutex);
+                if (fluidSynth == nullptr) return;
+
+                // Stop previous sound on preview channel 15
+                fluid_synth_all_notes_off(fluidSynth, 15);
+                fluid_synth_all_sounds_off(fluidSynth, 15);
+
+                // If previous preview loaded an sfid, release it
+                if (previewSfid != -1) {
+                    int oldId = previewSfid;
+                    previewSfid = -1;
+                    sfidRefCount[oldId]--;
+                    if (sfidRefCount[oldId] <= 0) {
+                        fluid_synth_sfunload(fluidSynth, oldId, 0);
+                        sfidRefCount.erase(oldId);
+                        for (auto it = loadedSfPaths.begin(); it != loadedSfPaths.end(); ) {
+                            if (it->second == oldId) it = loadedSfPaths.erase(it);
+                            else ++it;
+                        }
+                    }
+                }
+
+                // Check cache
+                if (loadedSfPaths.find(path) != loadedSfPaths.end()) {
+                    tempSfid = loadedSfPaths[path];
+                    sfidRefCount[tempSfid]++;
+                    LOGI("FluidSynth preview: Reusing sfid %d for %s", tempSfid, path.c_str());
+                } else {
+                    tempSfid = fluid_synth_sfload(fluidSynth, path.c_str(), 0);
+                    if (tempSfid != -1) {
+                        loadedSfPaths[path] = tempSfid;
+                        sfidRefCount[tempSfid] = 1;
+                        LOGI("FluidSynth preview: Loaded new sfid %d for %s", tempSfid, path.c_str());
+                    }
+                }
+
+                if (tempSfid == -1) {
+                    LOGE("FluidSynth preview: failed to load %s", path.c_str());
+                    return;
+                }
+
+                previewSfid = tempSfid;
+                sfids[15] = tempSfid;
+                fluid_synth_program_select(fluidSynth, 15, tempSfid, 0, 0);
+                fluid_synth_cc(fluidSynth, 15, 7, 100); // Scratch volume
+                fluid_synth_cc(fluidSynth, 15, 10, 64); // Center pan
+                fluid_synth_noteon(fluidSynth, 15, note, velocity);
+            }
+
+            // Let the note ring for durationMs
+            std::this_thread::sleep_for(std::chrono::milliseconds(durationMs));
+
+            if (previewGeneration.load() == gen) {
+                {
+                    std::lock_guard<std::mutex> lock(synthMutex);
+                    if (fluidSynth != nullptr) {
+                        fluid_synth_noteoff(fluidSynth, 15, note);
+                    }
+                }
+
+                // Allow natural envelope release
+                std::this_thread::sleep_for(std::chrono::milliseconds(600));
+
+                if (previewGeneration.load() == gen) {
+                    std::lock_guard<std::mutex> lock(synthMutex);
+                    if (fluidSynth != nullptr && previewSfid != -1) {
+                        fluid_synth_all_notes_off(fluidSynth, 15);
+                        fluid_synth_all_sounds_off(fluidSynth, 15);
+                        sfids[15] = -1;
+                        int sId = previewSfid;
+                        previewSfid = -1;
+                        sfidRefCount[sId]--;
+                        if (sfidRefCount[sId] <= 0) {
+                            fluid_synth_sfunload(fluidSynth, sId, 0);
+                            sfidRefCount.erase(sId);
+                            for (auto it = loadedSfPaths.begin(); it != loadedSfPaths.end(); ) {
+                                if (it->second == sId) it = loadedSfPaths.erase(it);
+                                else ++it;
+                            }
+                            LOGI("FluidSynth preview: Unloaded temp sfid %d", sId);
+                        }
+                    }
+                }
+            }
+        }).detach();
+    }
+
+    void stopPreview() {
+        previewGeneration++;
+        std::lock_guard<std::mutex> lock(synthMutex);
+        if (fluidSynth != nullptr && previewSfid != -1) {
+            fluid_synth_all_notes_off(fluidSynth, 15);
+            fluid_synth_all_sounds_off(fluidSynth, 15);
+            sfids[15] = -1;
+            int sId = previewSfid;
+            previewSfid = -1;
+            sfidRefCount[sId]--;
+            if (sfidRefCount[sId] <= 0) {
+                fluid_synth_sfunload(fluidSynth, sId, 0);
+                sfidRefCount.erase(sId);
+                for (auto it = loadedSfPaths.begin(); it != loadedSfPaths.end(); ) {
+                    if (it->second == sId) it = loadedSfPaths.erase(it);
+                    else ++it;
+                }
+            }
+        }
+    }
+
     std::string getAudioDiagnostics() {
         std::lock_guard<std::mutex> lock(synthMutex);
         if (fluidSettings == nullptr) {
@@ -588,6 +709,22 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativePadNoteOff(JNIEnv *env, jobject
 JNIEXPORT void JNICALL
 Java_com_midi_mainstage_PlatformAudioSynth_nativePadHardKillAll(JNIEnv *env, jobject thiz) {
     if (gPadEngine != nullptr) gPadEngine->hardKillAll();
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativePreviewSoundFont(JNIEnv *env, jobject thiz, jstring sf2Path, jint note, jint velocity, jint durationMs) {
+    if (gEngine != nullptr && sf2Path != nullptr) {
+        const char *path = env->GetStringUTFChars(sf2Path, nullptr);
+        gEngine->previewSoundFont(path, note, velocity, durationMs);
+        env->ReleaseStringUTFChars(sf2Path, path);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeStopPreview(JNIEnv *env, jobject thiz) {
+    if (gEngine != nullptr) {
+        gEngine->stopPreview();
+    }
 }
 
 }

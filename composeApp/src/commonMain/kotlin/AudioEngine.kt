@@ -58,4 +58,8 @@ expect class PlatformAudioSynth() {
     fun padNoteOn(pitchClass: Int)
     fun padNoteOff()
     fun padHardKillAll()
+
+    // --- SoundFont Preview ---
+    fun previewSoundFont(path: String, note: Int = 60, velocity: Int = 100, durationMs: Int = 2000)
+    fun stopPreview()
 }
