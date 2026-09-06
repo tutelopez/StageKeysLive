@@ -4,6 +4,9 @@ sealed class MidiTarget {
     data class ChannelVolume(val channelIndex: Int) : MidiTarget()
     data class ChannelMute(val channelIndex: Int) : MidiTarget()
     data class ChannelSolo(val channelIndex: Int) : MidiTarget()
+    data class ChannelReverb(val channelIndex: Int) : MidiTarget()
+    data class ChannelChorus(val channelIndex: Int) : MidiTarget()
+    data class ChannelCutoff(val channelIndex: Int) : MidiTarget()
     data class Pad(val padIndex: Int) : MidiTarget()
     data class Pot(val potIndex: Int) : MidiTarget()
     
@@ -19,5 +22,6 @@ sealed class MidiTarget {
     object OctaveDown : MidiTarget()
     object NextPatch : MidiTarget()
     object PreviousPatch : MidiTarget()
+    data class SelectPatch(val patchIndex: Int) : MidiTarget()
 }
 

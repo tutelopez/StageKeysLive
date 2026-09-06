@@ -43,6 +43,8 @@ fun ConcertViewScreen(
     onDeletePatch: (PatchState) -> Unit,
     onExportPatchClick: (PatchState) -> Unit,
     onImportPatchClick: () -> Unit,
+    onToggleFavorite: (PatchState) -> Unit = {},
+    onMovePatch: (Int, Int) -> Unit = { _, _ -> },
     onBackClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onPanicClick: () -> Unit,
@@ -76,10 +78,15 @@ fun ConcertViewScreen(
     onSoloToggle: (Int) -> Unit,
     onAddChannelClick: () -> Unit,
     onChannelGearClick: (ChannelStripState) -> Unit,
+    onReverbChange: (Int, Float) -> Unit = { _, _ -> },
+    onChorusChange: (Int, Float) -> Unit = { _, _ -> },
+    onCutoffChange: (Int, Float) -> Unit = { _, _ -> },
+    midiMappings: Map<Int, MidiTarget> = emptyMap(),
 
     // Master output
     masterVolume: Float,
     masterPan: Float = 0.5f,
+    isMasterLimiterActive: Boolean = false,
     onMasterVolumeChange: (Float) -> Unit,
     onMasterPanChange: (Float) -> Unit = {},
     masterVuLevel: Float,
@@ -124,7 +131,7 @@ fun ConcertViewScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
-            // â”€â”€â”€ TOP BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ─── TOP BAR ────────────────────────────────────────────────────────
             val nextPatchName = if (concert.patches.size > 1) {
                 concert.patches.getOrNull((selectedPatchIndex + 1) % concert.patches.size)?.name
             } else null
@@ -179,7 +186,9 @@ fun ConcertViewScreen(
                         onEdit = onEditPatchClick,
                         onDelete = onDeletePatch,
                         onExport = onExportPatchClick,
-                        onImport = onImportPatchClick
+                        onImport = onImportPatchClick,
+                        onToggleFavorite = onToggleFavorite,
+                        onMovePatch = onMovePatch
                     )
 
                     // MIXER PANEL
@@ -191,6 +200,7 @@ fun ConcertViewScreen(
                         onMetronomeVolumeChange = onMetronomeVolumeChange,
                         masterVolume = masterVolume,
                         masterPan = masterPan,
+                        isLimiterActive = isMasterLimiterActive,
                         masterVuLevel = masterVuLevel,
                         onMasterVolumeChange = onMasterVolumeChange,
                         onMasterPanChange = onMasterPanChange,
@@ -200,6 +210,10 @@ fun ConcertViewScreen(
                         onAddChannelClick = onAddChannelClick,
                         onChannelGearClick = onChannelGearClick,
                         onSettingsClick = onSettingsClick,
+                        onReverbChange = onReverbChange,
+                        onChorusChange = onChorusChange,
+                        onCutoffChange = onCutoffChange,
+                        midiMappings = midiMappings,
                         scrollState = rememberScrollState()
                     )
                 }
@@ -407,6 +421,38 @@ private fun TopBar(
                 }
             }
 
+            Spacer(Modifier.width(6.dp))
+
+            // Tap Tempo button
+            var tapPulse by remember { mutableStateOf(false) }
+            LaunchedEffect(tapPulse) {
+                if (tapPulse) {
+                    delay(150)
+                    tapPulse = false
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (tapPulse) AccentSky.copy(alpha = 0.35f) else DarkPanel)
+                    .border(1.2.dp, if (tapPulse) AccentSky else OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                    .clickable {
+                        tapPulse = true
+                        onTapTempo()
+                    }
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "TAP",
+                    color = if (tapPulse) Color.White else AccentSky,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+            }
+
             Spacer(Modifier.width(8.dp))
 
             // Record button (Pill)
@@ -510,6 +556,36 @@ private fun TopBar(
 
             Spacer(Modifier.width(8.dp))
 
+            // MIDI Activity Indicator LED
+            Box(
+                modifier = Modifier
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (midiActive) AccentNeonGreen.copy(alpha = 0.18f) else DarkPanel)
+                    .border(1.2.dp, if (midiActive) AccentNeonGreen else OutlineVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(if (midiActive) AccentNeonGreen else Color(0xFF555566))
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "MIDI",
+                        color = if (midiActive) AccentNeonGreen else TextDark,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(8.dp))
+
             // Panic Button
             Box(
                 modifier = Modifier
@@ -590,9 +666,9 @@ private fun PillButton(
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // PATCHES PANEL
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun PatchesPanel(
     patches: List<PatchState>,
@@ -602,18 +678,23 @@ private fun PatchesPanel(
     onEdit: (PatchState) -> Unit,
     onDelete: (PatchState) -> Unit,
     onExport: (PatchState) -> Unit,
-    onImport: () -> Unit
+    onImport: () -> Unit,
+    onToggleFavorite: (PatchState) -> Unit = {},
+    onMovePatch: (Int, Int) -> Unit = { _, _ -> }
 ) {
+    var showFavoritesOnly by remember { mutableStateOf(false) }
+    val displayPatches = if (showFavoritesOnly) patches.filter { it.isFavorite } else patches
+
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = DarkPanel.copy(alpha = 0.72f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.04f)),
-        modifier = Modifier.width(132.dp).fillMaxHeight()
+        modifier = Modifier.width(140.dp).fillMaxHeight()
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
             // Header
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -621,14 +702,26 @@ private fun PatchesPanel(
                     color = TextDark,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
+                    letterSpacing = 1.2.sp,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = onImport, modifier = Modifier.size(22.dp)) {
-                    Icon(TablerIcons.Download, contentDescription = "Import", tint = TextDark, modifier = Modifier.size(13.dp))
+                // Favorites filter toggle button
+                IconButton(
+                    onClick = { showFavoritesOnly = !showFavoritesOnly },
+                    modifier = Modifier.size(20.dp)
+                ) {
+                    Text(
+                        if (showFavoritesOnly) "★" else "☆",
+                        color = if (showFavoritesOnly) Color(0xFFFFD700) else TextDark,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
-                IconButton(onClick = onAdd, modifier = Modifier.size(22.dp)) {
-                    Icon(TablerIcons.Plus, contentDescription = "Add patch", tint = AccentSky, modifier = Modifier.size(15.dp))
+                IconButton(onClick = onImport, modifier = Modifier.size(20.dp)) {
+                    Icon(TablerIcons.Download, contentDescription = "Import", tint = TextDark, modifier = Modifier.size(12.dp))
+                }
+                IconButton(onClick = onAdd, modifier = Modifier.size(20.dp)) {
+                    Icon(TablerIcons.Plus, contentDescription = "Add patch", tint = AccentSky, modifier = Modifier.size(14.dp))
                 }
             }
 
@@ -641,7 +734,7 @@ private fun PatchesPanel(
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 1.dp)
                 )
             }
 
@@ -651,15 +744,23 @@ private fun PatchesPanel(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(patches) { patch ->
-                    val idx = patches.indexOf(patch)
-                    val isSelected = idx == selectedIndex
+                items(displayPatches) { patch ->
+                    val actualIdx = patches.indexOf(patch)
+                    val isSelected = actualIdx == selectedIndex
+                    val canMoveUp = !showFavoritesOnly && actualIdx > 0
+                    val canMoveDown = !showFavoritesOnly && actualIdx < patches.size - 1
+
                     PatchRow(
                         patch = patch,
                         isSelected = isSelected,
-                        onClick = { onSelect(idx) },
+                        canMoveUp = canMoveUp,
+                        canMoveDown = canMoveDown,
+                        onClick = { onSelect(actualIdx) },
                         onEdit = { onEdit(patch) },
-                        onDelete = { onDelete(patch) }
+                        onDelete = { onDelete(patch) },
+                        onToggleFavorite = { onToggleFavorite(patch) },
+                        onMoveUp = { onMovePatch(actualIdx, actualIdx - 1) },
+                        onMoveDown = { onMovePatch(actualIdx, actualIdx + 1) }
                     )
                 }
             }
@@ -691,9 +792,14 @@ private fun PatchesPanel(
 private fun PatchRow(
     patch: PatchState,
     isSelected: Boolean,
+    canMoveUp: Boolean = false,
+    canMoveDown: Boolean = false,
     onClick: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onToggleFavorite: () -> Unit = {},
+    onMoveUp: () -> Unit = {},
+    onMoveDown: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -729,14 +835,32 @@ private fun PatchRow(
                 shape = RoundedCornerShape(10.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 9.dp, vertical = 8.dp),
+            .padding(horizontal = 6.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Favorite Star
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .clip(CircleShape)
+                .clickable(onClick = onToggleFavorite),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                if (patch.isFavorite) "★" else "☆",
+                color = if (patch.isFavorite) Color(0xFFFFD700) else TextDark.copy(alpha = 0.4f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(Modifier.width(4.dp))
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = patch.name,
                 color = if (isSelected) Color.White else TextDark,
-                fontSize = 11.sp,
+                fontSize = 10.5.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -745,21 +869,52 @@ private fun PatchRow(
                 Text(
                     text = patch.category,
                     color = if (isSelected) AccentSky.copy(alpha = 0.8f) else TextDark.copy(alpha = 0.6f),
-                    fontSize = 8.5.sp
+                    fontSize = 8.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
+
         if (isSelected) {
-            IconButton(onClick = onEdit, modifier = Modifier.size(18.dp)) {
-                Icon(TablerIcons.Edit, contentDescription = "Edit", tint = AccentSky, modifier = Modifier.size(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (canMoveUp) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(DarkBackground.copy(alpha = 0.6f))
+                            .clickable(onClick = onMoveUp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("▲", color = AccentSky, fontSize = 8.sp)
+                    }
+                    Spacer(Modifier.width(2.dp))
+                }
+                if (canMoveDown) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(DarkBackground.copy(alpha = 0.6f))
+                            .clickable(onClick = onMoveDown),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("▼", color = AccentSky, fontSize = 8.sp)
+                    }
+                    Spacer(Modifier.width(2.dp))
+                }
+                IconButton(onClick = onEdit, modifier = Modifier.size(16.dp)) {
+                    Icon(TablerIcons.Edit, contentDescription = "Edit", tint = AccentSky, modifier = Modifier.size(11.dp))
+                }
             }
         }
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // MIXER PANEL
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun MixerPanel(
     modifier: Modifier = Modifier,
@@ -769,6 +924,7 @@ private fun MixerPanel(
     onMetronomeVolumeChange: (Float) -> Unit,
     masterVolume: Float,
     masterPan: Float = 0.5f,
+    isLimiterActive: Boolean = false,
     masterVuLevel: Float,
     onMasterVolumeChange: (Float) -> Unit,
     onMasterPanChange: (Float) -> Unit = {},
@@ -778,6 +934,10 @@ private fun MixerPanel(
     onAddChannelClick: () -> Unit,
     onChannelGearClick: (ChannelStripState) -> Unit,
     onSettingsClick: () -> Unit,
+    onReverbChange: (Int, Float) -> Unit = { _, _ -> },
+    onChorusChange: (Int, Float) -> Unit = { _, _ -> },
+    onCutoffChange: (Int, Float) -> Unit = { _, _ -> },
+    midiMappings: Map<Int, MidiTarget> = emptyMap(),
     scrollState: ScrollState
 ) {
     Surface(
@@ -802,13 +962,22 @@ private fun MixerPanel(
                 channels.forEach { chState ->
                     val levelIdx = (chState.id - 1).coerceIn(0, 7)
                     val animLevel = vuLevels[levelIdx].value
+                    val isRevMapped = midiMappings.values.any { it is MidiTarget.ChannelReverb && it.channelIndex == chState.id - 1 }
+                    val isChoMapped = midiMappings.values.any { it is MidiTarget.ChannelChorus && it.channelIndex == chState.id - 1 }
+                    val isCutMapped = midiMappings.values.any { it is MidiTarget.ChannelCutoff && it.channelIndex == chState.id - 1 }
                     ChannelStripItem(
                         state = chState,
                         level = animLevel,
                         onVolumeChange = { vol -> onVolumeChange(chState.id, vol) },
                         onMuteToggle = { onMuteToggle(chState.id) },
                         onSoloToggle = { onSoloToggle(chState.id) },
-                        onGearClick = { onChannelGearClick(chState) }
+                        onGearClick = { onChannelGearClick(chState) },
+                        onReverbChange = { v -> onReverbChange(chState.id, v) },
+                        onChorusChange = { v -> onChorusChange(chState.id, v) },
+                        onCutoffChange = { v -> onCutoffChange(chState.id, v) },
+                        isReverbMapped = isRevMapped,
+                        isChorusMapped = isChoMapped,
+                        isCutoffMapped = isCutMapped
                     )
                 }
 
@@ -831,6 +1000,7 @@ private fun MixerPanel(
                     volume = masterVolume,
                     level = masterVuLevel,
                     pan = masterPan,
+                    isLimiterActive = isLimiterActive,
                     onVolumeChange = onMasterVolumeChange,
                     onPanChange = onMasterPanChange,
                     onMidiMapClick = onSettingsClick

@@ -150,11 +150,15 @@ actual class PlatformAudioSynth actual constructor() {
         onMappedCc: (target: MidiTarget, floatValue: Float) -> Unit,
         onNote: (note: Int, velocity: Int, isNoteOn: Boolean) -> Unit,
         onPitchBend: (pitchBend: Float) -> Unit,
-        onDeviceConnectionChanged: (deviceNames: List<String>) -> Unit
+        onDeviceConnectionChanged: (deviceNames: List<String>) -> Unit,
+        onProgramChange: (program: Int) -> Unit,
+        onMidiActivity: () -> Unit
     ) {
         midiManager?.onMappedCcReceived = { _, target, floatValue -> onMappedCc(target, floatValue) }
         midiManager?.onNoteReceived = onNote
         midiManager?.onPitchBendReceived = onPitchBend
+        midiManager?.onProgramChangeReceived = onProgramChange
+        midiManager?.onMidiActivity = onMidiActivity
         midiManager?.onDeviceConnectionChanged = onDeviceConnectionChanged
     }
 
@@ -228,6 +232,30 @@ actual class PlatformAudioSynth actual constructor() {
         nativeStopPreview()
     }
 
+    actual fun setChannelReverbSend(channel: Int, value: Float) {
+        nativeSetChannelReverbSend(channel, value)
+    }
+
+    actual fun setChannelChorusSend(channel: Int, value: Float) {
+        nativeSetChannelChorusSend(channel, value)
+    }
+
+    actual fun setMasterReverbParams(roomsize: Float, damp: Float, width: Float, level: Float) {
+        nativeSetMasterReverbParams(roomsize, damp, width, level)
+    }
+
+    actual fun setMasterChorusParams(nr: Int, level: Float, speed: Float, depth: Float) {
+        nativeSetMasterChorusParams(nr, level, speed, depth)
+    }
+
+    actual fun setMasterLimiterEnabled(enabled: Boolean) {
+        nativeSetMasterLimiterEnabled(enabled)
+    }
+
+    actual fun isMasterLimiterActive(): Boolean {
+        return nativeIsMasterLimiterActive()
+    }
+
     // Native JNI bindings to C++ Audio/FluidSynth engine
     private external fun nativeInit(sampleRate: Int, bufferFrames: Int)
     private external fun nativeClose()
@@ -257,6 +285,16 @@ actual class PlatformAudioSynth actual constructor() {
     // SoundFont Preview
     private external fun nativePreviewSoundFont(path: String, note: Int, velocity: Int, durationMs: Int)
     private external fun nativeStopPreview()
+
+    // FX Sends & Master FX
+    private external fun nativeSetChannelReverbSend(channel: Int, value: Float)
+    private external fun nativeSetChannelChorusSend(channel: Int, value: Float)
+    private external fun nativeSetMasterReverbParams(roomsize: Float, damp: Float, width: Float, level: Float)
+    private external fun nativeSetMasterChorusParams(nr: Int, level: Float, speed: Float, depth: Float)
+
+    // Master Limiter
+    private external fun nativeSetMasterLimiterEnabled(enabled: Boolean)
+    private external fun nativeIsMasterLimiterActive(): Boolean
     
     fun setAssetManager(am: android.content.res.AssetManager) {
         nativeSetAssetManager(am)

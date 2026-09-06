@@ -42,9 +42,32 @@ private:
     int previewSfid = -1;
     std::atomic<int> previewGeneration{0};
 
+    // Master Bus Limiter
+    std::atomic<bool> limiterEnabled{true};
+    std::atomic<bool> limiterTriggered{false};
+
     fluid_settings_t* fluidSettings = nullptr;
     fluid_synth_t* fluidSynth = nullptr;
     fluid_audio_driver_t* fluidAudioDriver = nullptr;
+
+    static int audioProcessCallback(void *data, int len, int nfx, float *fx[], int nout, float *out[]) {
+        MainstageAudioEngine* engine = static_cast<MainstageAudioEngine*>(data);
+        if (engine == nullptr || engine->fluidSynth == nullptr) return FLUID_FAILED;
+
+        int ret;
+        if (nfx == 0) {
+            float *fxb[4] = {out[0], out[1], out[0], out[1]};
+            ret = fluid_synth_process(engine->fluidSynth, len, 4, fxb, nout, out);
+        } else {
+            ret = fluid_synth_process(engine->fluidSynth, len, nfx, fx, nout, out);
+        }
+
+        if (engine->isLimiterEnabled()) {
+            engine->applyLimiter(out, nout, len);
+        }
+
+        return ret;
+    }
 
 public:
     MainstageAudioEngine() {
@@ -68,6 +91,34 @@ public:
     }
 
     bool isAudioReady() const { return audioReady; }
+
+    bool isLimiterEnabled() const { return limiterEnabled.load(std::memory_order_relaxed); }
+    void setLimiterEnabled(bool enabled) { limiterEnabled.store(enabled, std::memory_order_relaxed); }
+    bool isLimiterActive() { return limiterTriggered.exchange(false, std::memory_order_relaxed); }
+
+    void applyLimiter(float *out[], int nout, int len) {
+        const float threshold = 0.85f;
+        const float invScale = 1.0f / (1.0f - threshold);
+        bool triggered = false;
+
+        for (int c = 0; c < nout; c++) {
+            float* buf = out[c];
+            if (buf == nullptr) continue;
+            for (int i = 0; i < len; i++) {
+                float s = buf[i];
+                if (s > threshold) {
+                    buf[i] = threshold + (1.0f - threshold) * std::tanh((s - threshold) * invScale);
+                    triggered = true;
+                } else if (s < -threshold) {
+                    buf[i] = -threshold + (1.0f - threshold) * std::tanh((s + threshold) * invScale);
+                    triggered = true;
+                }
+            }
+        }
+        if (triggered) {
+            limiterTriggered.store(true, std::memory_order_relaxed);
+        }
+    }
 
     void init(int sampleRate, int bufferFrames) {
         std::lock_guard<std::mutex> lock(synthMutex);
@@ -97,16 +148,16 @@ public:
         } 
         LOGI("FluidSynth: synth instance created OK");
 
-        fluidAudioDriver = new_fluid_audio_driver(fluidSettings, fluidSynth);
+        fluidAudioDriver = new_fluid_audio_driver2(fluidSettings, audioProcessCallback, this);
         if (fluidAudioDriver == nullptr) {
-            LOGE("FluidSynth: failed to create Oboe audio driver, falling back to opensles");
+            LOGE("FluidSynth: failed to create Oboe audio driver with process callback, falling back to opensles");
             fluid_settings_setstr(fluidSettings, "audio.driver", "opensles");
-            fluidAudioDriver = new_fluid_audio_driver(fluidSettings, fluidSynth);
+            fluidAudioDriver = new_fluid_audio_driver2(fluidSettings, audioProcessCallback, this);
         }
 
         if (fluidAudioDriver != nullptr) {
             audioReady = true;
-            LOGI("FluidSynth: audio driver created successfully");
+            LOGI("FluidSynth: audio driver with Master Limiter created successfully");
         } else {
             LOGE("CRITICAL: FluidSynth could not create any audio driver!");
         }
@@ -353,13 +404,63 @@ public:
         }
     }
 
+    void setChannelReverbSend(int logicalChannel, float value) {
+        std::lock_guard<std::mutex> lock(synthMutex);
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+            int ccVal = (int)(value * 127.0f);
+            if (ccVal < 0) ccVal = 0;
+            if (ccVal > 127) ccVal = 127;
+            fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 91, ccVal);
+            for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
+                fluid_synth_cc(fluidSynth, shadowPhys, 91, ccVal);
+            }
+        }
+    }
+
+    void setChannelChorusSend(int logicalChannel, float value) {
+        std::lock_guard<std::mutex> lock(synthMutex);
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+            int ccVal = (int)(value * 127.0f);
+            if (ccVal < 0) ccVal = 0;
+            if (ccVal > 127) ccVal = 127;
+            fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 93, ccVal);
+            for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
+                fluid_synth_cc(fluidSynth, shadowPhys, 93, ccVal);
+            }
+        }
+    }
+
+    void setMasterReverbParams(float roomsize, float damp, float width, float level) {
+        std::lock_guard<std::mutex> lock(synthMutex);
+        if (fluidSynth != nullptr) {
+            fluid_synth_set_reverb_group_roomsize(fluidSynth, -1, (double)roomsize);
+            fluid_synth_set_reverb_group_damp(fluidSynth, -1, (double)damp);
+            fluid_synth_set_reverb_group_width(fluidSynth, -1, (double)width);
+            fluid_synth_set_reverb_group_level(fluidSynth, -1, (double)level);
+        }
+    }
+
+    void setMasterChorusParams(int nr, float level, float speed, float depth) {
+        std::lock_guard<std::mutex> lock(synthMutex);
+        if (fluidSynth != nullptr) {
+            fluid_synth_set_chorus_group_nr(fluidSynth, -1, nr);
+            fluid_synth_set_chorus_group_level(fluidSynth, -1, (double)level);
+            fluid_synth_set_chorus_group_speed(fluidSynth, -1, (double)speed);
+            fluid_synth_set_chorus_group_depth(fluidSynth, -1, (double)depth);
+            fluid_synth_set_chorus_group_type(fluidSynth, -1, 0);
+        }
+    }
+
     void setFilterCutoff(float cutoff, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
         filterCutoff = cutoff;
         if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
-            fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 74, (int)(cutoff * 127.0f));
+            int ccVal = (int)(cutoff * 127.0f);
+            if (ccVal < 0) ccVal = 0;
+            if (ccVal > 127) ccVal = 127;
+            fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 74, ccVal);
             for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
-                 fluid_synth_cc(fluidSynth, shadowPhys, 74, (int)(cutoff * 127.0f));
+                 fluid_synth_cc(fluidSynth, shadowPhys, 74, ccVal);
             }
         }
     }
@@ -725,6 +826,49 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeStopPreview(JNIEnv *env, jobjec
     if (gEngine != nullptr) {
         gEngine->stopPreview();
     }
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeSetChannelReverbSend(JNIEnv *env, jobject thiz, jint channel, jfloat value) {
+    if (gEngine != nullptr) {
+        gEngine->setChannelReverbSend(channel, value);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeSetChannelChorusSend(JNIEnv *env, jobject thiz, jint channel, jfloat value) {
+    if (gEngine != nullptr) {
+        gEngine->setChannelChorusSend(channel, value);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeSetMasterReverbParams(JNIEnv *env, jobject thiz, jfloat roomsize, jfloat damp, jfloat width, jfloat level) {
+    if (gEngine != nullptr) {
+        gEngine->setMasterReverbParams(roomsize, damp, width, level);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeSetMasterChorusParams(JNIEnv *env, jobject thiz, jint nr, jfloat level, jfloat speed, jfloat depth) {
+    if (gEngine != nullptr) {
+        gEngine->setMasterChorusParams(nr, level, speed, depth);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeSetMasterLimiterEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
+    if (gEngine != nullptr) {
+        gEngine->setLimiterEnabled(enabled);
+    }
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeIsMasterLimiterActive(JNIEnv *env, jobject thiz) {
+    if (gEngine != nullptr) {
+        return gEngine->isLimiterActive() ? JNI_TRUE : JNI_FALSE;
+    }
+    return JNI_FALSE;
 }
 
 }

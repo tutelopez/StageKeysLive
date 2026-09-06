@@ -37,6 +37,12 @@ class AndroidMidiManager(
     // [POINT 4 FIX] Pitch Bend event routing
     var onPitchBendReceived: ((pitchBend: Float) -> Unit)? = null
 
+    // Program Change event routing
+    var onProgramChangeReceived: ((program: Int) -> Unit)? = null
+
+    // Real-time MIDI message activity pulse
+    var onMidiActivity: (() -> Unit)? = null
+
     // Tracking currently connected device name for mappings
     var currentDeviceName: String? = null
     var onDeviceConnectionChanged: ((deviceNames: List<String>) -> Unit)? = null
@@ -152,6 +158,7 @@ class AndroidMidiManager(
                     val velocity = data[dataIndex + 1].toInt() and 0x7F
                     
                     handler.post {
+                        onMidiActivity?.invoke()
                         if (velocity > 0) {
                             onNoteReceived?.invoke(note, velocity, true)
                         } else {
@@ -163,6 +170,7 @@ class AndroidMidiManager(
                 } else if (status == 0x80 && dataIndex + 1 < end) { // Note Off
                     val note = data[dataIndex].toInt() and 0x7F
                     handler.post {
+                        onMidiActivity?.invoke()
                         onNoteReceived?.invoke(note, 0, false)
                     }
                     i = dataIndex + 2
@@ -174,6 +182,7 @@ class AndroidMidiManager(
                     // Normalize 0..16383 to -1.0..1.0 (center is 8192)
                     val floatVal = (pitchVal - 8192) / 8192.0f
                     handler.post {
+                        onMidiActivity?.invoke()
                         onPitchBendReceived?.invoke(floatVal)
                     }
                     i = dataIndex + 2
@@ -182,6 +191,8 @@ class AndroidMidiManager(
                     val controller = data[dataIndex].toInt() and 0x7F
                     val value = data[dataIndex + 1].toInt() and 0x7F
                     val floatValue = value / 127f
+
+                    handler.post { onMidiActivity?.invoke() }
 
                     // [POINT 2 FIX] ✨ MIDI Learn intercept:
                     val learnCallback = onLearnModeCcReceived
@@ -207,6 +218,39 @@ class AndroidMidiManager(
                     }
 
                     i = dataIndex + 2
+                } else if (status == 0xC0 && dataIndex < end) { // Program Change
+                    val program = data[dataIndex].toInt() and 0x7F
+
+                    handler.post { onMidiActivity?.invoke() }
+
+                    // MIDI Learn intercept for Program Change:
+                    val learnCallback = onLearnModeCcReceived
+                    if (learnCallback != null) {
+                        Log.i(TAG, "MIDI Learn captured PC $program → mapping target")
+                        handler.post {
+                            learnCallback(program)
+                            onLearnModeCcReceived = null
+                        }
+                        i = dataIndex + 1
+                        continue
+                    }
+
+                    // Check if program is mapped explicitly to a MidiTarget
+                    val mappedTarget = ccMappings[program]
+                    if (mappedTarget != null) {
+                        Log.d(TAG, "Mapped PC $program → '$mappedTarget'")
+                        handler.post {
+                            onMappedCcReceived?.invoke(program, mappedTarget, 1.0f)
+                        }
+                        i = dataIndex + 1
+                        continue
+                    }
+
+                    // Default routing for Program Change
+                    handler.post {
+                        onProgramChangeReceived?.invoke(program)
+                    }
+                    i = dataIndex + 1
                 } else {
                     // System messages or unrecognized, skip 1 byte and reset running status if it was a status byte
                     if (!isRunningStatus) {

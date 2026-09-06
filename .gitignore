@@ -2,6 +2,8 @@
 .gradle/
 build/
 .kotlin/
+.cxx/
+composeApp/.cxx/
 
 # Android Studio / IntelliJ IDEA files
 .idea/

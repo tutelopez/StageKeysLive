@@ -37,7 +37,9 @@ expect class PlatformAudioSynth() {
         onMappedCc: (target: MidiTarget, floatValue: Float) -> Unit,
         onNote: (note: Int, velocity: Int, isNoteOn: Boolean) -> Unit,
         onPitchBend: (pitchBend: Float) -> Unit,
-        onDeviceConnectionChanged: (deviceNames: List<String>) -> Unit
+        onDeviceConnectionChanged: (deviceNames: List<String>) -> Unit,
+        onProgramChange: (program: Int) -> Unit = {},
+        onMidiActivity: () -> Unit = {}
     )
 
     // --- Audio Device Management ---
@@ -62,4 +64,14 @@ expect class PlatformAudioSynth() {
     // --- SoundFont Preview ---
     fun previewSoundFont(path: String, note: Int = 60, velocity: Int = 100, durationMs: Int = 2000)
     fun stopPreview()
+
+    // --- Channel FX Sends & Master FX ---
+    fun setChannelReverbSend(channel: Int, value: Float)
+    fun setChannelChorusSend(channel: Int, value: Float)
+    fun setMasterReverbParams(roomsize: Float, damp: Float, width: Float, level: Float)
+    fun setMasterChorusParams(nr: Int, level: Float, speed: Float, depth: Float)
+
+    // --- Master Bus Limiter ---
+    fun setMasterLimiterEnabled(enabled: Boolean)
+    fun isMasterLimiterActive(): Boolean
 }

@@ -104,7 +104,9 @@ actual class PlatformAudioSynth actual constructor() {
         onMappedCc: (target: MidiTarget, floatValue: Float) -> Unit,
         onNote: (note: Int, velocity: Int, isNoteOn: Boolean) -> Unit,
         onPitchBend: (pitchBend: Float) -> Unit,
-        onDeviceConnectionChanged: (deviceNames: List<String>) -> Unit
+        onDeviceConnectionChanged: (deviceNames: List<String>) -> Unit,
+        onProgramChange: (program: Int) -> Unit,
+        onMidiActivity: () -> Unit
     ) {
         // No hardware MIDI on desktop yet
     }
@@ -129,4 +131,10 @@ actual class PlatformAudioSynth actual constructor() {
     actual fun padHardKillAll() {}
     actual fun previewSoundFont(path: String, note: Int, velocity: Int, durationMs: Int) {}
     actual fun stopPreview() {}
+    actual fun setChannelReverbSend(channel: Int, value: Float) {}
+    actual fun setChannelChorusSend(channel: Int, value: Float) {}
+    actual fun setMasterReverbParams(roomsize: Float, damp: Float, width: Float, level: Float) {}
+    actual fun setMasterChorusParams(nr: Int, level: Float, speed: Float, depth: Float) {}
+    actual fun setMasterLimiterEnabled(enabled: Boolean) {}
+    actual fun isMasterLimiterActive(): Boolean = false
 }

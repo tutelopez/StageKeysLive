@@ -24,13 +24,19 @@ fun ChannelStripItem(
     onVolumeChange: (Float) -> Unit,
     onMuteToggle: () -> Unit,
     onSoloToggle: () -> Unit,
-    onGearClick: () -> Unit
+    onGearClick: () -> Unit,
+    onReverbChange: (Float) -> Unit = {},
+    onChorusChange: (Float) -> Unit = {},
+    onCutoffChange: (Float) -> Unit = {},
+    isReverbMapped: Boolean = false,
+    isChorusMapped: Boolean = false,
+    isCutoffMapped: Boolean = false
 ) {
     val accentColor = parseColorHex(state.colorHex)
 
     Column(
         modifier = Modifier
-            .width(74.dp)
+            .width(76.dp)
             .fillMaxHeight()
             .shadow(
                 elevation = 12.dp, 
@@ -47,9 +53,9 @@ fun ChannelStripItem(
                 color = accentColor.copy(alpha = 0.55f),
                 shape = RoundedCornerShape(14.dp)
             )
-            .padding(horizontal = 5.dp, vertical = 7.dp),
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
         // ── Channel name + gear ──────────────────────────────────────────
         Row(
@@ -97,7 +103,7 @@ fun ChannelStripItem(
         // ── Fader + VU meter ────────────────────────────────────────────
         Row(
             modifier = Modifier.weight(1f).fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
             verticalAlignment = Alignment.Bottom
         ) {
             VolumeFader(
@@ -109,7 +115,7 @@ fun ChannelStripItem(
             LevelMeter(
                 level = level,
                 accentColor = accentColor,
-                modifier = Modifier.width(6.dp).fillMaxHeight()
+                modifier = Modifier.width(5.dp).fillMaxHeight()
             )
         }
 
@@ -120,6 +126,123 @@ fun ChannelStripItem(
             fontSize = 8.sp,
             textAlign = TextAlign.Center
         )
+
+        // ── FX Knobs (REV, CHO, TONE) ───────────────────────────────────
+        var selectedFx by remember { mutableStateOf(FxKnobType.REVERB) }
+
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            if (maxWidth >= 135.dp) {
+                // Horizontal row of all 3 knobs on wide strips
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MainstageRotaryKnob(
+                        value = state.reverbSend,
+                        onValueChange = onReverbChange,
+                        type = FxKnobType.REVERB,
+                        isMidiMapped = isReverbMapped,
+                        knobSize = 42.dp
+                    )
+                    MainstageRotaryKnob(
+                        value = state.chorusSend,
+                        onValueChange = onChorusChange,
+                        type = FxKnobType.CHORUS,
+                        isMidiMapped = isChorusMapped,
+                        knobSize = 42.dp
+                    )
+                    MainstageRotaryKnob(
+                        value = state.filterCutoff,
+                        onValueChange = onCutoffChange,
+                        type = FxKnobType.TONE,
+                        isMidiMapped = isCutoffMapped,
+                        knobSize = 42.dp
+                    )
+                }
+            } else {
+                // Responsive compact strip: 3-tab mini selector + 42dp active knob
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    // Mini tab selector pills [R | C | T]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFF1B1D28))
+                            .padding(1.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        FxKnobType.entries.forEach { fxType ->
+                            val isSel = selectedFx == fxType
+                            val isMapped = when (fxType) {
+                                FxKnobType.REVERB -> isReverbMapped
+                                FxKnobType.CHORUS -> isChorusMapped
+                                FxKnobType.TONE -> isCutoffMapped
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(if (isSel) fxType.color.copy(alpha = 0.28f) else Color.Transparent)
+                                    .clickable { selectedFx = fxType }
+                                    .padding(vertical = 1.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = fxType.label.take(1),
+                                        color = if (isSel) fxType.color else TextDark,
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    if (isMapped) {
+                                        Spacer(Modifier.width(1.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .size(3.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFFF59E0B))
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Active 42dp rotary knob
+                    when (selectedFx) {
+                        FxKnobType.REVERB -> MainstageRotaryKnob(
+                            value = state.reverbSend,
+                            onValueChange = onReverbChange,
+                            type = FxKnobType.REVERB,
+                            isMidiMapped = isReverbMapped,
+                            knobSize = 42.dp
+                        )
+                        FxKnobType.CHORUS -> MainstageRotaryKnob(
+                            value = state.chorusSend,
+                            onValueChange = onChorusChange,
+                            type = FxKnobType.CHORUS,
+                            isMidiMapped = isChorusMapped,
+                            knobSize = 42.dp
+                        )
+                        FxKnobType.TONE -> MainstageRotaryKnob(
+                            value = state.filterCutoff,
+                            onValueChange = onCutoffChange,
+                            type = FxKnobType.TONE,
+                            isMidiMapped = isCutoffMapped,
+                            knobSize = 42.dp
+                        )
+                    }
+                }
+            }
+        }
 
         // ── Mute / Solo ──────────────────────────────────────────────────
         Row(

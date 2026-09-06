@@ -13,6 +13,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -53,7 +54,7 @@ import kotlinx.coroutines.withContext
 
 // Data Models mapping to JSON persistence
 enum class ScreenState { DASHBOARD, CONCERT, SETTINGS }
-enum class SettingsTab { MIDI_MAP, SPLIT_ZONES, AUDIO, SF2_FOLDER, BACKUP }
+enum class SettingsTab { MIDI_MAP, SPLIT_ZONES, AUDIO, SF2_FOLDER, MASTER_FX, BACKUP }
 
 data class RecordingEvent(
     val deltaMs: Long,
@@ -65,11 +66,29 @@ data class RecordingEvent(
 @Composable
 fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     val coroutineScope = rememberCoroutineScope()
+    val synthThrottler = rememberEngineCcThrottler()
 
     // Navigation and Concert State
     var currentScreen by remember { mutableStateOf(ScreenState.DASHBOARD) }
     var concerts by remember { mutableStateOf<List<Concert>>(emptyList()) }
     var activeConcert by remember { mutableStateOf<Concert?>(null) }
+    
+    // Master FX Configuration State
+    var masterFxSettings by remember { mutableStateOf(MasterFxSettings()) }
+    LaunchedEffect(Unit) {
+        val json = readTextFromFile("master_fx_settings.json")
+        val loaded = MasterFxSerializer.deserialize(json)
+        masterFxSettings = loaded
+        synth.setMasterReverbParams(loaded.reverbRoomSize, loaded.reverbDamping, loaded.reverbWidth, loaded.reverbLevel)
+        synth.setMasterChorusParams(loaded.chorusNr, loaded.chorusLevel, loaded.chorusSpeed, loaded.chorusDepth)
+    }
+
+    val updateMasterFxSettings: (MasterFxSettings) -> Unit = { newSettings ->
+        masterFxSettings = newSettings
+        saveTextToFile("master_fx_settings.json", MasterFxSerializer.serialize(newSettings))
+        synth.setMasterReverbParams(newSettings.reverbRoomSize, newSettings.reverbDamping, newSettings.reverbWidth, newSettings.reverbLevel)
+        synth.setMasterChorusParams(newSettings.chorusNr, newSettings.chorusLevel, newSettings.chorusSpeed, newSettings.chorusDepth)
+    }
     
     var performanceStats by remember { mutableStateOf<PerformanceStats?>(null) }
     var batteryLevel by remember { mutableStateOf(100) }
@@ -263,10 +282,27 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     val recordedEvents = remember { mutableStateListOf<RecordingEvent>() }
     var recordingStartTimestamp by remember { mutableStateOf(0L) }
 
-    // Master Output volume, pan and Level meters
+    // Master Output volume, pan, limiter and Level meters
     var masterVolume by remember { mutableStateOf(0.8f) }
     var masterPan by remember { mutableStateOf(0.5f) }
+    var masterLimiterEnabled by remember { mutableStateOf(true) }
+    var isMasterLimiterActive by remember { mutableStateOf(false) }
     val masterVuLevel = remember { Animatable(0f) }
+
+    LaunchedEffect(masterLimiterEnabled) {
+        synth.setMasterLimiterEnabled(masterLimiterEnabled)
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(60)
+            if (masterLimiterEnabled && synth.isMasterLimiterActive()) {
+                isMasterLimiterActive = true
+                delay(120)
+                isMasterLimiterActive = false
+            }
+        }
+    }
 
     // Audio Interfaces & Settings state
     var selectedSampleRate by remember { mutableStateOf(48000) }
@@ -384,7 +420,10 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     volume = ch.volume, isMuted = ch.isMuted, isSoloed = ch.isSoloed,
                     keyRangeStart = ch.keyRangeStart, keyRangeEnd = ch.keyRangeEnd, colorHex = ch.colorHex,
                     velocityCurve = ch.velocityCurve,
-                    pan = ch.pan
+                    pan = ch.pan,
+                    reverbSend = ch.reverbSend,
+                    chorusSend = ch.chorusSend,
+                    filterCutoff = ch.filterCutoff
                 )
             }
             val patchesWithCurrentSaved = if (selectedPatchIndex in concert.patches.indices) {
@@ -403,7 +442,10 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         keyRangeStart = snap.keyRangeStart, keyRangeEnd = snap.keyRangeEnd,
                         colorHex = snap.colorHex,
                         velocityCurve = snap.velocityCurve,
-                        pan = snap.pan
+                        pan = snap.pan,
+                        reverbSend = snap.reverbSend,
+                        chorusSend = snap.chorusSend,
+                        filterCutoff = snap.filterCutoff
                     )
                 }
             } else {
@@ -414,18 +456,24 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         volume = 0.8f, isMuted = false, isSoloed = false,
                         keyRangeStart = 0, keyRangeEnd = 127, colorHex = "#00D2FF",
                         velocityCurve = "LINEAR",
-                        pan = 0.5f
+                        pan = 0.5f,
+                        reverbSend = 0.2f,
+                        chorusSend = 0.0f,
+                        filterCutoff = 1.0f
                     )
                 )
             }
 
-            // Load SoundFonts and apply effective pan for the restored channels
+            // Load SoundFonts, apply effective pan, and apply FX sends for the restored channels
             restoredChannels.forEach { ch ->
                 if (ch.sf2Path != null) {
                     synth.loadSoundFont(ch.sf2Path, ch.id)
                 }
                 val effectivePan = ((ch.pan - 0.5f) + (masterPan - 0.5f) + 0.5f).coerceIn(0f, 1f)
                 synth.setPan(ch.id, effectivePan)
+                synth.setChannelReverbSend(ch.id, ch.reverbSend)
+                synth.setChannelChorusSend(ch.id, ch.chorusSend)
+                synth.setFilterCutoff(ch.filterCutoff, ch.id)
             }
             synth.padSetPan(masterPan)
 
@@ -635,6 +683,45 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             }
                         }
                     }
+                    is MidiTarget.ChannelReverb -> {
+                        activeConcert?.let { concert ->
+                            if (target.channelIndex < concert.channels.size) {
+                                val updatedChannels = concert.channels.toMutableList()
+                                val ch = updatedChannels[target.channelIndex]
+                                updatedChannels[target.channelIndex] = ch.copy(reverbSend = floatValue)
+                                updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
+                                synthThrottler.sendThrottled(coroutineScope, floatValue) { v ->
+                                    synth.setChannelReverbSend(ch.id, v)
+                                }
+                            }
+                        }
+                    }
+                    is MidiTarget.ChannelChorus -> {
+                        activeConcert?.let { concert ->
+                            if (target.channelIndex < concert.channels.size) {
+                                val updatedChannels = concert.channels.toMutableList()
+                                val ch = updatedChannels[target.channelIndex]
+                                updatedChannels[target.channelIndex] = ch.copy(chorusSend = floatValue)
+                                updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
+                                synthThrottler.sendThrottled(coroutineScope, floatValue) { v ->
+                                    synth.setChannelChorusSend(ch.id, v)
+                                }
+                            }
+                        }
+                    }
+                    is MidiTarget.ChannelCutoff -> {
+                        activeConcert?.let { concert ->
+                            if (target.channelIndex < concert.channels.size) {
+                                val updatedChannels = concert.channels.toMutableList()
+                                val ch = updatedChannels[target.channelIndex]
+                                updatedChannels[target.channelIndex] = ch.copy(filterCutoff = floatValue)
+                                updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
+                                synthThrottler.sendThrottled(coroutineScope, floatValue) { v ->
+                                    synth.setFilterCutoff(v, ch.id)
+                                }
+                            }
+                        }
+                    }
                     is MidiTarget.Pad -> {
                         val padNote = 36 + target.padIndex
                         if (floatValue > 0f) {
@@ -693,6 +780,11 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             octaveShift = (octaveShift - 1).coerceAtLeast(-3)
                         }
                     }
+                    is MidiTarget.SelectPatch -> {
+                        if (floatValue > 0f) {
+                            applyPatch(target.patchIndex)
+                        }
+                    }
                     is MidiTarget.NextPatch -> {
                         if (floatValue > 0f) {
                             handleNextPatch()
@@ -721,6 +813,21 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             },
             onDeviceConnectionChanged = { names ->
                 currentConnectedDevices = names
+            },
+            onProgramChange = { program ->
+                triggerMidiFlash()
+                val mappedTarget = midiCcMappings[program]
+                if (mappedTarget is MidiTarget.SelectPatch) {
+                    applyPatch(mappedTarget.patchIndex)
+                } else {
+                    val concert = activeConcert
+                    if (concert != null && program in concert.patches.indices) {
+                        applyPatch(program)
+                    }
+                }
+            },
+            onMidiActivity = {
+                triggerMidiFlash()
             }
         )
 
@@ -903,6 +1010,33 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     },
                     onExportPatchClick = { patchToExport = it },
                     onImportPatchClick = { showPackagePicker = true },
+                    onToggleFavorite = { patch ->
+                        val active = activeConcert ?: return@ConcertViewScreen
+                        val updatedPatches = active.patches.map {
+                            if (it.id == patch.id) it.copy(isFavorite = !it.isFavorite) else it
+                        }
+                        val updatedConcert = active.copy(patches = updatedPatches, lastModified = System.currentTimeMillis())
+                        saveConcertsList(concerts.map { if (it.id == active.id) updatedConcert else it })
+                        activeConcert = updatedConcert
+                    },
+                    onMovePatch = { fromIdx, toIdx ->
+                        val active = activeConcert ?: return@ConcertViewScreen
+                        if (fromIdx in active.patches.indices && toIdx in active.patches.indices && fromIdx != toIdx) {
+                            val mutable = active.patches.toMutableList()
+                            val item = mutable.removeAt(fromIdx)
+                            mutable.add(toIdx, item)
+                            val updatedConcert = active.copy(patches = mutable, lastModified = System.currentTimeMillis())
+                            saveConcertsList(concerts.map { if (it.id == active.id) updatedConcert else it })
+                            activeConcert = updatedConcert
+                            if (selectedPatchIndex == fromIdx) {
+                                selectedPatchIndex = toIdx
+                            } else if (fromIdx < toIdx && selectedPatchIndex in (fromIdx + 1)..toIdx) {
+                                selectedPatchIndex--
+                            } else if (fromIdx > toIdx && selectedPatchIndex in toIdx until fromIdx) {
+                                selectedPatchIndex++
+                            }
+                        }
+                    },
                     onBackClick = { 
                         stopConcert()
                         activeConcert = null
@@ -1014,10 +1148,42 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         }
                     },
                     onChannelGearClick = { showChannelSettingsDialog = it },
+                    onReverbChange = { chId, value ->
+                        val active = activeConcert ?: return@ConcertViewScreen
+                        val updatedChannels = active.channels.map {
+                            if (it.id == chId) it.copy(reverbSend = value) else it
+                        }
+                        updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
+                        synthThrottler.sendThrottled(coroutineScope, value) { v ->
+                            synth.setChannelReverbSend(chId, v)
+                        }
+                    },
+                    onChorusChange = { chId, value ->
+                        val active = activeConcert ?: return@ConcertViewScreen
+                        val updatedChannels = active.channels.map {
+                            if (it.id == chId) it.copy(chorusSend = value) else it
+                        }
+                        updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
+                        synthThrottler.sendThrottled(coroutineScope, value) { v ->
+                            synth.setChannelChorusSend(chId, v)
+                        }
+                    },
+                    onCutoffChange = { chId, value ->
+                        val active = activeConcert ?: return@ConcertViewScreen
+                        val updatedChannels = active.channels.map {
+                            if (it.id == chId) it.copy(filterCutoff = value) else it
+                        }
+                        updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
+                        synthThrottler.sendThrottled(coroutineScope, value) { v ->
+                            synth.setFilterCutoff(v, chId)
+                        }
+                    },
+                    midiMappings = midiCcMappings,
 
                     // Master output configuration mapping
                     masterVolume = masterVolume,
                     masterPan = masterPan,
+                    isMasterLimiterActive = isMasterLimiterActive,
                     onMasterVolumeChange = { masterVolume = it },
                     onMasterPanChange = { masterPan = it },
                     masterVuLevel = masterVuLevel.value,
@@ -1635,6 +1801,110 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         }
                     }
 
+                    // FX Sends Section (Reverb Send, Chorus Send, Filter Cutoff)
+                    Text("EFECTOS DE CANAL (FX SENDS):", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(bottom = 6.dp))
+
+                    // Reverb Send Slider
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Reverb Send (Ambiente)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA855F7), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("${(chState.reverbSend * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA855F7), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                    Slider(
+                        value = chState.reverbSend,
+                        onValueChange = { newVal ->
+                            synthThrottler.sendThrottled(coroutineScope, newVal) { v ->
+                                synth.setChannelReverbSend(chState.id, v)
+                            }
+                            val active = activeConcert
+                            if (active != null) {
+                                val updatedChannels = active.channels.map {
+                                    if (it.id == chState.id) it.copy(reverbSend = newVal) else it
+                                }
+                                updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
+                                showChannelSettingsDialog = activeConcert?.channels?.find { it.id == chState.id }
+                            }
+                        },
+                        valueRange = 0f..1f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color(0xFFA855F7),
+                            activeTrackColor = Color(0xFFA855F7),
+                            inactiveTrackColor = DarkBackground
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(26.dp)
+                    )
+
+                    // Chorus Send Slider
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Chorus Send (Cuerpo / Modulación)", style = MaterialTheme.typography.bodySmall, color = Color(0xFF2DD4BF), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("${(chState.chorusSend * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = Color(0xFF2DD4BF), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                    Slider(
+                        value = chState.chorusSend,
+                        onValueChange = { newVal ->
+                            synthThrottler.sendThrottled(coroutineScope, newVal) { v ->
+                                synth.setChannelChorusSend(chState.id, v)
+                            }
+                            val active = activeConcert
+                            if (active != null) {
+                                val updatedChannels = active.channels.map {
+                                    if (it.id == chState.id) it.copy(chorusSend = newVal) else it
+                                }
+                                updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
+                                showChannelSettingsDialog = activeConcert?.channels?.find { it.id == chState.id }
+                            }
+                        },
+                        valueRange = 0f..1f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color(0xFF2DD4BF),
+                            activeTrackColor = Color(0xFF2DD4BF),
+                            inactiveTrackColor = DarkBackground
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(26.dp)
+                    )
+
+                    // Filter Cutoff Slider
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Tone / Cutoff (Brillo)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFB7185), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("${(chState.filterCutoff * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFB7185), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                    Slider(
+                        value = chState.filterCutoff,
+                        onValueChange = { newVal ->
+                            synthThrottler.sendThrottled(coroutineScope, newVal) { v ->
+                                synth.setFilterCutoff(v, chState.id)
+                            }
+                            val active = activeConcert
+                            if (active != null) {
+                                val updatedChannels = active.channels.map {
+                                    if (it.id == chState.id) it.copy(filterCutoff = newVal) else it
+                                }
+                                updateChannelsAndPatchSnapshotOnlyState(updatedChannels)
+                                showChannelSettingsDialog = activeConcert?.channels?.find { it.id == chState.id }
+                            }
+                        },
+                        valueRange = 0f..1f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color(0xFFFB7185),
+                            activeTrackColor = Color(0xFFFB7185),
+                            inactiveTrackColor = DarkBackground
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(26.dp).padding(bottom = 8.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
                     Button(
                         onClick = {
                             val active = activeConcert
@@ -1699,9 +1969,11 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         ) {
                             val tabs = if (settingsOpenedFromConcert) {
                                 listOf(
+                                    SettingsTab.MIDI_MAP to "Mapear MIDI",
                                     SettingsTab.SPLIT_ZONES to " Keyboard Zones",
                                     SettingsTab.AUDIO to "Interfaces de Audio",
                                     SettingsTab.SF2_FOLDER to "Carpeta SF2",
+                                    SettingsTab.MASTER_FX to "Master FX",
                                     SettingsTab.BACKUP to "Respaldo Automático"
                                 )
                             } else {
@@ -1709,6 +1981,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                     SettingsTab.MIDI_MAP to "Mapear MIDI",
                                     SettingsTab.AUDIO to "Interfaces de Audio",
                                     SettingsTab.SF2_FOLDER to "Carpeta SF2",
+                                    SettingsTab.MASTER_FX to "Master FX",
                                     SettingsTab.BACKUP to "Respaldo Automático"
                                 )
                             }
@@ -1750,17 +2023,15 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         mappings = midiCcMappings,
                                         mappingTarget = mappingTarget,
                                         connectedDevices = currentConnectedDevices,
+                                        activeConcert = activeConcert,
                                         onStartMapping = { target ->
                                             mappingTarget = target
-                                            // [POINT 2 FIX] Real MIDI Learn – listens for the
-                                            // next CC from a physical controller (7-second window)
                                             synth.startMidiLearn(
                                                 target = target,
                                                 onCaptured = { cc ->
                                                     midiCcMappings[cc] = target
                                                     synth.syncMidiMappings(midiCcMappings)
                                                     mappingTarget = null
-                                                    // Save mappings to disk for current device
                                                     try {
                                                         val jsonStr = MidiMappingSerializer.serialize(midiCcMappings.toMap())
                                                         val fileName = currentConnectedDevices.firstOrNull()?.let { "mappings_$it.json" } ?: "mappings_default.json"
@@ -1793,7 +2064,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 SettingsTab.AUDIO -> {
                                     AudioSettingsTabScreen(
                                         sampleRate = selectedSampleRate,
-                                        onSampleRateChange = { pendingSampleRate = it },
+                                        onSampleRateChange = { selectedSampleRate = it },
                                         audioDevices = currentAudioDevices,
                                         onSelectDevice = { synth.selectAudioDevice(it) },
                                         onRefreshDevices = { synth.refreshAudioDevices() },
@@ -1805,6 +2076,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                     Sf2FolderSettingsScreen(
                                         controller = sf2ExplorerController,
                                         synth = synth
+                                    )
+                                }
+                                SettingsTab.MASTER_FX -> {
+                                    MasterFxSettingsScreen(
+                                        settings = masterFxSettings,
+                                        onSettingsChange = updateMasterFxSettings,
+                                        masterLimiterEnabled = masterLimiterEnabled,
+                                        onMasterLimiterToggle = { masterLimiterEnabled = it }
                                     )
                                 }
                                 SettingsTab.BACKUP -> {
@@ -1823,7 +2102,6 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     }
                 }
             }
-
             // Pad off logic tied to keys has been removed per user request
         }
     }
@@ -1964,6 +2242,7 @@ fun MidiMappingSettingsScreen(
     mappings: Map<Int, MidiTarget>,
     mappingTarget: MidiTarget?,
     connectedDevices: List<String> = emptyList(),
+    activeConcert: Concert? = null,
     onStartMapping: (MidiTarget) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -1979,9 +2258,9 @@ fun MidiMappingSettingsScreen(
             }
         }
 
-        Text("ASIGNACION DE CONTROLADORES MIDI CC (MIDI LEARN)", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text("ASIGNACION DE CONTROLADORES MIDI CC Y PROGRAM CHANGE", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         Text(
-            "Haz clic en \"Mapear\" al lado del control correspondiente y mueve el potenciÃƒÆ’Ã‚Â³metro o fader de tu teclado fÃƒÆ’Ã‚Â­sico para enlazarlo.",
+            "Haz clic en \"Mapear\" al lado del control correspondiente y mueve el potenciómetro/fader o presiona un footswitch/pad de tu controlador MIDI para enlazarlo.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 8.dp)
@@ -1990,6 +2269,8 @@ fun MidiMappingSettingsScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         val noteNames = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+
+        val patchTargets = activeConcert?.patches?.indices?.map { MidiTarget.SelectPatch(it) } ?: emptyList()
 
         val controllers = listOf(
             MidiTarget.MasterVolume,
@@ -2002,7 +2283,11 @@ fun MidiMappingSettingsScreen(
             MidiTarget.NextPatch,
             MidiTarget.PreviousPatch,
             MidiTarget.PadEnable
-        ) + (0 until 8).map { MidiTarget.ChannelVolume(it) } +
+        ) + patchTargets +
+            (0 until 8).map { MidiTarget.ChannelVolume(it) } +
+            (0 until 8).map { MidiTarget.ChannelReverb(it) } +
+            (0 until 8).map { MidiTarget.ChannelChorus(it) } +
+            (0 until 8).map { MidiTarget.ChannelCutoff(it) } +
             (0 until 12).map { MidiTarget.PadNoteToggle(it) }
 
         controllers.forEach { target ->
@@ -2012,6 +2297,9 @@ fun MidiMappingSettingsScreen(
                 is MidiTarget.ChannelVolume -> "Volumen Canal ${target.channelIndex + 1}"
                 is MidiTarget.ChannelMute -> "Mute Canal ${target.channelIndex + 1}"
                 is MidiTarget.ChannelSolo -> "Solo Canal ${target.channelIndex + 1}"
+                is MidiTarget.ChannelReverb -> "Reverb Send Canal ${target.channelIndex + 1}"
+                is MidiTarget.ChannelChorus -> "Chorus Send Canal ${target.channelIndex + 1}"
+                is MidiTarget.ChannelCutoff -> "Tone / Cutoff Canal ${target.channelIndex + 1}"
                 is MidiTarget.Pad -> "Pad ${target.padIndex + 1}"
                 is MidiTarget.Pot -> "Perilla ${target.potIndex + 1}"
                 is MidiTarget.PadNoteToggle -> {
@@ -2026,6 +2314,11 @@ fun MidiMappingSettingsScreen(
                 is MidiTarget.Modulation -> "Rueda de Modulación"
                 is MidiTarget.OctaveUp -> "Octava Arriba"
                 is MidiTarget.OctaveDown -> "Octava Abajo"
+                is MidiTarget.SelectPatch -> {
+                    val pName = activeConcert?.patches?.getOrNull(target.patchIndex)?.name
+                    if (pName != null) "Patch ${target.patchIndex + 1}: $pName (PC ${target.patchIndex})"
+                    else "Seleccionar Patch ${target.patchIndex + 1} (PC ${target.patchIndex})"
+                }
                 is MidiTarget.NextPatch -> "Siguiente Patch"
                 is MidiTarget.PreviousPatch -> "Patch Anterior"
             }
@@ -2042,7 +2335,11 @@ fun MidiMappingSettingsScreen(
                 Column {
                     Text(targetName.uppercase(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
                     Text(
-                        text = if (mappedCc != null) "Mapeado a MIDI CC $mappedCc" else "Sin mapear",
+                        text = if (mappedCc != null) {
+                            if (target is MidiTarget.SelectPatch) "Mapeado a PC/CC $mappedCc" else "Mapeado a MIDI CC $mappedCc"
+                        } else {
+                            if (target is MidiTarget.SelectPatch) "Por defecto: Program Change ${target.patchIndex}" else "Sin mapear"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = if (mappedCc != null) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -2450,6 +2747,203 @@ fun parseColorHex(hex: String): Color {
             Color(r, g, b, a)
         }
         else -> Color.White
+    }
+}
+
+@Composable
+fun MasterFxSettingsScreen(
+    settings: MasterFxSettings,
+    onSettingsChange: (MasterFxSettings) -> Unit,
+    masterLimiterEnabled: Boolean = true,
+    onMasterLimiterToggle: (Boolean) -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "CONFIGURACIÓN DE EFECTOS GLOBALES (MASTER FX)",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = AccentSky
+        )
+        Text(
+            text = "Estos controles definen el comportamiento global de los procesadores de Reverb y Chorus de FluidSynth, y la protección de salida contra distorsión digital.",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextDark
+        )
+
+        // 1. Master Bus Limiter (Anti-Clipping)
+        Card(
+            colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
+            shape = AppShapes.medium,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Color(0xFFFF9800)))
+                        Spacer(Modifier.width(8.dp))
+                        Text("LIMITADOR MASTER (SOFT-CLIP)", style = MaterialTheme.typography.labelLarge, color = Color(0xFFFF9800), fontWeight = FontWeight.Bold)
+                    }
+                    Switch(
+                        checked = masterLimiterEnabled,
+                        onCheckedChange = onMasterLimiterToggle,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color(0xFFFF9800),
+                            checkedTrackColor = Color(0xFFFF9800).copy(alpha = 0.3f),
+                            uncheckedThumbColor = Color(0xFF64748B),
+                            uncheckedTrackColor = Color(0xFF1E222D)
+                        )
+                    )
+                }
+                Text(
+                    text = "Aplica saturación suave de codo blando (tanh soft-knee a partir de 0.85) en la mezcla final antes de enviar a los altavoces/auriculares para evitar el desagradable 'clipping' digital cuando suenan múltiples capas a alto volumen.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextLight,
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        // 2. Reverb Section (Freeverb)
+        Card(
+            colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
+            shape = AppShapes.medium,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Color(0xFFA855F7)))
+                    Spacer(Modifier.width(8.dp))
+                    Text("REVERB MASTER (FREEVERB)", style = MaterialTheme.typography.labelLarge, color = Color(0xFFA855F7), fontWeight = FontWeight.Bold)
+                }
+
+                // Room Size
+                FxSliderRow(
+                    label = "Room Size (Tamaño de Sala)",
+                    value = settings.reverbRoomSize,
+                    valueText = "${(settings.reverbRoomSize * 100).toInt()}%",
+                    accentColor = Color(0xFFA855F7),
+                    onValueChange = { onSettingsChange(settings.copy(reverbRoomSize = it)) }
+                )
+
+                // Damping
+                FxSliderRow(
+                    label = "Damping (Amortiguación de Agudos)",
+                    value = settings.reverbDamping,
+                    valueText = "${(settings.reverbDamping * 100).toInt()}%",
+                    accentColor = Color(0xFFA855F7),
+                    onValueChange = { onSettingsChange(settings.copy(reverbDamping = it)) }
+                )
+
+                // Width
+                FxSliderRow(
+                    label = "Width (Anchura Estéreo)",
+                    value = settings.reverbWidth,
+                    valueText = "${(settings.reverbWidth * 100).toInt()}%",
+                    accentColor = Color(0xFFA855F7),
+                    onValueChange = { onSettingsChange(settings.copy(reverbWidth = it)) }
+                )
+
+                // Reverb Output Level
+                FxSliderRow(
+                    label = "Master Reverb Level",
+                    value = settings.reverbLevel,
+                    valueText = "${(settings.reverbLevel * 100).toInt()}%",
+                    accentColor = Color(0xFFA855F7),
+                    onValueChange = { onSettingsChange(settings.copy(reverbLevel = it)) }
+                )
+            }
+        }
+
+        // 3. Chorus Section
+        Card(
+            colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
+            shape = AppShapes.medium,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Color(0xFF2DD4BF)))
+                    Spacer(Modifier.width(8.dp))
+                    Text("CHORUS MASTER", style = MaterialTheme.typography.labelLarge, color = Color(0xFF2DD4BF), fontWeight = FontWeight.Bold)
+                }
+
+                // Voices / Nr
+                FxSliderRow(
+                    label = "Voces de Modulación (Nr)",
+                    value = settings.chorusNr / 10f,
+                    valueText = "${settings.chorusNr} voces",
+                    accentColor = Color(0xFF2DD4BF),
+                    onValueChange = { onSettingsChange(settings.copy(chorusNr = (it * 10).toInt().coerceIn(0, 10))) }
+                )
+
+                // Depth
+                FxSliderRow(
+                    label = "Depth (Profundidad)",
+                    value = settings.chorusDepth / 30f,
+                    valueText = "${settings.chorusDepth.toInt()} ms",
+                    accentColor = Color(0xFF2DD4BF),
+                    onValueChange = { onSettingsChange(settings.copy(chorusDepth = (it * 30f).coerceIn(0f, 30f))) }
+                )
+
+                // Speed
+                FxSliderRow(
+                    label = "Speed (Velocidad LFO)",
+                    value = (settings.chorusSpeed - 0.1f) / 4.9f,
+                    valueText = "${((settings.chorusSpeed * 10).toInt() / 10.0)} Hz",
+                    accentColor = Color(0xFF2DD4BF),
+                    onValueChange = { onSettingsChange(settings.copy(chorusSpeed = (0.1f + it * 4.9f).coerceIn(0.1f, 5.0f))) }
+                )
+
+                // Chorus Level
+                FxSliderRow(
+                    label = "Master Chorus Level",
+                    value = settings.chorusLevel / 2f,
+                    valueText = "${(settings.chorusLevel * 50).toInt()}%",
+                    accentColor = Color(0xFF2DD4BF),
+                    onValueChange = { onSettingsChange(settings.copy(chorusLevel = (it * 2f).coerceIn(0f, 2f))) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FxSliderRow(
+    label: String,
+    value: Float,
+    valueText: String,
+    accentColor: Color,
+    onValueChange: (Float) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(label, style = MaterialTheme.typography.bodySmall, color = TextLight, fontSize = 12.sp)
+            Text(valueText, style = MaterialTheme.typography.bodySmall, color = accentColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+        Slider(
+            value = value.coerceIn(0f, 1f),
+            onValueChange = onValueChange,
+            colors = SliderDefaults.colors(
+                thumbColor = accentColor,
+                activeTrackColor = accentColor,
+                inactiveTrackColor = Color(0xFF2A2D3A)
+            ),
+            modifier = Modifier.fillMaxWidth().height(28.dp)
+        )
     }
 }
 

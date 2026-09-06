@@ -20,7 +20,10 @@ data class ChannelStripState(
     val keyRangeEnd: Int,
     val colorHex: String,
     val velocityCurve: String = "LINEAR",
-    val pan: Float = 0.5f
+    val pan: Float = 0.5f,
+    val reverbSend: Float = 0.2f,
+    val chorusSend: Float = 0.0f,
+    val filterCutoff: Float = 1.0f
 )
 
 data class PatchChannelSnapshot(
@@ -35,7 +38,10 @@ data class PatchChannelSnapshot(
     val keyRangeEnd: Int,
     val colorHex: String,
     val velocityCurve: String = "LINEAR",
-    val pan: Float = 0.5f
+    val pan: Float = 0.5f,
+    val reverbSend: Float = 0.2f,
+    val chorusSend: Float = 0.0f,
+    val filterCutoff: Float = 1.0f
 )
 
 fun applyCurve(velocity: Int, curve: String): Int {
@@ -56,6 +62,7 @@ data class PatchState(
     val programNumber: Int,
     val description: String,
     val transposeSemitones: Int = 0,
+    val isFavorite: Boolean = false,
     val id: String = "patch_${System.currentTimeMillis()}_${(0..1000).random()}",
     val channelsSnapshot: List<PatchChannelSnapshot> = emptyList()
 )
@@ -91,6 +98,7 @@ object ConcertSerializer {
                 sb.append("\"programNumber\":${patch.programNumber},")
                 sb.append("\"description\":\"${escape(patch.description)}\",")
                 sb.append("\"transposeSemitones\":${patch.transposeSemitones},")
+                sb.append("\"isFavorite\":${patch.isFavorite},")
                 sb.append("\"channelsSnapshot\":[")
                 patch.channelsSnapshot.forEachIndexed { s, snap ->
                     if (s > 0) sb.append(",")
@@ -108,7 +116,10 @@ object ConcertSerializer {
                     sb.append("\"keyRangeEnd\":${snap.keyRangeEnd},")
                     sb.append("\"colorHex\":\"${snap.colorHex}\",")
                     sb.append("\"velocityCurve\":\"${snap.velocityCurve}\",")
-                    sb.append("\"pan\":${snap.pan}")
+                    sb.append("\"pan\":${snap.pan},")
+                    sb.append("\"reverbSend\":${snap.reverbSend},")
+                    sb.append("\"chorusSend\":${snap.chorusSend},")
+                    sb.append("\"filterCutoff\":${snap.filterCutoff}")
                     sb.append("}")
                 }
                 sb.append("]")
@@ -134,7 +145,10 @@ object ConcertSerializer {
                 sb.append("\"keyRangeEnd\":${ch.keyRangeEnd},")
                 sb.append("\"colorHex\":\"${ch.colorHex}\",")
                 sb.append("\"velocityCurve\":\"${ch.velocityCurve}\",")
-                sb.append("\"pan\":${ch.pan}")
+                sb.append("\"pan\":${ch.pan},")
+                sb.append("\"reverbSend\":${ch.reverbSend},")
+                sb.append("\"chorusSend\":${ch.chorusSend},")
+                sb.append("\"filterCutoff\":${ch.filterCutoff}")
                 sb.append("}")
             }
             sb.append("]")
@@ -250,6 +264,7 @@ class SimpleJsonParser(private val src: String) {
         var programNumber = 0
         var description = ""
         var transposeSemitones = 0
+        var isFavorite = false
         val channelsSnapshot = mutableListOf<PatchChannelSnapshot>()
 
         while (pos < src.length) {
@@ -269,6 +284,7 @@ class SimpleJsonParser(private val src: String) {
                 "programNumber" -> programNumber = parseInt()
                 "description" -> description = parseString()
                 "transposeSemitones" -> transposeSemitones = parseInt()
+                "isFavorite" -> isFavorite = parseBoolean()
                 "channelsSnapshot" -> {
                     if (pos < src.length && src[pos] == '[') pos++ // skip '['
                     while (pos < src.length) {
@@ -290,7 +306,7 @@ class SimpleJsonParser(private val src: String) {
             if (pos < src.length && src[pos] == ',') pos++
         }
         if (id.isEmpty()) id = "patch_${System.currentTimeMillis()}_${(0..1000).random()}" // Fallback for old saves
-        return PatchState(name, category, programNumber, description, transposeSemitones, id, channelsSnapshot)
+        return PatchState(name, category, programNumber, description, transposeSemitones, isFavorite, id, channelsSnapshot)
     }
 
     private fun parsePatchChannelSnapshot(): PatchChannelSnapshot {
@@ -307,6 +323,9 @@ class SimpleJsonParser(private val src: String) {
         var colorHex = "#00D2FF"
         var velocityCurve = "LINEAR"
         var pan = 0.5f
+        var reverbSend = 0.2f
+        var chorusSend = 0.0f
+        var filterCutoff = 1.0f
 
         while (pos < src.length) {
             skipWhitespace()
@@ -332,12 +351,15 @@ class SimpleJsonParser(private val src: String) {
                 "colorHex" -> colorHex = parseString()
                 "velocityCurve" -> velocityCurve = parseString()
                 "pan" -> pan = parseFloat()
+                "reverbSend" -> reverbSend = parseFloat()
+                "chorusSend" -> chorusSend = parseFloat()
+                "filterCutoff" -> filterCutoff = parseFloat()
                 else -> skipValue()
             }
             skipWhitespace()
             if (pos < src.length && src[pos] == ',') pos++
         }
-        return PatchChannelSnapshot(channelId, name ?: "Canal $channelId", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex, velocityCurve, pan)
+        return PatchChannelSnapshot(channelId, name ?: "Canal $channelId", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex, velocityCurve, pan, reverbSend, chorusSend, filterCutoff)
     }
 
     private fun parseChannel(): ChannelStripState {
@@ -354,6 +376,9 @@ class SimpleJsonParser(private val src: String) {
         var colorHex = "#00D2FF"
         var velocityCurve = "LINEAR"
         var pan = 0.5f
+        var reverbSend = 0.2f
+        var chorusSend = 0.0f
+        var filterCutoff = 1.0f
 
         while (pos < src.length) {
             skipWhitespace()
@@ -379,12 +404,15 @@ class SimpleJsonParser(private val src: String) {
                 "colorHex" -> colorHex = parseString()
                 "velocityCurve" -> velocityCurve = parseString()
                 "pan" -> pan = parseFloat()
+                "reverbSend" -> reverbSend = parseFloat()
+                "chorusSend" -> chorusSend = parseFloat()
+                "filterCutoff" -> filterCutoff = parseFloat()
                 else -> skipValue()
             }
             skipWhitespace()
             if (pos < src.length && src[pos] == ',') pos++
         }
-        return ChannelStripState(id, name ?: "Canal $id", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex, velocityCurve, pan)
+        return ChannelStripState(id, name ?: "Canal $id", sf2Name, sf2Path, volume, isMuted, isSoloed, keyRangeStart, keyRangeEnd, colorHex, velocityCurve, pan, reverbSend, chorusSend, filterCutoff)
     }
 
     private fun parseString(): String {
@@ -512,6 +540,9 @@ object MidiMappingSerializer {
             is MidiTarget.ChannelVolume -> "ChannelVolume-${target.channelIndex}"
             is MidiTarget.ChannelMute -> "ChannelMute-${target.channelIndex}"
             is MidiTarget.ChannelSolo -> "ChannelSolo-${target.channelIndex}"
+            is MidiTarget.ChannelReverb -> "ChannelReverb-${target.channelIndex}"
+            is MidiTarget.ChannelChorus -> "ChannelChorus-${target.channelIndex}"
+            is MidiTarget.ChannelCutoff -> "ChannelCutoff-${target.channelIndex}"
             is MidiTarget.Pad -> "Pad-${target.padIndex}"
             is MidiTarget.Pot -> "Pot-${target.potIndex}"
             is MidiTarget.PadNoteToggle -> "PadNoteToggle-${target.pitchClass}"
@@ -525,6 +556,7 @@ object MidiMappingSerializer {
             is MidiTarget.OctaveDown -> "OctaveDown"
             is MidiTarget.NextPatch -> "NextPatch"
             is MidiTarget.PreviousPatch -> "PreviousPatch"
+            is MidiTarget.SelectPatch -> "SelectPatch-${target.patchIndex}"
         }
     }
     
@@ -534,6 +566,9 @@ object MidiMappingSerializer {
             "ChannelVolume" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.ChannelVolume(it) }
             "ChannelMute" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.ChannelMute(it) }
             "ChannelSolo" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.ChannelSolo(it) }
+            "ChannelReverb" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.ChannelReverb(it) }
+            "ChannelChorus" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.ChannelChorus(it) }
+            "ChannelCutoff" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.ChannelCutoff(it) }
             "Pad" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.Pad(it) }
             "Pot" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.Pot(it) }
             "PadNoteToggle" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.PadNoteToggle(it) }
@@ -547,8 +582,62 @@ object MidiMappingSerializer {
             "OctaveDown" -> MidiTarget.OctaveDown
             "NextPatch" -> MidiTarget.NextPatch
             "PreviousPatch" -> MidiTarget.PreviousPatch
+            "SelectPatch" -> parts.getOrNull(1)?.toIntOrNull()?.let { MidiTarget.SelectPatch(it) }
             else -> null
         }
+    }
+}
+
+data class MasterFxSettings(
+    val reverbRoomSize: Float = 0.7f,
+    val reverbDamping: Float = 0.5f,
+    val reverbWidth: Float = 0.6f,
+    val reverbLevel: Float = 0.8f,
+    val chorusNr: Int = 3,
+    val chorusDepth: Float = 8.0f,
+    val chorusSpeed: Float = 0.3f,
+    val chorusLevel: Float = 0.8f
+)
+
+object MasterFxSerializer {
+    fun serialize(settings: MasterFxSettings): String {
+        return "{\"roomSize\":${settings.reverbRoomSize},\"damping\":${settings.reverbDamping},\"width\":${settings.reverbWidth},\"reverbLevel\":${settings.reverbLevel},\"chorusNr\":${settings.chorusNr},\"chorusDepth\":${settings.chorusDepth},\"chorusSpeed\":${settings.chorusSpeed},\"chorusLevel\":${settings.chorusLevel}}"
+    }
+
+    fun deserialize(json: String?): MasterFxSettings {
+        if (json.isNullOrBlank()) return MasterFxSettings()
+        var roomSize = 0.7f
+        var damping = 0.5f
+        var width = 0.6f
+        var reverbLevel = 0.8f
+        var chorusNr = 3
+        var chorusDepth = 8.0f
+        var chorusSpeed = 0.3f
+        var chorusLevel = 0.8f
+
+        try {
+            val trimmed = json.trim().removeSurrounding("{", "}")
+            trimmed.split(",").forEach { pair ->
+                val parts = pair.split(":")
+                if (parts.size == 2) {
+                    val k = parts[0].trim().removeSurrounding("\"")
+                    val v = parts[1].trim()
+                    when (k) {
+                        "roomSize" -> roomSize = v.toFloatOrNull() ?: roomSize
+                        "damping" -> damping = v.toFloatOrNull() ?: damping
+                        "width" -> width = v.toFloatOrNull() ?: width
+                        "reverbLevel" -> reverbLevel = v.toFloatOrNull() ?: reverbLevel
+                        "chorusNr" -> chorusNr = v.toIntOrNull() ?: chorusNr
+                        "chorusDepth" -> chorusDepth = v.toFloatOrNull() ?: chorusDepth
+                        "chorusSpeed" -> chorusSpeed = v.toFloatOrNull() ?: chorusSpeed
+                        "chorusLevel" -> chorusLevel = v.toFloatOrNull() ?: chorusLevel
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return MasterFxSettings(roomSize, damping, width, reverbLevel, chorusNr, chorusDepth, chorusSpeed, chorusLevel)
     }
 }
 

@@ -265,6 +265,7 @@ fun MasterOutputChannelItem(
     volume: Float,
     level: Float,
     pan: Float = 0.5f,
+    isLimiterActive: Boolean = false,
     onVolumeChange: (Float) -> Unit,
     onPanChange: (Float) -> Unit = {},
     onMidiMapClick: () -> Unit
@@ -313,6 +314,17 @@ fun MasterOutputChannelItem(
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 0.5.sp
             )
+            if (isLimiterActive) {
+                Spacer(Modifier.width(3.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color(0xFFF59E0B))
+                        .padding(horizontal = 2.dp, vertical = 0.5.dp)
+                ) {
+                    Text("LIM", color = Color.Black, fontSize = 6.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
         }
         Text(
             "L/R OUT",
