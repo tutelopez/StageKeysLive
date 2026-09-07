@@ -29,15 +29,25 @@ fun DashboardScreen(
     onDeleteConcert: (Concert) -> Unit,
     onExportConcertClick: (Concert) -> Unit,
     onImportClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    userProfile: GoogleUserProfile? = null
 ) {
     val hour = getCurrentHourOfDay()
-    val (greetingEyebrow, greetingEmoji) = remember(hour) {
+    val (baseGreeting, greetingEmoji) = remember(hour) {
         when (hour) {
             in 5..11  -> Pair("Buenos días", "🌅")
             in 12..18 -> Pair("Buenas tardes", "🎹")
             in 19..23 -> Pair("Buenas noches", "🌙")
             else      -> Pair("Buenas noches", "🎹")
+        }
+    }
+
+    val greetingEyebrow = remember(baseGreeting, userProfile) {
+        val name = userProfile?.firstName ?: userProfile?.displayName
+        if (!name.isNullOrBlank()) {
+            "$baseGreeting, $name"
+        } else {
+            baseGreeting
         }
     }
 
@@ -107,22 +117,35 @@ fun DashboardScreen(
                     )
                 }
 
-                // Settings Button
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(SurfaceElevated.copy(alpha = 0.75f))
-                        .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(10.dp))
-                        .clickable(onClick = onSettingsClick),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(
-                        imageVector = TablerIcons.Settings,
-                        contentDescription = "Ajustes",
-                        tint = TextDark,
-                        modifier = Modifier.size(17.dp)
-                    )
+                    if (userProfile != null) {
+                        UserAvatar(
+                            photoUrl = userProfile.photoUrl,
+                            displayName = userProfile.displayName,
+                            modifier = Modifier.size(34.dp)
+                        )
+                    }
+
+                    // Settings Button
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(SurfaceElevated.copy(alpha = 0.75f))
+                            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(10.dp))
+                            .clickable(onClick = onSettingsClick),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = TablerIcons.Settings,
+                            contentDescription = "Ajustes",
+                            tint = TextDark,
+                            modifier = Modifier.size(17.dp)
+                        )
+                    }
                 }
             }
 

@@ -55,6 +55,12 @@ kotlin {
                     implementation("androidx.lifecycle:lifecycle-process:2.6.2")
                     implementation("com.google.firebase:firebase-crashlytics:19.3.0")
                     implementation("com.google.firebase:firebase-analytics:22.1.2")
+                    implementation("com.google.firebase:firebase-auth:23.0.0")
+                    implementation("androidx.credentials:credentials:1.3.0")
+                    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+                    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+                    implementation("com.google.android.gms:play-services-auth:21.2.0")
+                    implementation("io.coil-kt:coil-compose:2.6.0")
                     // Oboe headers come from cpp/include/oboe/ (downloaded from GitHub 1.8.0).
                     // liboboe.so at runtime comes from FluidSynth v2.6.0 bundle — no Prefab needed.
                 }

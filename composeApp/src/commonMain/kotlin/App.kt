@@ -155,9 +155,11 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var newConcertName by remember { mutableStateOf("") }
     
     val autoBackupController = rememberAutoBackupController()
+    val googleDriveService = rememberGoogleDriveService()
     val sf2ExplorerController = rememberSf2ExplorerController()
     var showSf2ExplorerDialog by remember { mutableStateOf(false) }
     var autoBackupJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    var cloudBackupJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     val scheduleAutoBackup: (List<Concert>) -> Unit = { list ->
         if (autoBackupController.state.isConfigured) {
@@ -169,6 +171,25 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     snackbarHostState.showSnackbar(
                         "El respaldo automático falló: ${error.message ?: "Permiso revocado"}. Por favor reconfigura la carpeta."
                     )
+                }
+            }
+        }
+        if (googleDriveService.state.isSignedIn) {
+            cloudBackupJob?.cancel()
+            cloudBackupJob = coroutineScope.launch {
+                delay(30_000L) // 30-second debounce
+                googleDriveService.backupNow(list)
+            }
+        }
+    }
+
+    // Periodic Cloud Backup (every 30 mins) if user is signed in
+    LaunchedEffect(googleDriveService.state.isSignedIn) {
+        if (googleDriveService.state.isSignedIn) {
+            while (isActive) {
+                delay(30 * 60 * 1000L) // 30 minutes
+                if (concerts.isNotEmpty()) {
+                    googleDriveService.backupNow(concerts)
                 }
             }
         }
@@ -1047,7 +1068,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     settingsOpenedFromConcert = false
                     activeSettingsTab = SettingsTab.MIDI_MAP
                     showSettingsDialog = true 
-                }
+                },
+                userProfile = googleDriveService.state.user
             )
         }
         ScreenState.CONCERT -> {
@@ -2097,6 +2119,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 .width(180.dp)
                                 .fillMaxHeight()
                                 .background(DarkPanel, RoundedCornerShape(8.dp))
+                                .verticalScroll(rememberScrollState())
                                 .padding(8.dp)
                         ) {
                             val tabs = if (settingsOpenedFromConcert) {
@@ -2122,7 +2145,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 4.dp)
+                                        .padding(vertical = 2.dp)
                                         .background(
                                             if (isSelected) AccentSky.copy(alpha = 0.15f) else Color.Transparent,
                                             RoundedCornerShape(4.dp)
@@ -2133,9 +2156,9 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                             RoundedCornerShape(4.dp)
                                         )
                                         .clickable { activeSettingsTab = tab }
-                                        .padding(12.dp)
+                                        .padding(horizontal = 10.dp, vertical = 8.dp)
                                 ) {
-                                    Text(label, color = if (isSelected) TextLight else TextDark, fontSize = 13.sp)
+                                    Text(label, color = if (isSelected) TextLight else TextDark, fontSize = 12.sp)
                                 }
                             }
                         }
@@ -2223,7 +2246,12 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 SettingsTab.BACKUP -> {
                                     AutoBackupSettingsScreen(
                                         controller = autoBackupController,
+                                        googleDriveService = googleDriveService,
                                         concerts = concerts,
+                                        onRestoreConcerts = { restoredList ->
+                                            saveConcertsList(restoredList)
+                                            activeConcert = restoredList.firstOrNull()
+                                        },
                                         onShowSnackbar = { msg ->
                                             coroutineScope.launch {
                                                 snackbarHostState.showSnackbar(msg)
