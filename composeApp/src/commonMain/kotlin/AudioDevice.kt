@@ -4,5 +4,6 @@ data class AudioOutputDeviceInfo(
     val id: Int,
     val name: String,
     val type: String,
-    val isCurrentlySelected: Boolean
+    val isCurrentlySelected: Boolean,
+    val isUsbDevice: Boolean = false
 )

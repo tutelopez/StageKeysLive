@@ -31,7 +31,7 @@ PadEngine::~PadEngine() {
     destroy();
 }
 
-bool PadEngine::init(AAssetManager* assetManager, int sampleRate) {
+bool PadEngine::init(AAssetManager* assetManager, int sampleRate, bool isUsbDevice) {
     std::lock_guard<std::mutex> lock(mMutex);
     mAssetManager = assetManager;
     mSampleRate = sampleRate;
@@ -39,13 +39,27 @@ bool PadEngine::init(AAssetManager* assetManager, int sampleRate) {
     oboe::AudioStreamBuilder builder;
     builder.setDirection(oboe::Direction::Output);
     builder.setPerformanceMode(oboe::PerformanceMode::LowLatency);
-    builder.setSharingMode(oboe::SharingMode::Shared);
     builder.setFormat(oboe::AudioFormat::Float);
     builder.setChannelCount(2); // Stereo
     builder.setSampleRate(mSampleRate);
     builder.setDataCallback(this);
 
-    oboe::Result result = builder.openStream(mStream);
+    oboe::Result result = oboe::Result::ErrorInternal;
+    if (isUsbDevice) {
+        builder.setSharingMode(oboe::SharingMode::Exclusive);
+        result = builder.openStream(mStream);
+        if (result != oboe::Result::OK) {
+            LOGW("PadEngine: Failed to open stream in Exclusive mode (%s). Falling back to Shared.", oboe::convertToText(result));
+            builder.setSharingMode(oboe::SharingMode::Shared);
+            result = builder.openStream(mStream);
+        } else {
+            LOGI("PadEngine: Opened stream in Exclusive mode OK");
+        }
+    } else {
+        builder.setSharingMode(oboe::SharingMode::Shared);
+        result = builder.openStream(mStream);
+    }
+
     if (result != oboe::Result::OK) {
         LOGE("Failed to open PadEngine Oboe stream. Error: %s", oboe::convertToText(result));
         return false;

@@ -9,7 +9,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -307,8 +310,10 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     // Audio Interfaces & Settings state
     var selectedSampleRate by remember { mutableStateOf(48000) }
     var pendingSampleRate by remember { mutableStateOf<Int?>(null) }
+    var selectedBufferSizeOption by remember { mutableStateOf(0) } // 0: Auto, 1: Low (128), 2: High (512)
+    var pendingBufferSizeOption by remember { mutableStateOf<Int?>(null) }
     var isRestartingAudio by remember { mutableStateOf(false) }
-    var selectedAudioOutput by remember { mutableStateOf("Salida EstÃƒÆ’Ã‚Â©reo Principal (System Default)") }
+    var selectedAudioOutput by remember { mutableStateOf("Salida Estéreo Principal (System Default)") }
 
     // Live performance controls state
     var activeNote by remember { mutableStateOf<Int?>(null) }
@@ -357,6 +362,40 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 synth.setPan(ch.id, effectivePan)
             }
             synth.padSetPan(masterPan)
+        }
+    }
+
+    val saveActiveSession: (Boolean) -> Unit = { isSessionActive ->
+        try {
+            val concert = activeConcert
+            if (concert != null && isSessionActive) {
+                val snapshot = ActiveSessionSnapshot(
+                    isSessionActive = true,
+                    concertId = concert.id,
+                    selectedPatchIndex = selectedPatchIndex,
+                    timestamp = System.currentTimeMillis(),
+                    masterVolume = masterVolume,
+                    masterPan = masterPan,
+                    channels = concert.channels
+                )
+                saveTextToFile("active_session.json", SessionSnapshotSerializer.serialize(snapshot))
+            } else {
+                val snapshot = ActiveSessionSnapshot(isSessionActive = false, timestamp = System.currentTimeMillis())
+                saveTextToFile("active_session.json", SessionSnapshotSerializer.serialize(snapshot))
+            }
+        } catch (e: Throwable) {
+            CrashReporter.recordException(e, "saveActiveSession")
+        }
+    }
+
+    // Continuous autosave & instant update when active concert session state changes
+    LaunchedEffect(currentScreen, activeConcert?.id, selectedPatchIndex, activeConcert?.channels, masterVolume, masterPan) {
+        if (currentScreen == ScreenState.CONCERT && activeConcert != null) {
+            saveActiveSession(true)
+            while (isActive) {
+                delay(12000L) // Periodic autosave every 12s
+                saveActiveSession(true)
+            }
         }
     }
 
@@ -485,6 +524,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             saveConcertsList(concerts.map { if (it.id == concert.id) updatedConcert else it })
             activeConcert = updatedConcert
             selectedPatchIndex = patchIndex
+            saveActiveSession(true)
         }
     }
 
@@ -845,9 +885,13 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         }
 
         val json = readTextFromFile("concerts.json")
-        if (json != null) {
-            val list = ConcertSerializer.deserialize(json)
-            concerts = list
+        val loadedConcerts = if (json != null) {
+            try {
+                ConcertSerializer.deserialize(json)
+            } catch (e: Throwable) {
+                CrashReporter.recordException(e, "AppStartup.loadConcerts")
+                emptyList()
+            }
         } else {
             // Seed default concerts database
             val defaultConcerts = listOf(
@@ -884,8 +928,49 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     )
                 )
             )
-            concerts = defaultConcerts
             saveTextToFile("concerts.json", ConcertSerializer.serialize(defaultConcerts))
+            defaultConcerts
+        }
+        concerts = loadedConcerts
+
+        // Check for interrupted active session to automatically recover
+        try {
+            val sessionJson = readTextFromFile("active_session.json")
+            val session = SessionSnapshotSerializer.deserialize(sessionJson)
+            if (session != null && session.isSessionActive && session.concertId.isNotBlank()) {
+                val matchedConcert = loadedConcerts.find { it.id == session.concertId }
+                if (matchedConcert != null) {
+                    masterVolume = session.masterVolume
+                    masterPan = session.masterPan
+                    val restoredChannels = if (session.channels.isNotEmpty()) session.channels else matchedConcert.channels
+                    val restoredConcert = matchedConcert.copy(channels = restoredChannels)
+                    activeConcert = restoredConcert
+                    val safePatchIdx = session.selectedPatchIndex.coerceIn(0, (restoredConcert.patches.size - 1).coerceAtLeast(0))
+                    selectedPatchIndex = safePatchIdx
+                    currentScreen = ScreenState.CONCERT
+
+                    // Configure SoundFonts & FX for restored channels
+                    restoredChannels.forEach { ch ->
+                        if (ch.sf2Path != null) {
+                            synth.loadSoundFont(ch.sf2Path, ch.id)
+                        }
+                        val effectivePan = ((ch.pan - 0.5f) + (masterPan - 0.5f) + 0.5f).coerceIn(0f, 1f)
+                        synth.setPan(ch.id, effectivePan)
+                        synth.setChannelReverbSend(ch.id, ch.reverbSend)
+                        synth.setChannelChorusSend(ch.id, ch.chorusSend)
+                        synth.setFilterCutoff(ch.filterCutoff, ch.id)
+                    }
+                    synth.padSetPan(masterPan)
+
+                    CrashReporter.log("Live session recovered: Concert '${restoredConcert.name}' (ID=${session.concertId}), Patch index=$safePatchIdx")
+                    coroutineScope.launch {
+                        delay(600)
+                        snackbarHostState.showSnackbar("Sesión en vivo restaurada automáticamente")
+                    }
+                }
+            }
+        } catch (e: Throwable) {
+            CrashReporter.recordException(e, "AppStartup.sessionRecovery")
         }
     }
 
@@ -1039,6 +1124,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     },
                     onBackClick = { 
                         stopConcert()
+                        saveActiveSession(false)
                         activeConcert = null
                         currentScreen = ScreenState.DASHBOARD 
                     },
@@ -1283,13 +1369,13 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     // --- DIALOGS ---
 
     // 1. Create Concert Dialog
-    // Audio Engine Restart Dialog
+    // Audio Engine Restart Dialog (Sample Rate)
     if (pendingSampleRate != null) {
         val newRate = pendingSampleRate!!
         AlertDialog(
             onDismissRequest = { pendingSampleRate = null },
             title = { Text("Cambiar Sample Rate", style = MaterialTheme.typography.titleMedium) },
-            text = { Text("Cambiar la frecuencia de muestreo a $newRate Hz cortarÃƒÆ’Ã‚Â¡ brevemente el audio mientras se reinicia el motor. Ãƒâ€šÃ‚Â¿Deseas continuar?") },
+            text = { Text("Cambiar la frecuencia de muestreo a $newRate Hz reiniciará brevemente el motor de audio. ¿Deseas continuar?") },
             confirmButton = {
                 TextButton(onClick = {
                     pendingSampleRate = null
@@ -1299,7 +1385,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     // Controlled restart
                     synth.allNotesOff()
                     coroutineScope.launch(Dispatchers.Default) {
-                        synth.initializeEngine(newRate)
+                        synth.initializeEngine(newRate, selectedBufferSizeOption)
                         
                         // Back to Main to update UI and reload SoundFonts
                         withContext(Dispatchers.Main) {
@@ -1318,6 +1404,52 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             },
             dismissButton = {
                 TextButton(onClick = { pendingSampleRate = null }) {
+                    Text("CANCELAR")
+                }
+            }
+        )
+    }
+
+    // Audio Engine Restart Dialog (Buffer Size)
+    if (pendingBufferSizeOption != null) {
+        val newBufOption = pendingBufferSizeOption!!
+        val bufLabel = when (newBufOption) {
+            1 -> "Bajo (128 frames - menor latencia)"
+            2 -> "Alto (512 frames - mayor estabilidad)"
+            else -> "Automático (Recomendado)"
+        }
+        AlertDialog(
+            onDismissRequest = { pendingBufferSizeOption = null },
+            title = { Text("Cambiar Tamaño de Buffer", style = MaterialTheme.typography.titleMedium) },
+            text = { Text("Cambiar el tamaño de buffer a \"$bufLabel\" reiniciará brevemente el motor de audio. ¿Deseas continuar?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingBufferSizeOption = null
+                    isRestartingAudio = true
+                    selectedBufferSizeOption = newBufOption
+                    
+                    // Controlled restart
+                    synth.allNotesOff()
+                    coroutineScope.launch(Dispatchers.Default) {
+                        synth.initializeEngine(selectedSampleRate, newBufOption)
+                        
+                        // Back to Main to update UI and reload SoundFonts
+                        withContext(Dispatchers.Main) {
+                            activeConcert?.channels?.forEach { ch ->
+                                if (ch.sf2Path != null) {
+                                    synth.loadSoundFont(ch.sf2Path, ch.id)
+                                }
+                            }
+                            audioDiagnostics = synth.getAudioDiagnostics()
+                            isRestartingAudio = false
+                        }
+                    }
+                }) {
+                    Text("REINICIAR MOTOR")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingBufferSizeOption = null }) {
                     Text("CANCELAR")
                 }
             }
@@ -2064,7 +2196,9 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 SettingsTab.AUDIO -> {
                                     AudioSettingsTabScreen(
                                         sampleRate = selectedSampleRate,
-                                        onSampleRateChange = { selectedSampleRate = it },
+                                        onSampleRateChange = { pendingSampleRate = it },
+                                        bufferOption = selectedBufferSizeOption,
+                                        onBufferOptionChange = { pendingBufferSizeOption = it },
                                         audioDevices = currentAudioDevices,
                                         onSelectDevice = { synth.selectAudioDevice(it) },
                                         onRefreshDevices = { synth.refreshAudioDevices() },
@@ -2182,14 +2316,13 @@ fun ScrollablePianoKeyboard(
                         )
                         .border(1.dp, Color(0xFF12141A), RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
                         .pointerInput(note) {
-                            detectDragGestures(
-                                onDragStart = { onNoteDown(note) },
-                                onDragEnd = { onNoteUp(note) },
-                                onDragCancel = { onNoteUp(note) },
-                                onDrag = { _, _ -> }
-                            )
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false)
+                                onNoteDown(note)
+                                waitForUpOrCancellation()
+                                onNoteUp(note)
+                            }
                         }
-                        .clickable { onNoteDown(note); onNoteUp(note) }
                 )
             }
         }
@@ -2216,14 +2349,13 @@ fun ScrollablePianoKeyboard(
                             )
                             .border(1.dp, Color(0xFF0D0F14), RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
                             .pointerInput(blackNote) {
-                                detectDragGestures(
-                                    onDragStart = { onNoteDown(blackNote) },
-                                    onDragEnd = { onNoteUp(blackNote) },
-                                    onDragCancel = { onNoteUp(blackNote) },
-                                    onDrag = { _, _ -> }
-                                )
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false)
+                                    onNoteDown(blackNote)
+                                    waitForUpOrCancellation()
+                                    onNoteUp(blackNote)
+                                }
                             }
-                            .clickable { onNoteDown(blackNote); onNoteUp(blackNote) }
                     )
                 } else {
                     Spacer(modifier = Modifier.width(18.dp))
@@ -2633,6 +2765,8 @@ fun SplitKeyboardSettingsScreen(
 fun AudioSettingsTabScreen(
     sampleRate: Int,
     onSampleRateChange: (Int) -> Unit,
+    bufferOption: Int,
+    onBufferOptionChange: (Int) -> Unit,
     audioDevices: List<AudioOutputDeviceInfo>,
     onSelectDevice: (Int) -> Unit,
     onRefreshDevices: () -> Unit,
@@ -2690,7 +2824,7 @@ fun AudioSettingsTabScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Text("VELOCIDAD DE MUESTREO (BITRATE/SAMPLE RATE):", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("VELOCIDAD DE MUESTREO (SAMPLE RATE):", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -2708,6 +2842,39 @@ fun AudioSettingsTabScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text("$rate Hz", style = MaterialTheme.typography.labelMedium, color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text("TAMAÑO DE BUFFER (LATENCIA):", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            listOf(
+                0 to "Automático\n(recomendado)",
+                1 to "Bajo\n(128 frames)",
+                2 to "Alto\n(512 frames)"
+            ).forEach { (opt, label) ->
+                val isSelected = bufferOption == opt
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(AppShapes.small)
+                        .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant)
+                        .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, AppShapes.small)
+                        .clickable { onBufferOptionChange(opt) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.labelSmall,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }

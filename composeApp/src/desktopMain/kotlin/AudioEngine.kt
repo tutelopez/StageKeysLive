@@ -118,7 +118,7 @@ actual class PlatformAudioSynth actual constructor() {
     actual fun refreshAudioDevices() {}
 
     // --- Dynamic Engine Config ---
-    actual fun initializeEngine(sampleRate: Int) {}
+    actual fun initializeEngine(sampleRate: Int, bufferOption: Int, isUsbDevice: Boolean) {}
     actual fun getAudioDiagnostics(): String = "Desktop Audio API | SR: 44100"
 
     // --- Continuous Pad Engine ---

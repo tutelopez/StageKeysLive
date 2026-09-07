@@ -23,7 +23,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow

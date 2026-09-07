@@ -56,11 +56,23 @@ class AndroidAudioDeviceManager(context: Context, private val notifier: DeviceSt
         refreshDevices() // Trigger UI update to show the new selection
     }
 
+    fun isSelectedDeviceUsb(): Boolean {
+        val outputs = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        val selected = outputs.firstOrNull { it.id == selectedDeviceId } ?: return false
+        return selected.type == AudioDeviceInfo.TYPE_USB_DEVICE ||
+               selected.type == AudioDeviceInfo.TYPE_USB_HEADSET ||
+               selected.type == AudioDeviceInfo.TYPE_USB_ACCESSORY
+    }
+
     fun refreshDevices() {
         val outputs = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
         val filtered = outputs.filter { isRelevant(it) }
 
         val mapped = filtered.map { info ->
+            val isUsb = info.type == AudioDeviceInfo.TYPE_USB_DEVICE ||
+                        info.type == AudioDeviceInfo.TYPE_USB_HEADSET ||
+                        info.type == AudioDeviceInfo.TYPE_USB_ACCESSORY
+
             val typeStr = when (info.type) {
                 AudioDeviceInfo.TYPE_USB_DEVICE -> "Interfaz USB"
                 AudioDeviceInfo.TYPE_USB_HEADSET -> "Auriculares USB"
@@ -79,7 +91,8 @@ class AndroidAudioDeviceManager(context: Context, private val notifier: DeviceSt
                 id = info.id,
                 name = nameStr,
                 type = typeStr,
-                isCurrentlySelected = (info.id == selectedDeviceId)
+                isCurrentlySelected = (info.id == selectedDeviceId),
+                isUsbDevice = isUsb
             )
         }
 

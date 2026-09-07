@@ -79,6 +79,7 @@ class AndroidSf2ExplorerController(
 
             refreshFiles()
         } catch (e: Exception) {
+            CrashReporter.recordException(e, "Sf2Explorer.onFolderSelected")
             e.printStackTrace()
         }
     }
@@ -92,6 +93,7 @@ class AndroidSf2ExplorerController(
                 context.contentResolver.releasePersistableUriPermission(uri, flags)
             }
         } catch (e: Exception) {
+            CrashReporter.recordException(e, "Sf2Explorer.clearFolder")
             e.printStackTrace()
         }
         prefs.edit().clear().apply()
@@ -111,6 +113,7 @@ class AndroidSf2ExplorerController(
                     scanDirectory(rootDoc, "", fileList)
                 }
             } catch (e: Exception) {
+                CrashReporter.recordException(e, "Sf2Explorer.refreshFiles")
                 e.printStackTrace()
             }
 

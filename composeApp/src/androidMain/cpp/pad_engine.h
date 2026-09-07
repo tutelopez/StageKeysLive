@@ -25,7 +25,7 @@ public:
     PadEngine();
     ~PadEngine();
 
-    bool init(AAssetManager* assetManager, int sampleRate = 48000);
+    bool init(AAssetManager* assetManager, int sampleRate = 48000, bool isUsbDevice = false);
     void destroy();
     
     void setEnabled(bool enabled);

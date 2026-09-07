@@ -120,7 +120,10 @@ public:
         }
     }
 
-    void init(int sampleRate, int bufferFrames) {
+    std::string actualSharingMode = "Shared";
+    int actualBufferFrames = 256;
+
+    void init(int sampleRate, int bufferFrames, bool isUsbDevice = false) {
         std::lock_guard<std::mutex> lock(synthMutex);
         audioReady = false;
 
@@ -135,10 +138,14 @@ public:
         fluid_settings_setnum(fluidSettings, "synth.sample-rate", (double)sampleRate);
         fluid_settings_setint(fluidSettings, "synth.polyphony", 64);
         
-        // Try to set Oboe specific hints, fallback to standard period-size if OpenSLES is used
+        // Try to set Oboe specific hints
         fluid_settings_setstr(fluidSettings, "audio.oboe.performance-mode", "LowLatency");
-        fluid_settings_setstr(fluidSettings, "audio.oboe.sharing-mode", "Shared");
-        fluid_settings_setint(fluidSettings, "audio.period-size", bufferFrames);
+        if (bufferFrames > 0) {
+            fluid_settings_setint(fluidSettings, "audio.period-size", bufferFrames);
+            actualBufferFrames = bufferFrames;
+        } else {
+            actualBufferFrames = 0; // Auto burst
+        }
         fluid_settings_setint(fluidSettings, "audio.periods", 2);
         
         fluidSynth = new_fluid_synth(fluidSettings);
@@ -148,16 +155,38 @@ public:
         } 
         LOGI("FluidSynth: synth instance created OK");
 
-        fluidAudioDriver = new_fluid_audio_driver2(fluidSettings, audioProcessCallback, this);
+        if (isUsbDevice) {
+            LOGI("FluidSynth: USB device detected, trying audio.oboe.sharing-mode = Exclusive");
+            fluid_settings_setstr(fluidSettings, "audio.oboe.sharing-mode", "Exclusive");
+            fluidAudioDriver = new_fluid_audio_driver2(fluidSettings, audioProcessCallback, this);
+            if (fluidAudioDriver != nullptr) {
+                actualSharingMode = "Exclusive";
+                LOGI("FluidSynth: Opened in Exclusive sharing mode successfully");
+            } else {
+                LOGW("FluidSynth: Exclusive sharing mode failed. Falling back to Shared mode.");
+                fluid_settings_setstr(fluidSettings, "audio.oboe.sharing-mode", "Shared");
+                fluidAudioDriver = new_fluid_audio_driver2(fluidSettings, audioProcessCallback, this);
+                if (fluidAudioDriver != nullptr) {
+                    actualSharingMode = "Shared";
+                    LOGI("FluidSynth: Opened in Shared mode (fallback) successfully");
+                }
+            }
+        } else {
+            actualSharingMode = "Shared";
+            fluid_settings_setstr(fluidSettings, "audio.oboe.sharing-mode", "Shared");
+            fluidAudioDriver = new_fluid_audio_driver2(fluidSettings, audioProcessCallback, this);
+        }
+
         if (fluidAudioDriver == nullptr) {
             LOGE("FluidSynth: failed to create Oboe audio driver with process callback, falling back to opensles");
             fluid_settings_setstr(fluidSettings, "audio.driver", "opensles");
+            actualSharingMode = "OpenSLES";
             fluidAudioDriver = new_fluid_audio_driver2(fluidSettings, audioProcessCallback, this);
         }
 
         if (fluidAudioDriver != nullptr) {
             audioReady = true;
-            LOGI("FluidSynth: audio driver with Master Limiter created successfully");
+            LOGI("FluidSynth: audio driver with Master Limiter created successfully (%s)", actualSharingMode.c_str());
         } else {
             LOGE("CRITICAL: FluidSynth could not create any audio driver!");
         }
@@ -627,8 +656,13 @@ public:
         fluid_settings_getint(fluidSettings, "audio.period-size", &actualPeriodSize);
         
         char buffer[256];
-        snprintf(buffer, sizeof(buffer), "API: %s | SR: %.0f Hz | Buffer: %d", 
-                 driverStr, actualSampleRate, actualPeriodSize);
+        if (actualPeriodSize > 0) {
+            snprintf(buffer, sizeof(buffer), "API: %s (%s) | SR: %.0f Hz | Buffer: %d frames", 
+                     driverStr, actualSharingMode.c_str(), actualSampleRate, actualPeriodSize);
+        } else {
+            snprintf(buffer, sizeof(buffer), "API: %s (%s) | SR: %.0f Hz | Buffer: Auto", 
+                     driverStr, actualSharingMode.c_str(), actualSampleRate);
+        }
         return std::string(buffer);
     }
 };
@@ -696,13 +730,13 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeSetPatch(JNIEnv *env, jobject t
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeInit(JNIEnv *env, jobject thiz, jint sampleRate, jint bufferFrames) {
+Java_com_midi_mainstage_PlatformAudioSynth_nativeInit(JNIEnv *env, jobject thiz, jint sampleRate, jint bufferFrames, jboolean isUsbDevice) {
     if (gEngine != nullptr) {
         gEngine->stop();
     } else {
         gEngine = new MainstageAudioEngine();
     }
-    gEngine->init(sampleRate, bufferFrames);
+    gEngine->init(sampleRate, bufferFrames, isUsbDevice == JNI_TRUE);
 
     if (gPadEngine != nullptr) {
         gPadEngine->destroy();
@@ -710,7 +744,7 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeInit(JNIEnv *env, jobject thiz,
         gPadEngine = new PadEngine();
     }
     if (gAssetManager != nullptr) {
-        gPadEngine->init(gAssetManager, sampleRate);
+        gPadEngine->init(gAssetManager, sampleRate, isUsbDevice == JNI_TRUE);
     }
 }
 

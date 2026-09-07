@@ -14,6 +14,8 @@ val disableAndroid = !hasAndroidSdk
 
 if (!disableAndroid) {
     plugins.apply("com.android.application")
+    plugins.apply("com.google.gms.google-services")
+    plugins.apply("com.google.firebase.crashlytics")
 }
 
 kotlin {
@@ -51,6 +53,8 @@ kotlin {
                     implementation("androidx.core:core-ktx:1.12.0")
                     implementation("androidx.documentfile:documentfile:1.0.1")
                     implementation("androidx.lifecycle:lifecycle-process:2.6.2")
+                    implementation("com.google.firebase:firebase-crashlytics:19.3.0")
+                    implementation("com.google.firebase:firebase-analytics:22.1.2")
                     // Oboe headers come from cpp/include/oboe/ (downloaded from GitHub 1.8.0).
                     // liboboe.so at runtime comes from FluidSynth v2.6.0 bundle — no Prefab needed.
                 }

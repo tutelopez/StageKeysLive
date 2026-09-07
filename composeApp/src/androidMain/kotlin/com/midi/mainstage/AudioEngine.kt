@@ -43,6 +43,7 @@ actual class PlatformAudioSynth actual constructor() {
             // nativeInit() is now called explicitly via initializeEngine() from a background thread
         } catch (e: UnsatisfiedLinkError) {
             Log.e(TAG, "Failed to load native audio library: ${e.message}", e)
+            CrashReporter.recordException(e, "NativeAudioInit")
         }
     }
 
@@ -79,7 +80,16 @@ actual class PlatformAudioSynth actual constructor() {
     }
 
     actual fun loadSoundFont(path: String, channel: Int): Boolean {
-        return nativeLoadSoundFont(path, channel)
+        return try {
+            val result = nativeLoadSoundFont(path, channel)
+            if (!result) {
+                CrashReporter.log("Warning: nativeLoadSoundFont returned false for path: $path, channel: $channel")
+            }
+            result
+        } catch (e: Throwable) {
+            CrashReporter.recordException(e, "loadSoundFont")
+            false
+        }
     }
 
     actual fun allNotesOff() {
@@ -187,9 +197,18 @@ actual class PlatformAudioSynth actual constructor() {
     }
 
     // --- Dynamic Engine Config ---
-    actual fun initializeEngine(sampleRate: Int) {
-        globalPrefs?.edit()?.putInt("sampleRate", sampleRate)?.apply()
-        nativeInit(sampleRate, optimalBufferFrames)
+    actual fun initializeEngine(sampleRate: Int, bufferOption: Int, isUsbDevice: Boolean) {
+        val effectiveIsUsb = if (isUsbDevice) true else (audioDeviceManager?.isSelectedDeviceUsb() == true)
+        val bufferFrames = when (bufferOption) {
+            1 -> 128 // Low
+            2 -> 512 // High
+            else -> optimalBufferFrames // Auto (0 or optimal frames)
+        }
+        globalPrefs?.edit()
+            ?.putInt("sampleRate", sampleRate)
+            ?.putInt("bufferOption", bufferOption)
+            ?.apply()
+        nativeInit(sampleRate, bufferFrames, effectiveIsUsb)
     }
 
     actual fun getAudioDiagnostics(): String {
@@ -257,7 +276,7 @@ actual class PlatformAudioSynth actual constructor() {
     }
 
     // Native JNI bindings to C++ Audio/FluidSynth engine
-    private external fun nativeInit(sampleRate: Int, bufferFrames: Int)
+    private external fun nativeInit(sampleRate: Int, bufferFrames: Int, isUsbDevice: Boolean)
     private external fun nativeClose()
     private external fun nativeNoteOn(note: Int, velocity: Int, channel: Int)
     private external fun nativeNoteOff(note: Int, channel: Int)

@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
         
         val prefs = getSharedPreferences("AudioSettings", Context.MODE_PRIVATE)
         val savedSampleRate = prefs.getInt("sampleRate", -1)
+        val savedBufferOption = prefs.getInt("bufferOption", 0)
         
         PlatformAudioSynth.optimalSampleRate = if (savedSampleRate != -1) savedSampleRate else (sampleRateStr?.toIntOrNull() ?: 48000)
         PlatformAudioSynth.optimalBufferFrames = framesStr?.toIntOrNull() ?: 256
@@ -55,7 +56,7 @@ class MainActivity : ComponentActivity() {
         synth.setAssetManager(assets)
         
         Thread {
-            synth.initializeEngine(PlatformAudioSynth.optimalSampleRate)
+            synth.initializeEngine(PlatformAudioSynth.optimalSampleRate, savedBufferOption)
         }.start()
         
         // Hide system bars (Full Screen Immersive Mode)

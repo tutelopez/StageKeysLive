@@ -49,7 +49,7 @@ expect class PlatformAudioSynth() {
     fun refreshAudioDevices()
 
     // --- Dynamic Engine Config ---
-    fun initializeEngine(sampleRate: Int)
+    fun initializeEngine(sampleRate: Int, bufferOption: Int = 0, isUsbDevice: Boolean = false)
     fun getAudioDiagnostics(): String
 
     // --- Continuous Pad Engine ---

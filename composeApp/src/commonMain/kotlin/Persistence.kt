@@ -195,6 +195,58 @@ class SimpleJsonParser(private val src: String) {
         return list
     }
 
+    fun parseActiveSessionSnapshot(): ActiveSessionSnapshot {
+        skipWhitespace()
+        if (pos < src.length && src[pos] == '{') pos++ // skip '{'
+        var isSessionActive = false
+        var concertId = ""
+        var selectedPatchIndex = 0
+        var timestamp = 0L
+        var masterVolume = 0.8f
+        var masterPan = 0.5f
+        val channels = mutableListOf<ChannelStripState>()
+
+        while (pos < src.length) {
+            skipWhitespace()
+            if (pos >= src.length) break
+            if (src[pos] == '}') {
+                pos++ // skip '}'
+                break
+            }
+            val key = parseString()
+            skipWhitespace()
+            if (pos < src.length && src[pos] == ':') pos++ // skip ':'
+            skipWhitespace()
+            when (key) {
+                "isSessionActive" -> isSessionActive = parseBoolean()
+                "concertId" -> concertId = parseString()
+                "selectedPatchIndex" -> selectedPatchIndex = parseInt()
+                "timestamp" -> timestamp = parseLong()
+                "masterVolume" -> masterVolume = parseFloat()
+                "masterPan" -> masterPan = parseFloat()
+                "channels" -> {
+                    if (pos < src.length && src[pos] == '[') pos++ // skip '['
+                    while (pos < src.length) {
+                        skipWhitespace()
+                        if (src[pos] == ']') {
+                            pos++
+                            break
+                        }
+                        if (src[pos] == '{') {
+                            channels.add(parseChannel())
+                        }
+                        skipWhitespace()
+                        if (pos < src.length && src[pos] == ',') pos++
+                    }
+                }
+                else -> skipValue()
+            }
+            skipWhitespace()
+            if (pos < src.length && src[pos] == ',') pos++
+        }
+        return ActiveSessionSnapshot(isSessionActive, concertId, selectedPatchIndex, timestamp, masterVolume, masterPan, channels)
+    }
+
     private fun parseConcert(): Concert {
         pos++ // skip '{'
         var id = ""
@@ -641,6 +693,64 @@ object MasterFxSerializer {
     }
 }
 
+data class ActiveSessionSnapshot(
+    val isSessionActive: Boolean = false,
+    val concertId: String = "",
+    val selectedPatchIndex: Int = 0,
+    val timestamp: Long = 0L,
+    val masterVolume: Float = 0.8f,
+    val masterPan: Float = 0.5f,
+    val channels: List<ChannelStripState> = emptyList()
+)
 
+object SessionSnapshotSerializer {
+    fun serialize(snapshot: ActiveSessionSnapshot): String {
+        val sb = StringBuilder()
+        sb.append("{")
+        sb.append("\"isSessionActive\":${snapshot.isSessionActive},")
+        sb.append("\"concertId\":\"${escape(snapshot.concertId)}\",")
+        sb.append("\"selectedPatchIndex\":${snapshot.selectedPatchIndex},")
+        sb.append("\"timestamp\":${snapshot.timestamp},")
+        sb.append("\"masterVolume\":${snapshot.masterVolume},")
+        sb.append("\"masterPan\":${snapshot.masterPan},")
+        sb.append("\"channels\":[")
+        snapshot.channels.forEachIndexed { i, ch ->
+            if (i > 0) sb.append(",")
+            sb.append("{")
+            sb.append("\"id\":${ch.id},")
+            sb.append("\"name\":\"${escape(ch.name)}\",")
+            sb.append("\"sf2Name\":\"${escape(ch.sf2Name)}\",")
+            if (ch.sf2Path != null) {
+                sb.append("\"sf2Path\":\"${escape(ch.sf2Path)}\",")
+            }
+            sb.append("\"volume\":${ch.volume},")
+            sb.append("\"isMuted\":${ch.isMuted},")
+            sb.append("\"isSoloed\":${ch.isSoloed},")
+            sb.append("\"keyRangeStart\":${ch.keyRangeStart},")
+            sb.append("\"keyRangeEnd\":${ch.keyRangeEnd},")
+            sb.append("\"colorHex\":\"${ch.colorHex}\",")
+            sb.append("\"velocityCurve\":\"${ch.velocityCurve}\",")
+            sb.append("\"pan\":${ch.pan},")
+            sb.append("\"reverbSend\":${ch.reverbSend},")
+            sb.append("\"chorusSend\":${ch.chorusSend},")
+            sb.append("\"filterCutoff\":${ch.filterCutoff}")
+            sb.append("}")
+        }
+        sb.append("]")
+        sb.append("}")
+        return sb.toString()
+    }
 
+    private fun escape(s: String): String = s.replace("\"", "\\\"").replace("\n", "\\n")
 
+    fun deserialize(json: String?): ActiveSessionSnapshot? {
+        if (json.isNullOrBlank()) return null
+        return try {
+            val parser = SimpleJsonParser(json.trim())
+            parser.parseActiveSessionSnapshot()
+        } catch (e: Exception) {
+            CrashReporter.recordException(e, "SessionSnapshotSerializer.deserialize")
+            null
+        }
+    }
+}

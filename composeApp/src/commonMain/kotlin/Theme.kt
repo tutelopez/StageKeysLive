@@ -85,8 +85,8 @@ private val StageKeysColorScheme = darkColorScheme(
 )
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
-// Font loading uses an expect/actual getOutfitFontFamily() to bypass
-// org.jetbrains.compose.resources.Font crashes on older Android devices.
+// Font loading uses an expect/actual getOutfitFontFamily() with safe fallback to FontFamily.Default
+// to guarantee zero crash probability on any OEM/device.
 @Composable
 fun StageKeysTheme(content: @Composable () -> Unit) {
     val outfitFamily = getOutfitFontFamily()
