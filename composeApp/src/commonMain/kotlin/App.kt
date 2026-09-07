@@ -57,7 +57,10 @@ import kotlinx.coroutines.withContext
 
 // Data Models mapping to JSON persistence
 enum class ScreenState { DASHBOARD, CONCERT, SETTINGS }
-enum class SettingsTab { MIDI_MAP, SPLIT_ZONES, AUDIO, SF2_FOLDER, MASTER_FX, BACKUP }
+enum class SettingsTab { MIDI_MAP, SPLIT_ZONES, AUDIO, SF2_FOLDER, MASTER_FX, BACKUP, SUPPORT }
+
+const val CURRENT_APP_VERSION_CODE = 1
+const val CURRENT_APP_VERSION_NAME = "1.0"
 
 data class RecordingEvent(
     val deltaMs: Long,
@@ -153,6 +156,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var showDeleteConfirmDialog by remember { mutableStateOf<Concert?>(null) }
     var concertToEdit by remember { mutableStateOf<Concert?>(null) }
     var newConcertName by remember { mutableStateOf("") }
+    var showWhatsNewDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val lastSeen = readTextFromFile("last_seen_version.txt")?.trim()?.toIntOrNull() ?: 0
+        if (CURRENT_APP_VERSION_CODE > lastSeen) {
+            showWhatsNewDialog = true
+        }
+    }
     
     val autoBackupController = rememberAutoBackupController()
     val googleDriveService = rememberGoogleDriveService()
@@ -1543,6 +1554,17 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         )
     }
 
+    if (showWhatsNewDialog) {
+        WhatsNewDialog(
+            versionName = CURRENT_APP_VERSION_NAME,
+            notes = CURRENT_RELEASE_NOTES,
+            onDismiss = {
+                saveTextToFile("last_seen_version.txt", CURRENT_APP_VERSION_CODE.toString())
+                showWhatsNewDialog = false
+            }
+        )
+    }
+
     // 2. Add Patch Dialog
     if (showAddPatchDialog) {
         AlertDialog(
@@ -2129,7 +2151,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                     SettingsTab.AUDIO to "Interfaces de Audio",
                                     SettingsTab.SF2_FOLDER to "Carpeta SF2",
                                     SettingsTab.MASTER_FX to "Master FX",
-                                    SettingsTab.BACKUP to "Respaldo Automático"
+                                    SettingsTab.BACKUP to "Respaldo Automático",
+                                    SettingsTab.SUPPORT to "Soporte y Ayuda"
                                 )
                             } else {
                                 listOf(
@@ -2137,7 +2160,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                     SettingsTab.AUDIO to "Interfaces de Audio",
                                     SettingsTab.SF2_FOLDER to "Carpeta SF2",
                                     SettingsTab.MASTER_FX to "Master FX",
-                                    SettingsTab.BACKUP to "Respaldo Automático"
+                                    SettingsTab.BACKUP to "Respaldo Automático",
+                                    SettingsTab.SUPPORT to "Soporte y Ayuda"
                                 )
                             }
                             tabs.forEach { (tab, label) ->
@@ -2258,6 +2282,19 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                             saveConcertsList(restoredList)
                                             activeConcert = restoredList.firstOrNull()
                                         },
+                                        onShowSnackbar = { msg ->
+                                            coroutineScope.launch {
+                                                snackbarHostState.showSnackbar(msg)
+                                            }
+                                        }
+                                    )
+                                }
+                                SettingsTab.SUPPORT -> {
+                                    SupportSettingsScreen(
+                                        googleUserEmail = googleDriveService.state.user?.email,
+                                        connectedMidiDevices = currentConnectedDevices,
+                                        sampleRate = selectedSampleRate,
+                                        bufferSizeOption = selectedBufferSizeOption,
                                         onShowSnackbar = { msg ->
                                             coroutineScope.launch {
                                                 snackbarHostState.showSnackbar(msg)
@@ -3147,6 +3184,378 @@ private fun FxSliderRow(
         )
     }
 }
+
+// --- NOVEDADES / WHAT'S NEW SYSTEM ---
+
+data class ReleaseNoteItem(
+    val title: String,
+    val description: String,
+    val tag: String = "NUEVO"
+)
+
+val CURRENT_RELEASE_NOTES = listOf(
+    ReleaseNoteItem(
+        title = "Splash Screen Nativo de Alto Rendimiento",
+        description = "Inicio instantáneo y fluido con la Splash Screen API de Android 12+. La pantalla se mantiene exactamente el tiempo necesario para inicializar el motor de audio y MIDI sin demoras artificiales."
+    ),
+    ReleaseNoteItem(
+        title = "Exportación e Importación de Patches Individuales (.skpatch)",
+        description = "Ahora puedes compartir y transferir patches específicos directamente por WhatsApp, Telegram o Drive e importarlos a cualquier concierto activo sin reemplazar tu configuración."
+    ),
+    ReleaseNoteItem(
+        title = "Soporte Directo y Diagnóstico Integrado",
+        description = "Nueva pestaña de Soporte en Ajustes para contactar asistencia por Telegram (@tutelopez7) con reporte diagnóstico automático de dispositivo, MIDI y audio."
+    ),
+    ReleaseNoteItem(
+        title = "Respaldo en la Nube con Google Drive",
+        description = "Sincronización automática de tus conciertos y configuraciones a tu cuenta de Google Drive con restauración de 1 toque."
+    )
+)
+
+@Composable
+fun WhatsNewDialog(
+    versionName: String,
+    notes: List<ReleaseNoteItem>,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .fillMaxHeight(0.88f)
+                .padding(12.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = DarkBackground),
+            border = BorderStroke(1.dp, Color(0xFF2A2D3A))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(AccentSky.copy(alpha = 0.15f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("🚀", fontSize = 20.sp)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Novedades en StageKeysLive",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = TextLight,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
+                                color = AccentSky,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    "v$versionName",
+                                    color = Color.Black,
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            "Descubre las mejoras agregadas para tus presentaciones en vivo",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextDark,
+                            fontSize = 11.5.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                HorizontalDivider(color = Color(0xFF2A2D3A), thickness = 1.dp)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Notes List
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(notes) { item ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(DarkPanel, RoundedCornerShape(10.dp))
+                                .border(1.dp, Color(0xFF252836), RoundedCornerShape(10.dp))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 4.dp)
+                                    .size(8.dp)
+                                    .background(AccentSky, CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        item.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = TextLight,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.sp
+                                    )
+                                    Surface(
+                                        color = Color(0xFF10B981).copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            item.tag,
+                                            color = Color(0xFF10B981),
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    item.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextDark,
+                                    fontSize = 11.5.sp,
+                                    lineHeight = 15.sp
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Bottom Action
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentSky),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        "¡Entendido, Continuar!",
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.5.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+// --- SOPORTE & DIAGNÓSTICO SCREEN ---
+
+@Composable
+fun SupportSettingsScreen(
+    googleUserEmail: String?,
+    connectedMidiDevices: List<String>,
+    sampleRate: Int,
+    bufferSizeOption: Int,
+    onShowSnackbar: (String) -> Unit
+) {
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+
+    val appVersion = getAppVersionInfo()
+    val platformInfo = getPlatformDiagnosticInfo()
+    val midiInfo = if (connectedMidiDevices.isEmpty()) "Ninguno" else connectedMidiDevices.joinToString(", ")
+    val audioInfo = "$sampleRate Hz | Buffer: $bufferSizeOption frames"
+    val accountInfo = googleUserEmail ?: "Sin cuenta vinculada"
+
+    val diagnosticReport = buildString {
+        appendLine("--- REPORTE DE DIAGNÓSTICO STAGEKEYSLIVE ---")
+        appendLine("Versión: $appVersion")
+        appendLine(platformInfo)
+        appendLine("Audio: $audioInfo")
+        appendLine("Dispositivos MIDI: $midiInfo")
+        appendLine("Cuenta Google: $accountInfo")
+        appendLine("Timestamp: ${System.currentTimeMillis()}")
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        // Support Header Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2330)),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, Color(0xFF2E3446))
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .background(Color(0xFF229ED9).copy(alpha = 0.15f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("💬", fontSize = 22.sp)
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Soporte Directo y Contacto",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextLight,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        "¿Tienes dudas, problemas técnicos o sugerencias de mejoras? Contáctame directamente por Telegram.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextDark,
+                        fontSize = 11.5.sp
+                    )
+                }
+            }
+        }
+
+        // Action Buttons Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = DarkPanel),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, Color(0xFF2A2D3A))
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    "Canal Oficial de Atención",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = AccentSky,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp
+                )
+
+                Button(
+                    onClick = {
+                        // Copy report to clipboard first so it's guaranteed safe
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(diagnosticReport))
+                        
+                        // Open Telegram URL with encoded text
+                        val encodedText = diagnosticReport
+                            .replace(" ", "%20")
+                            .replace("\n", "%0A")
+                            .replace(":", "%3A")
+                            .replace("|", "%7C")
+                            .replace("-", "%2D")
+                        val telegramUrl = "https://t.me/tutelopez7?text=$encodedText"
+                        try {
+                            uriHandler.openUri(telegramUrl)
+                            onShowSnackbar("Abriendo Telegram (@tutelopez7)... Diagnóstico copiado al portapapeles.")
+                        } catch (e: Exception) {
+                            try {
+                                uriHandler.openUri("https://t.me/tutelopez7")
+                            } catch (_: Exception) {}
+                            onShowSnackbar("Diagnóstico copiado. Pégalo en Telegram: @tutelopez7")
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF229ED9)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("🚀 Abrir Telegram (@tutelopez7)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(diagnosticReport))
+                        onShowSnackbar("¡Datos de diagnóstico copiados al portapapeles!")
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(42.dp),
+                    border = BorderStroke(1.dp, Color(0xFF384055)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("📋 Copiar Diagnóstico Técnico", color = TextLight, fontSize = 12.5.sp)
+                }
+            }
+        }
+
+        // Diagnostics Details Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = DarkPanel),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, Color(0xFF2A2D3A))
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    "Información del Sistema & Dispositivo",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = AccentSky,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                DiagnosticRow("Versión de App", appVersion)
+                DiagnosticRow("Dispositivo y SO", platformInfo)
+                DiagnosticRow("Configuración de Audio", audioInfo)
+                DiagnosticRow("Dispositivos MIDI", midiInfo)
+                DiagnosticRow("Cuenta Vinculada", accountInfo)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DiagnosticRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF13161F), RoundedCornerShape(6.dp))
+            .padding(horizontal = 10.dp, vertical = 7.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, color = TextDark, fontSize = 11.sp)
+        Text(value, color = TextLight, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
 
 
 

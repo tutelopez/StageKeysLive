@@ -176,8 +176,115 @@ object ConcertSerializer {
     }
 }
 
+object SinglePatchSerializer {
+    fun serialize(patch: PatchState): String {
+        val sb = StringBuilder()
+        sb.append("{")
+        sb.append("\"type\":\"stagekeys_single_patch\",")
+        sb.append("\"version\":\"1.0\",")
+        sb.append("\"patch\":{")
+        sb.append("\"id\":\"${patch.id}\",")
+        sb.append("\"name\":\"${escape(patch.name)}\",")
+        sb.append("\"category\":\"${escape(patch.category)}\",")
+        sb.append("\"programNumber\":${patch.programNumber},")
+        sb.append("\"description\":\"${escape(patch.description)}\",")
+        sb.append("\"transposeSemitones\":${patch.transposeSemitones},")
+        sb.append("\"isFavorite\":${patch.isFavorite},")
+        sb.append("\"channelsSnapshot\":[")
+        patch.channelsSnapshot.forEachIndexed { s, snap ->
+            if (s > 0) sb.append(",")
+            sb.append("{")
+            sb.append("\"channelId\":${snap.channelId},")
+            sb.append("\"name\":\"${escape(snap.name)}\",")
+            sb.append("\"sf2Name\":\"${escape(snap.sf2Name)}\",")
+            if (snap.sf2Path != null) {
+                sb.append("\"sf2Path\":\"${escape(snap.sf2Path)}\",")
+            }
+            sb.append("\"volume\":${snap.volume},")
+            sb.append("\"isMuted\":${snap.isMuted},")
+            sb.append("\"isSoloed\":${snap.isSoloed},")
+            sb.append("\"keyRangeStart\":${snap.keyRangeStart},")
+            sb.append("\"keyRangeEnd\":${snap.keyRangeEnd},")
+            sb.append("\"colorHex\":\"${snap.colorHex}\",")
+            sb.append("\"velocityCurve\":\"${snap.velocityCurve}\",")
+            sb.append("\"pan\":${snap.pan},")
+            sb.append("\"reverbSend\":${snap.reverbSend},")
+            sb.append("\"chorusSend\":${snap.chorusSend},")
+            sb.append("\"filterCutoff\":${snap.filterCutoff}")
+            sb.append("}")
+        }
+        sb.append("]")
+        sb.append("}")
+        sb.append("}")
+        return sb.toString()
+    }
+
+    private fun escape(s: String): String = s.replace("\"", "\\\"").replace("\n", "\\n")
+
+    fun deserialize(json: String): Result<PatchState> {
+        return try {
+            val trimmed = json.trim()
+            if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+                return Result.failure(IllegalArgumentException("El archivo no tiene formato JSON válido."))
+            }
+            val parser = SimpleJsonParser(trimmed)
+            val patch = parser.parseSinglePatchEnvelope()
+            if (patch == null || patch.name.isBlank()) {
+                Result.failure(IllegalArgumentException("El archivo JSON no contiene un patch válido de StageKeysLive."))
+            } else {
+                val safePatch = patch.copy(
+                    id = "patch_${System.currentTimeMillis()}_${(100..999).random()}"
+                )
+                Result.success(safePatch)
+            }
+        } catch (e: Exception) {
+            Result.failure(IllegalArgumentException("Estructura de patch inválida: ${e.message}"))
+        }
+    }
+}
+
 class SimpleJsonParser(private val src: String) {
     private var pos = 0
+
+    fun parseSinglePatchEnvelope(): PatchState? {
+        skipWhitespace()
+        if (pos >= src.length || src[pos] != '{') return null
+        val mark = pos
+        pos++ // skip '{'
+        var foundPatch: PatchState? = null
+        var isEnvelope = false
+
+        while (pos < src.length) {
+            skipWhitespace()
+            if (pos >= src.length || src[pos] == '}') {
+                if (pos < src.length) pos++
+                break
+            }
+            val key = parseString()
+            skipWhitespace()
+            if (pos < src.length && src[pos] == ':') pos++
+            skipWhitespace()
+            if (key == "patch" && pos < src.length && src[pos] == '{') {
+                foundPatch = parsePatch()
+                isEnvelope = true
+            } else {
+                skipValue()
+            }
+            skipWhitespace()
+            if (pos < src.length && src[pos] == ',') pos++
+        }
+
+        if (isEnvelope && foundPatch != null) {
+            return foundPatch
+        }
+
+        pos = mark
+        return try {
+            parsePatch()
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     fun parseConcerts(): List<Concert> {
         val list = mutableListOf<Concert>()

@@ -61,6 +61,7 @@ kotlin {
                     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
                     implementation("com.google.android.gms:play-services-auth:21.2.0")
                     implementation("io.coil-kt:coil-compose:2.6.0")
+                    implementation("androidx.core:core-splashscreen:1.0.1")
                     // Oboe headers come from cpp/include/oboe/ (downloaded from GitHub 1.8.0).
                     // liboboe.so at runtime comes from FluidSynth v2.6.0 bundle — no Prefab needed.
                 }

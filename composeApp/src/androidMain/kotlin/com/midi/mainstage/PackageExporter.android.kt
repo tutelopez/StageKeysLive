@@ -1,4 +1,4 @@
-﻿package com.midi.mainstage
+package com.midi.mainstage
 
 import android.content.Intent
 import android.net.Uri
@@ -30,26 +30,23 @@ actual fun PackageExporter(
         withContext(Dispatchers.IO) {
             try {
                 val isConcert = concertToExport != null
-                val fileName = if (isConcert) ".skconcert" else ".skpatch"
-                
-                // Use cache dir for temporary zip creation
-                val zipFile = File(context.cacheDir, fileName)
-                
-                ZipOutputStream(FileOutputStream(zipFile)).use { zout ->
-                    // 1. Write Manifest
-                    val manifestJson = JSONObject()
-                    manifestJson.put("type", if (isConcert) "concert" else "patch")
-                    manifestJson.put("version", "1.0")
+                if (isConcert) {
+                    val concert = concertToExport!!
+                    val fileName = "${concert.name.replace(Regex("[^a-zA-Z0-9_\\-\\s]"), "").trim().ifEmpty { "Concert" }}.skconcert"
+                    val zipFile = File(context.cacheDir, fileName)
                     
-                    zout.putNextEntry(ZipEntry("manifest.json"))
-                    zout.write(manifestJson.toString().toByteArray())
-                    zout.closeEntry()
+                    ZipOutputStream(FileOutputStream(zipFile)).use { zout ->
+                        // 1. Write Manifest
+                        val manifestJson = JSONObject()
+                        manifestJson.put("type", "concert")
+                        manifestJson.put("version", "1.0")
+                        
+                        zout.putNextEntry(ZipEntry("manifest.json"))
+                        zout.write(manifestJson.toString().toByteArray())
+                        zout.closeEntry()
 
-                    // 2. Write Data JSON & collect soundfonts
-                    val sf2Paths = mutableSetOf<String>()
-                    
-                    if (isConcert) {
-                        val concert = concertToExport!!
+                        // 2. Write Data JSON & collect soundfonts
+                        val sf2Paths = mutableSetOf<String>()
                         val updatedChannels = concert.channels.map { ch ->
                             if (ch.sf2Path != null) {
                                 val sf2Name = File(ch.sf2Path).name
@@ -75,63 +72,47 @@ actual fun PackageExporter(
                         zout.putNextEntry(ZipEntry("concert.json"))
                         zout.write(concertJsonStr.toByteArray())
                         zout.closeEntry()
-                    } else {
-                        val patch = patchToExport!!
-                        
-                        val patchObj = JSONObject()
-                        patchObj.put("id", patch.id)
-                        patchObj.put("name", patch.name)
-                        patchObj.put("category", patch.category)
-                        patchObj.put("programNumber", patch.programNumber)
-                        patchObj.put("description", patch.description)
-                        
-                        val snapsArray = JSONArray()
-                        patch.channelsSnapshot.forEach { snap ->
-                            val snapObj = JSONObject()
-                            snapObj.put("channelId", snap.channelId)
-                            snapObj.put("sf2Name", snap.sf2Name)
-                            if (snap.sf2Path != null) {
-                                val sf2Name = File(snap.sf2Path).name
-                                sf2Paths.add(snap.sf2Path)
-                                snapObj.put("sf2Path", "soundfonts/$sf2Name")
-                            }
-                            snapObj.put("volume", snap.volume.toDouble())
-                            snapObj.put("isMuted", snap.isMuted)
-                            snapObj.put("isSoloed", snap.isSoloed)
-                            snapObj.put("keyRangeStart", snap.keyRangeStart)
-                            snapObj.put("keyRangeEnd", snap.keyRangeEnd)
-                            snapObj.put("colorHex", snap.colorHex)
-                            snapsArray.put(snapObj)
-                        }
-                        patchObj.put("channelsSnapshot", snapsArray)
-                        
-                        zout.putNextEntry(ZipEntry("patch.json"))
-                        zout.write(patchObj.toString().toByteArray())
-                        zout.closeEntry()
-                    }
 
-                    // 3. Write SoundFonts
-                    sf2Paths.forEach { absPath ->
-                        val sf2File = File(absPath)
-                        if (sf2File.exists()) {
-                            zout.putNextEntry(ZipEntry("soundfonts/${sf2File.name}"))
-                            FileInputStream(sf2File).use { input ->
-                                input.copyTo(zout)
+                        // 3. Write SoundFonts
+                        sf2Paths.forEach { absPath ->
+                            val sf2File = File(absPath)
+                            if (sf2File.exists()) {
+                                zout.putNextEntry(ZipEntry("soundfonts/${sf2File.name}"))
+                                FileInputStream(sf2File).use { input ->
+                                    input.copyTo(zout)
+                                }
+                                zout.closeEntry()
                             }
-                            zout.closeEntry()
                         }
                     }
-                }
 
-                // Share via Intent
-                val uri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", zipFile)
-                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "application/zip"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    // Share via Intent
+                    val uri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", zipFile)
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/zip"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        putExtra(Intent.EXTRA_SUBJECT, "Concierto StageKeysLive: ${concert.name}")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Exportar concierto"))
+                } else {
+                    val patch = patchToExport!!
+                    val cleanName = patch.name.replace(Regex("[^a-zA-Z0-9_\\-\\s]"), "").trim().ifEmpty { "Patch" }
+                    val jsonFile = File(context.cacheDir, "StageKeys_${cleanName}.skpatch")
+                    
+                    val patchJsonStr = SinglePatchSerializer.serialize(patch)
+                    jsonFile.writeText(patchJsonStr, Charsets.UTF_8)
+
+                    val uri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", jsonFile)
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/json"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        putExtra(Intent.EXTRA_SUBJECT, "Patch StageKeysLive: ${patch.name}")
+                        putExtra(Intent.EXTRA_TEXT, "Patch '${patch.name}' para StageKeysLive")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Compartir patch: ${patch.name}"))
                 }
-                
-                context.startActivity(Intent.createChooser(shareIntent, "Exportar paquete"))
             } catch (e: Exception) {
                 e.printStackTrace()
                 android.os.Handler(android.os.Looper.getMainLooper()).post {

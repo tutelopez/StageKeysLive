@@ -757,6 +757,7 @@ private fun PatchesPanel(
                         onClick = { onSelect(actualIdx) },
                         onEdit = { onEdit(patch) },
                         onDelete = { onDelete(patch) },
+                        onExport = { onExport(patch) },
                         onToggleFavorite = { onToggleFavorite(patch) },
                         onMoveUp = { onMovePatch(actualIdx, actualIdx - 1) },
                         onMoveDown = { onMovePatch(actualIdx, actualIdx + 1) }
@@ -766,22 +767,44 @@ private fun PatchesPanel(
 
             Spacer(Modifier.height(6.dp))
 
-            // + Nuevo button at bottom of list
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(34.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(SurfaceElevated)
-                    .clickable(onClick = onAdd),
-                contentAlignment = Alignment.Center
+            // Bottom Buttons: + Nuevo and Importar
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    "+ Nuevo",
-                    color = TextDark,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(34.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(SurfaceElevated)
+                        .clickable(onClick = onAdd),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "+ Nuevo",
+                        color = TextDark,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .width(36.dp)
+                        .height(34.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(SurfaceElevated)
+                        .clickable(onClick = onImport),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        TablerIcons.Download,
+                        contentDescription = "Importar Patch",
+                        tint = AccentSky,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
             }
         }
     }
@@ -796,10 +819,13 @@ private fun PatchRow(
     onClick: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onExport: () -> Unit,
     onToggleFavorite: () -> Unit = {},
     onMoveUp: () -> Unit = {},
     onMoveDown: () -> Unit = {}
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -903,6 +929,15 @@ private fun PatchRow(
                     }
                     Spacer(Modifier.width(2.dp))
                 }
+                
+                // Share / Export Icon
+                IconButton(onClick = onExport, modifier = Modifier.size(16.dp)) {
+                    Icon(TablerIcons.Share, contentDescription = "Exportar Patch", tint = AccentSky, modifier = Modifier.size(11.dp))
+                }
+                
+                Spacer(Modifier.width(2.dp))
+
+                // Edit Icon
                 IconButton(onClick = onEdit, modifier = Modifier.size(16.dp)) {
                     Icon(TablerIcons.Edit, contentDescription = "Edit", tint = AccentSky, modifier = Modifier.size(11.dp))
                 }

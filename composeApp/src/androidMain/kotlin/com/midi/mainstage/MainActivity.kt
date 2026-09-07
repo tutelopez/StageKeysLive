@@ -15,6 +15,7 @@ import android.Manifest
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
@@ -27,8 +28,14 @@ class MainActivity : ComponentActivity() {
     private lateinit var midiManager: AndroidMidiManager
     private lateinit var audioDeviceManager: AndroidAudioDeviceManager
     private val synth = PlatformAudioSynth()
+    
+    @Volatile
+    private var isAppReady = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
+        splashScreen.setKeepOnScreenCondition { !isAppReady }
+
         super.onCreate(savedInstanceState)
         instance = this
         
@@ -55,10 +62,6 @@ class MainActivity : ComponentActivity() {
         
         synth.setAssetManager(assets)
         
-        Thread {
-            synth.initializeEngine(PlatformAudioSynth.optimalSampleRate, savedBufferOption)
-        }.start()
-        
         // Hide system bars (Full Screen Immersive Mode)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowInsetsControllerCompat(window, window.decorView)
@@ -68,17 +71,20 @@ class MainActivity : ComponentActivity() {
         // Initialize Android base folder for file persistence
         setAndroidBaseDir(filesDir)
 
-        // Initialize MIDI manager AFTER synth is ready (so listeners can be wired)
-        // Pass the actual instance of PlatformAudioSynth to the AndroidMidiManager
+        // Initialize MIDI and audio managers
         midiManager = AndroidMidiManager(this, synth, notifier)
         audioDeviceManager = AndroidAudioDeviceManager(this, notifier)
 
-        // [POINT 2 FIX] Wire the managers into PlatformAudioSynth's companion
-        // so that App.kt can call them without knowing about Android.
         PlatformAudioSynth.midiManager = midiManager
         PlatformAudioSynth.audioDeviceManager = audioDeviceManager
+
+        midiManager.startListening()
+        audioDeviceManager.startListening()
+
+        // Real asynchronous initialization: start audio engine + load default SF2
         Thread {
             try {
+                synth.initializeEngine(PlatformAudioSynth.optimalSampleRate, savedBufferOption)
                 val sf2Name = "PianoDefault.sf2"
                 val outFile = java.io.File(cacheDir, sf2Name)
                 if (!outFile.exists()) {
@@ -89,27 +95,13 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 synth.loadSoundFont(outFile.absolutePath)
-                Log.i(TAG, "Successfully loaded SoundFont: ${outFile.absolutePath}")
+                Log.i(TAG, "Audio engine and SoundFont initialized ✓")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to load SoundFont from assets", e)
+                Log.e(TAG, "Initialization error", e)
+            } finally {
+                isAppReady = true
             }
         }.start()
-
-        // Handled by App.kt via setMidiListener
-
-        midiManager.startListening()
-        audioDeviceManager.startListening()
-
-        // [POINT 3 FIX] Log audio readiness after a brief delay so the Oboe stream
-        // has time to open before we check.
-        android.os.Handler(mainLooper).postDelayed({
-            val ready = synth.isAudioReady()
-            if (ready) {
-                Log.i(TAG, "Audio engine is ready ✓")
-            } else {
-                Log.e(TAG, "Audio engine FAILED to start — check logcat for Oboe errors")
-            }
-        }, 500)
 
         setContent {
             StageKeysTheme {

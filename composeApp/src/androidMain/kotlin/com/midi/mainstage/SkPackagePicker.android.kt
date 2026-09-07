@@ -1,4 +1,4 @@
-﻿package com.midi.mainstage
+package com.midi.mainstage
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -6,8 +6,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import org.json.JSONArray
 import java.io.File
@@ -34,31 +32,35 @@ actual fun SkPackagePicker(show: Boolean, onPackageSelected: (Concert?, PatchSta
                 var concertJsonStr: String? = null
                 var patchJsonStr: String? = null
 
-                contentResolver.openInputStream(uri)?.use { input ->
-                    ZipInputStream(input).use { zis ->
-                        var entry = zis.nextEntry
-                        while (entry != null) {
-                            if (entry.name == "manifest.json") {
-                                val manifestStr = zis.bufferedReader().readText()
-                                val manifestObj = JSONObject(manifestStr)
-                                type = manifestObj.optString("type", "")
-                            } else if (entry.name == "concert.json") {
-                                concertJsonStr = zis.bufferedReader().readText()
-                            } else if (entry.name == "patch.json") {
-                                patchJsonStr = zis.bufferedReader().readText()
-                            } else if (entry.name.startsWith("soundfonts/") && !entry.isDirectory) {
-                                val sf2Name = entry.name.substringAfter("soundfonts/")
-                                val destFile = File(soundfontsDir, sf2Name)
-                                if (!destFile.exists()) {
-                                    FileOutputStream(destFile).use { out ->
-                                        zis.copyTo(out)
+                try {
+                    contentResolver.openInputStream(uri)?.use { input ->
+                        ZipInputStream(input).use { zis ->
+                            var entry = zis.nextEntry
+                            while (entry != null) {
+                                if (entry.name == "manifest.json") {
+                                    val manifestStr = zis.bufferedReader().readText()
+                                    val manifestObj = JSONObject(manifestStr)
+                                    type = manifestObj.optString("type", "")
+                                } else if (entry.name == "concert.json") {
+                                    concertJsonStr = zis.bufferedReader().readText()
+                                } else if (entry.name == "patch.json") {
+                                    patchJsonStr = zis.bufferedReader().readText()
+                                } else if (entry.name.startsWith("soundfonts/") && !entry.isDirectory) {
+                                    val sf2Name = entry.name.substringAfter("soundfonts/")
+                                    val destFile = File(soundfontsDir, sf2Name)
+                                    if (!destFile.exists()) {
+                                        FileOutputStream(destFile).use { out ->
+                                            zis.copyTo(out)
+                                        }
                                     }
                                 }
+                                zis.closeEntry()
+                                entry = zis.nextEntry
                             }
-                            zis.closeEntry()
-                            entry = zis.nextEntry
                         }
                     }
+                } catch (e: Exception) {
+                    // Not a zip or failed to open as zip
                 }
 
                 if (type == "concert" && concertJsonStr != null) {
@@ -113,7 +115,7 @@ actual fun SkPackagePicker(show: Boolean, onPackageSelected: (Concert?, PatchSta
                             parsedSnaps.add(
                                 PatchChannelSnapshot(
                                     channelId = sObj.getInt("channelId"),
-                                    name = if (sObj.has("name")) sObj.getString("name") else "Canal ${sObj.getInt("channelId")} ",
+                                    name = if (sObj.has("name")) sObj.getString("name") else "Canal ${sObj.getInt("channelId")}",
                                     sf2Name = sObj.getString("sf2Name"),
                                     sf2Path = absPath,
                                     volume = sObj.getDouble("volume").toFloat(),
@@ -140,6 +142,35 @@ actual fun SkPackagePicker(show: Boolean, onPackageSelected: (Concert?, PatchSta
                         onPackageSelected(null, finalPatch)
                     }
                     return@Thread
+                } else {
+                    // Fallback: Check if it is a plain JSON / .skpatch file
+                    val rawText = contentResolver.openInputStream(uri)?.use { it.bufferedReader().readText() }
+                    if (!rawText.isNullOrBlank()) {
+                        val singlePatchResult = SinglePatchSerializer.deserialize(rawText)
+                        if (singlePatchResult.isSuccess) {
+                            val patch = singlePatchResult.getOrNull()
+                            if (patch != null) {
+                                val finalPatch = patch.copy(
+                                    id = "patch_${System.currentTimeMillis()}_${(0..9999).random()}"
+                                )
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    onPackageSelected(null, finalPatch)
+                                }
+                                return@Thread
+                            }
+                        }
+                        
+                        val concertList = ConcertSerializer.deserialize(rawText)
+                        if (concertList.isNotEmpty()) {
+                            val concert = concertList.first().copy(
+                                id = "concert_${System.currentTimeMillis()}_${(0..9999).random()}"
+                            )
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                onPackageSelected(concert, null)
+                            }
+                            return@Thread
+                        }
+                    }
                 }
                 
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
@@ -157,7 +188,7 @@ actual fun SkPackagePicker(show: Boolean, onPackageSelected: (Concert?, PatchSta
 
     LaunchedEffect(show) {
         if (show) {
-            launcher.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
+            launcher.launch(arrayOf("application/zip", "application/octet-stream", "application/json", "*/*"))
         }
     }
 }
