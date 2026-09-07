@@ -1,8 +1,10 @@
 package com.midi.mainstage
 
+import android.accounts.AccountManager
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.provider.ContactsContract
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -11,12 +13,9 @@ import androidx.compose.ui.platform.LocalContext
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
-import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -61,33 +60,25 @@ class AndroidGoogleDriveService(
             .putString("user_email", profile.email)
             .putString("user_photo_url", profile.photoUrl)
             .putBoolean("is_signed_in", true)
-            .apply()
+            .commit()
     }
 
     private fun clearAccountPrefs() {
-        prefs.edit().clear().apply()
+        prefs.edit().clear().commit()
     }
 
     private fun readCurrentState(): GoogleDriveSyncState {
         val lastTime = driveManager.getLastCloudBackupTime()
 
-        val googleAccount = GoogleSignIn.getLastSignedInAccount(context)
-        if (googleAccount != null) {
-            val profile = googleAccount.toGoogleUserProfile()
-            return GoogleDriveSyncState(
-                isSignedIn = true,
-                user = profile,
-                lastCloudBackupTimestamp = lastTime
-            )
-        }
-
+        // 1. SharedPreferences (Highest priority for user-selected account)
         val isSavedSignedIn = prefs.getBoolean("is_signed_in", false)
-        if (isSavedSignedIn) {
+        val savedEmail = prefs.getString("user_email", null)
+        if (isSavedSignedIn && !savedEmail.isNullOrBlank()) {
             val profile = GoogleUserProfile(
-                uid = prefs.getString("user_uid", "user") ?: "user",
-                displayName = prefs.getString("user_display_name", null),
+                uid = prefs.getString("user_uid", savedEmail) ?: savedEmail,
+                displayName = prefs.getString("user_display_name", null) ?: savedEmail,
                 firstName = prefs.getString("user_first_name", null),
-                email = prefs.getString("user_email", null),
+                email = savedEmail,
                 photoUrl = prefs.getString("user_photo_url", null)
             )
             return GoogleDriveSyncState(
@@ -97,6 +88,18 @@ class AndroidGoogleDriveService(
             )
         }
 
+        // 2. GoogleSignIn Account
+        val googleAccount = GoogleSignIn.getLastSignedInAccount(context)
+        if (googleAccount != null && !googleAccount.email.isNullOrBlank()) {
+            val profile = googleAccount.toGoogleUserProfile()
+            return GoogleDriveSyncState(
+                isSignedIn = true,
+                user = profile,
+                lastCloudBackupTimestamp = lastTime
+            )
+        }
+
+        // 3. Firebase User
         val user = auth.currentUser
         if (user != null) {
             return GoogleDriveSyncState(
@@ -137,71 +140,197 @@ class AndroidGoogleDriveService(
         )
     }
 
+    private fun getProfileForEmail(email: String): GoogleUserProfile {
+        var displayName: String? = null
+        var photoUrl: String? = null
+
+        try {
+            val gAccount = GoogleSignIn.getLastSignedInAccount(context)
+            if (gAccount != null && gAccount.email.equals(email, ignoreCase = true)) {
+                displayName = gAccount.displayName
+                photoUrl = gAccount.photoUrl?.toString()
+            }
+        } catch (_: Exception) {}
+
+        if (displayName.isNullOrBlank()) {
+            try {
+                val cursor = context.contentResolver.query(
+                    ContactsContract.Profile.CONTENT_URI,
+                    arrayOf(
+                        ContactsContract.Profile.DISPLAY_NAME,
+                        ContactsContract.Profile.PHOTO_URI
+                    ),
+                    null, null, null
+                )
+                cursor?.use {
+                    if (it.moveToFirst()) {
+                        val nameIdx = it.getColumnIndex(ContactsContract.Profile.DISPLAY_NAME)
+                        val photoIdx = it.getColumnIndex(ContactsContract.Profile.PHOTO_URI)
+                        if (nameIdx >= 0 && displayName.isNullOrBlank()) displayName = it.getString(nameIdx)
+                        if (photoIdx >= 0 && photoUrl.isNullOrBlank()) photoUrl = it.getString(photoIdx)
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
+        if (displayName.isNullOrBlank()) {
+            val username = email.substringBefore("@")
+            displayName = username.split(".", "_", "-")
+                .filter { it.isNotBlank() }
+                .joinToString(" ") { part -> part.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } }
+        }
+
+        val firstName = displayName?.split(" ")?.firstOrNull()?.trim() ?: displayName
+
+        return GoogleUserProfile(
+            uid = email,
+            displayName = displayName,
+            firstName = firstName,
+            email = email,
+            photoUrl = photoUrl
+        )
+    }
+
+    override fun getDeviceAccounts(): List<String> {
+        return try {
+            val am = AccountManager.get(context)
+            am.getAccountsByType("com.google").map { it.name }.filter { it.isNotBlank() }
+        } catch (e: Exception) {
+            Log.w(TAG, "Cannot query accounts directly: ${e.message}")
+            emptyList()
+        }
+    }
+
+    override fun signInWithEmail(email: String, onSuccess: (GoogleUserProfile) -> Unit, onError: (String) -> Unit) {
+        coroutineScope.launch {
+            try {
+                val profile = getProfileForEmail(email.trim())
+                saveAccountToPrefs(profile)
+                withContext(Dispatchers.Main) {
+                    currentSyncState = readCurrentState()
+                }
+                Log.i(TAG, "Signed in with email directly: ${profile.email}")
+                onSuccess(profile)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in signInWithEmail", e)
+                onError(e.message ?: "Error al iniciar sesión con $email")
+            }
+        }
+    }
+
     override fun signIn(onSuccess: (GoogleUserProfile) -> Unit, onError: (String) -> Unit) {
         pendingOnSuccess = onSuccess
         pendingOnError = onError
 
         coroutineScope.launch {
             try {
+                Log.i(TAG, "signIn() initiated")
+                
+                // 1. First try GoogleSignInClient with DEFAULT_SIGN_IN (Email + Profile)
                 val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                     .requestEmail()
-                    .requestScopes(Scope(DRIVE_FILE_SCOPE))
+                    .requestProfile()
                     .build()
-
                 val client = GoogleSignIn.getClient(context, gso)
-                val signInIntent = client.signInIntent
+                val intent = client.signInIntent
 
                 val launcher = activityLauncher
                 if (launcher != null) {
-                    launcher.invoke(signInIntent)
+                    Log.i(TAG, "Launching GoogleSignIn intent via ActivityResultLauncher")
+                    launcher.invoke(intent)
                 } else if (context is Activity) {
-                    context.startActivity(signInIntent)
+                    Log.i(TAG, "Launching GoogleSignIn intent via Activity.startActivity")
+                    context.startActivity(intent)
                 } else {
-                    onError("No se pudo abrir el selector de cuentas de Google.")
+                    onError("No se pudo abrir el selector de cuentas.")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error initiating Google Sign-In", e)
-                CrashReporter.recordException(e, "GoogleSignInInit")
-                onError(e.message ?: "Error al iniciar inicio de sesión")
+                Log.e(TAG, "Error opening GoogleSignIn", e)
+                try {
+                    // Fallback to AccountPicker
+                    val pickerIntent = com.google.android.gms.common.AccountPicker.newChooseAccountIntent(
+                        com.google.android.gms.common.AccountPicker.AccountChooserOptions.Builder()
+                            .setAllowableAccountsTypes(listOf("com.google"))
+                            .setAlwaysShowAccountPicker(true)
+                            .build()
+                    )
+                    activityLauncher?.invoke(pickerIntent) ?: (context as? Activity)?.startActivity(pickerIntent)
+                } catch (fallbackEx: Exception) {
+                    Log.e(TAG, "Fallback account picker failed", fallbackEx)
+                    CrashReporter.recordException(e, "AccountPickerInit")
+                    onError(e.message ?: "Error al abrir el selector de cuentas")
+                }
             }
         }
     }
 
     fun handleActivityResult(resultCode: Int, data: Intent?) {
+        Log.i(TAG, "handleActivityResult called with resultCode=$resultCode, data=$data")
         coroutineScope.launch {
             try {
-                val task = GoogleSignIn.getSignedInAccountFromIntent(data)
-                val account = task.getResult(ApiException::class.java)
-                if (account != null) {
-                    val profile = account.toGoogleUserProfile()
-                    saveAccountToPrefs(profile)
-
+                // 1. Try GoogleSignIn task extraction
+                var foundProfile: GoogleUserProfile? = null
+                
+                if (data != null) {
                     try {
-                        if (account.idToken != null) {
-                            val authCred = GoogleAuthProvider.getCredential(account.idToken, null)
-                            auth.signInWithCredential(authCred).await()
+                        val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+                        if (task.isSuccessful) {
+                            val account = task.result
+                            if (account != null && !account.email.isNullOrBlank()) {
+                                Log.i(TAG, "Successfully extracted account from GoogleSignIn task: ${account.email}")
+                                foundProfile = account.toGoogleUserProfile()
+                            }
+                        } else {
+                            val exception = task.exception
+                            Log.w(TAG, "GoogleSignIn task was not successful: ${exception?.message}")
                         }
                     } catch (e: Exception) {
-                        Log.w(TAG, "Firebase credential sign-in note: ${e.message}")
+                        Log.w(TAG, "Exception parsing GoogleSignIn result: ${e.message}")
+                    }
+                }
+
+                // 2. Fallback to AccountManager / Intent extras if GoogleSignIn didn't return profile
+                if (foundProfile == null && data != null) {
+                    var accountName: String? = data.getStringExtra(AccountManager.KEY_ACCOUNT_NAME)
+                    if (accountName.isNullOrBlank()) {
+                        accountName = data.getStringExtra("authAccount")
+                    }
+                    if (accountName.isNullOrBlank()) {
+                        accountName = data.getStringExtra("accountName")
                     }
 
-                    currentSyncState = readCurrentState()
-                    pendingOnSuccess?.invoke(profile)
+                    Log.i(TAG, "Resolved accountName from intent extras: $accountName")
+                    if (!accountName.isNullOrBlank()) {
+                        foundProfile = getProfileForEmail(accountName)
+                    }
+                }
+
+                // 3. Fallback to getLastSignedInAccount if already authorized
+                if (foundProfile == null) {
+                    val lastAccount = GoogleSignIn.getLastSignedInAccount(context)
+                    if (lastAccount != null && !lastAccount.email.isNullOrBlank()) {
+                        Log.i(TAG, "Found last signed in account: ${lastAccount.email}")
+                        foundProfile = lastAccount.toGoogleUserProfile()
+                    }
+                }
+
+                if (foundProfile != null) {
+                    saveAccountToPrefs(foundProfile)
+                    withContext(Dispatchers.Main) {
+                        currentSyncState = readCurrentState()
+                    }
+                    Log.i(TAG, "Successfully completed sign-in for: ${foundProfile.email}")
+                    pendingOnSuccess?.invoke(foundProfile)
                 } else {
-                    pendingOnError?.invoke("No se seleccionó ninguna cuenta")
+                    Log.w(TAG, "Could not resolve signed in profile from activity result (resultCode=$resultCode)")
+                    if (resultCode != Activity.RESULT_CANCELED) {
+                        pendingOnError?.invoke("No se pudo obtener la cuenta seleccionada.")
+                    }
                 }
-            } catch (e: ApiException) {
-                Log.e(TAG, "Google Sign-In failed with status code ${e.statusCode}", e)
-                val msg = when (e.statusCode) {
-                    GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> "Inicio de sesión cancelado"
-                    GoogleSignInStatusCodes.NETWORK_ERROR -> "Error de red al conectar con Google"
-                    else -> "Error (${e.statusCode}): ${e.message}"
-                }
-                pendingOnError?.invoke(msg)
             } catch (e: Exception) {
-                Log.e(TAG, "Error handling Google Sign-In result", e)
-                CrashReporter.recordException(e, "GoogleSignInResult")
-                pendingOnError?.invoke(e.message ?: "Error al procesar cuenta de Google")
+                Log.e(TAG, "Error in handleActivityResult", e)
+                CrashReporter.recordException(e, "AccountPickerResult")
+                pendingOnError?.invoke(e.message ?: "Error al procesar cuenta seleccionada")
             } finally {
                 pendingOnSuccess = null
                 pendingOnError = null
@@ -214,7 +343,7 @@ class AndroidGoogleDriveService(
             try {
                 auth.signOut()
                 val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
-                GoogleSignIn.getClient(context, gso).signOut().await()
+                GoogleSignIn.getClient(context, gso).signOut()
             } catch (e: Exception) {
                 Log.w(TAG, "Error during signOut: ${e.message}")
             } finally {

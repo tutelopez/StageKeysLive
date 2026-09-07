@@ -6,7 +6,13 @@ import androidx.compose.runtime.remember
 class DesktopGoogleDriveService : GoogleDriveService {
     override val state: GoogleDriveSyncState = GoogleDriveSyncState()
 
+    override fun getDeviceAccounts(): List<String> = emptyList()
+
     override fun signIn(onSuccess: (GoogleUserProfile) -> Unit, onError: (String) -> Unit) {
+        onError("Google Sign-In no está soportado en Desktop.")
+    }
+
+    override fun signInWithEmail(email: String, onSuccess: (GoogleUserProfile) -> Unit, onError: (String) -> Unit) {
         onError("Google Sign-In no está soportado en Desktop.")
     }
 

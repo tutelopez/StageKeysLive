@@ -2116,11 +2116,11 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         Column(
                             modifier = Modifier
-                                .width(180.dp)
+                                .width(200.dp)
                                 .fillMaxHeight()
                                 .background(DarkPanel, RoundedCornerShape(8.dp))
                                 .verticalScroll(rememberScrollState())
-                                .padding(8.dp)
+                                .padding(6.dp)
                         ) {
                             val tabs = if (settingsOpenedFromConcert) {
                                 listOf(
@@ -2146,19 +2146,25 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 2.dp)
+                                        .clip(RoundedCornerShape(6.dp))
                                         .background(
-                                            if (isSelected) AccentSky.copy(alpha = 0.15f) else Color.Transparent,
-                                            RoundedCornerShape(4.dp)
+                                            if (isSelected) AccentSky.copy(alpha = 0.18f) else Color.Transparent
                                         )
                                         .border(
                                             1.dp,
                                             if (isSelected) AccentSky else Color.Transparent,
-                                            RoundedCornerShape(4.dp)
+                                            RoundedCornerShape(6.dp)
                                         )
                                         .clickable { activeSettingsTab = tab }
-                                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                                        .padding(horizontal = 10.dp, vertical = 9.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(label, color = if (isSelected) TextLight else TextDark, fontSize = 12.sp)
+                                    Text(
+                                        text = label,
+                                        color = if (isSelected) TextLight else TextDark,
+                                        fontSize = 12.5.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
                                 }
                             }
                         }

@@ -52,6 +52,8 @@ fun AutoBackupSettingsScreen(
 
     // Google Drive dialog states
     var showDriveRestoreDialog by remember { mutableStateOf(false) }
+    var showAccountChooserDialog by remember { mutableStateOf(false) }
+    var detectedAccounts by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoadingDriveBackups by remember { mutableStateOf(false) }
     var driveBackupsList by remember { mutableStateOf<List<DriveBackupItem>>(emptyList()) }
     var selectedBackupToRestore by remember { mutableStateOf<DriveBackupItem?>(null) }
@@ -132,14 +134,20 @@ fun AutoBackupSettingsScreen(
 
                     Button(
                         onClick = {
-                            googleDriveService.signIn(
-                                onSuccess = { profile ->
-                                    onShowSnackbar("¡Bienvenido, ${profile.firstName ?: profile.displayName}!")
-                                },
-                                onError = { err ->
-                                    onShowSnackbar(err)
-                                }
-                            )
+                            val accs = googleDriveService.getDeviceAccounts()
+                            if (accs.isNotEmpty()) {
+                                detectedAccounts = accs
+                                showAccountChooserDialog = true
+                            } else {
+                                googleDriveService.signIn(
+                                    onSuccess = { profile ->
+                                        onShowSnackbar("¡Bienvenido, ${profile.firstName ?: profile.displayName}!")
+                                    },
+                                    onError = { err ->
+                                        onShowSnackbar(err)
+                                    }
+                                )
+                            }
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF4285F4),
@@ -650,6 +658,121 @@ fun AutoBackupSettingsScreen(
                     onClick = { showDriveRestoreDialog = false },
                     enabled = !isRestoringFromDrive
                 ) {
+                    Text("Cancelar", color = TextDark)
+                }
+            },
+            containerColor = DarkPanel
+        )
+    }
+
+    // ─── DIALOG: CHOOSE GOOGLE ACCOUNT ────────────────────────────────────
+    if (showAccountChooserDialog) {
+        AlertDialog(
+            onDismissRequest = { showAccountChooserDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = TablerIcons.BrandGoogle, contentDescription = null, tint = AccentSky, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Selecciona tu cuenta de Google",
+                        color = TextLight,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 300.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = "Elige una cuenta para sincronizar con Google Drive:",
+                        color = TextDark,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    detectedAccounts.forEach { email ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(SurfaceElevated)
+                                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                                .clickable {
+                                    showAccountChooserDialog = false
+                                    googleDriveService.signInWithEmail(
+                                        email = email,
+                                        onSuccess = { profile ->
+                                            onShowSnackbar("¡Bienvenido, ${profile.firstName ?: profile.displayName}!")
+                                        },
+                                        onError = { err ->
+                                            onShowSnackbar(err)
+                                        }
+                                    )
+                                }
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(AccentSky.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = email.firstOrNull()?.uppercase() ?: "G",
+                                        color = AccentSky,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = email,
+                                    color = TextLight,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Option to use system account chooser
+                    OutlinedButton(
+                        onClick = {
+                            showAccountChooserDialog = false
+                            googleDriveService.signIn(
+                                onSuccess = { profile ->
+                                    onShowSnackbar("¡Bienvenido, ${profile.firstName ?: profile.displayName}!")
+                                },
+                                onError = { err ->
+                                    onShowSnackbar(err)
+                                }
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextLight),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("Usar otra cuenta de Google...", fontSize = 12.sp)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAccountChooserDialog = false }) {
                     Text("Cancelar", color = TextDark)
                 }
             },

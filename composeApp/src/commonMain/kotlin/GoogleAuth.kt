@@ -29,7 +29,9 @@ data class GoogleDriveSyncState(
 
 interface GoogleDriveService {
     val state: GoogleDriveSyncState
+    fun getDeviceAccounts(): List<String> = emptyList()
     fun signIn(onSuccess: (GoogleUserProfile) -> Unit, onError: (String) -> Unit)
+    fun signInWithEmail(email: String, onSuccess: (GoogleUserProfile) -> Unit, onError: (String) -> Unit)
     fun signOut()
     suspend fun backupNow(concerts: List<Concert>): Result<Unit>
     suspend fun listBackups(): Result<List<DriveBackupItem>>
