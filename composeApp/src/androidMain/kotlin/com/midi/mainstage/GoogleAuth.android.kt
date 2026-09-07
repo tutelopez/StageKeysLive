@@ -2,17 +2,18 @@ package com.midi.mainstage
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
-import androidx.credentials.CredentialManager
-import androidx.credentials.CustomCredential
-import androidx.credentials.GetCredentialRequest
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
@@ -32,6 +33,11 @@ class AndroidGoogleDriveService(
 
     private val auth = FirebaseAuth.getInstance()
     private val driveManager = GoogleDriveBackupManager(context)
+    private val prefs = context.getSharedPreferences("google_account_prefs", Context.MODE_PRIVATE)
+
+    var activityLauncher: ((Intent) -> Unit)? = null
+    private var pendingOnSuccess: ((GoogleUserProfile) -> Unit)? = null
+    private var pendingOnError: ((String) -> Unit)? = null
 
     var currentSyncState by mutableStateOf(readCurrentState())
         private set
@@ -47,13 +53,62 @@ class AndroidGoogleDriveService(
         }
     }
 
+    private fun saveAccountToPrefs(profile: GoogleUserProfile) {
+        prefs.edit()
+            .putString("user_uid", profile.uid)
+            .putString("user_display_name", profile.displayName)
+            .putString("user_first_name", profile.firstName)
+            .putString("user_email", profile.email)
+            .putString("user_photo_url", profile.photoUrl)
+            .putBoolean("is_signed_in", true)
+            .apply()
+    }
+
+    private fun clearAccountPrefs() {
+        prefs.edit().clear().apply()
+    }
+
     private fun readCurrentState(): GoogleDriveSyncState {
-        val user = auth.currentUser
-        val profile = user?.toGoogleUserProfile()
         val lastTime = driveManager.getLastCloudBackupTime()
+
+        val googleAccount = GoogleSignIn.getLastSignedInAccount(context)
+        if (googleAccount != null) {
+            val profile = googleAccount.toGoogleUserProfile()
+            return GoogleDriveSyncState(
+                isSignedIn = true,
+                user = profile,
+                lastCloudBackupTimestamp = lastTime
+            )
+        }
+
+        val isSavedSignedIn = prefs.getBoolean("is_signed_in", false)
+        if (isSavedSignedIn) {
+            val profile = GoogleUserProfile(
+                uid = prefs.getString("user_uid", "user") ?: "user",
+                displayName = prefs.getString("user_display_name", null),
+                firstName = prefs.getString("user_first_name", null),
+                email = prefs.getString("user_email", null),
+                photoUrl = prefs.getString("user_photo_url", null)
+            )
+            return GoogleDriveSyncState(
+                isSignedIn = true,
+                user = profile,
+                lastCloudBackupTimestamp = lastTime
+            )
+        }
+
+        val user = auth.currentUser
+        if (user != null) {
+            return GoogleDriveSyncState(
+                isSignedIn = true,
+                user = user.toGoogleUserProfile(),
+                lastCloudBackupTimestamp = lastTime
+            )
+        }
+
         return GoogleDriveSyncState(
-            isSignedIn = user != null,
-            user = profile,
+            isSignedIn = false,
+            user = null,
             lastCloudBackupTimestamp = lastTime
         )
     }
@@ -70,85 +125,86 @@ class AndroidGoogleDriveService(
         )
     }
 
+    private fun GoogleSignInAccount.toGoogleUserProfile(): GoogleUserProfile {
+        val full = displayName ?: email ?: "Usuario Google"
+        val first = givenName ?: full.split(" ").firstOrNull()?.trim() ?: full
+        return GoogleUserProfile(
+            uid = id ?: email ?: "google_user",
+            displayName = full,
+            firstName = first,
+            email = email,
+            photoUrl = photoUrl?.toString()
+        )
+    }
+
     override fun signIn(onSuccess: (GoogleUserProfile) -> Unit, onError: (String) -> Unit) {
-        val activity = context as? Activity
-        if (activity == null) {
-            onError("Context is not an Activity")
-            return
-        }
+        pendingOnSuccess = onSuccess
+        pendingOnError = onError
 
         coroutineScope.launch {
             try {
-                // 1. Resolve web client ID if present
-                val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
-                val serverClientId = if (resId != 0) context.getString(resId) else null
+                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestEmail()
+                    .requestScopes(Scope(DRIVE_FILE_SCOPE))
+                    .build()
 
-                var signedInUser: FirebaseUser? = null
+                val client = GoogleSignIn.getClient(context, gso)
+                val signInIntent = client.signInIntent
 
-                if (!serverClientId.isNullOrBlank()) {
-                    // Modern Credential Manager API
-                    try {
-                        val credentialManager = CredentialManager.create(activity)
-                        val googleIdOption = GetGoogleIdOption.Builder()
-                            .setFilterByAuthorizedAccounts(false)
-                            .setServerClientId(serverClientId)
-                            .setAutoSelectEnabled(false)
-                            .build()
-
-                        val request = GetCredentialRequest.Builder()
-                            .addCredentialOption(googleIdOption)
-                            .build()
-
-                        val response = credentialManager.getCredential(activity, request)
-                        val cred = response.credential
-
-                        if (cred is CustomCredential && cred.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(cred.data)
-                            val idToken = googleIdTokenCredential.idToken
-                            val authCredential = GoogleAuthProvider.getCredential(idToken, null)
-                            val authResult = auth.signInWithCredential(authCredential).await()
-                            signedInUser = authResult.user
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Credential Manager flow attempt: ${e.message}")
-                    }
-                }
-
-                // If Credential Manager didn't produce a user (or no web client ID), use GoogleSignInClient with Drive Scope
-                if (signedInUser == null) {
-                    val gsoBuilder = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                        .requestEmail()
-                        .requestScopes(Scope(DRIVE_FILE_SCOPE))
-                    
-                    if (!serverClientId.isNullOrBlank()) {
-                        gsoBuilder.requestIdToken(serverClientId)
-                    }
-
-                    val gso = gsoBuilder.build()
-                    val googleSignInClient = GoogleSignIn.getClient(activity, gso)
-                    
-                    // Check already signed in Google account
-                    val account = GoogleSignIn.getLastSignedInAccount(activity)
-                    if (account != null && account.idToken != null) {
-                        val authCredential = GoogleAuthProvider.getCredential(account.idToken, null)
-                        val authResult = auth.signInWithCredential(authCredential).await()
-                        signedInUser = authResult.user
-                    } else {
-                        // Request intent launch
-                        val signInIntent = googleSignInClient.signInIntent
-                        activity.startActivity(signInIntent)
-                        return@launch
-                    }
-                }
-
-                if (signedInUser != null) {
-                    currentSyncState = readCurrentState()
-                    onSuccess(signedInUser.toGoogleUserProfile())
+                val launcher = activityLauncher
+                if (launcher != null) {
+                    launcher.invoke(signInIntent)
+                } else if (context is Activity) {
+                    context.startActivity(signInIntent)
+                } else {
+                    onError("No se pudo abrir el selector de cuentas de Google.")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error in Google Sign-In", e)
-                CrashReporter.recordException(e, "GoogleSignIn")
-                onError(e.message ?: "Error al iniciar sesión con Google")
+                Log.e(TAG, "Error initiating Google Sign-In", e)
+                CrashReporter.recordException(e, "GoogleSignInInit")
+                onError(e.message ?: "Error al iniciar inicio de sesión")
+            }
+        }
+    }
+
+    fun handleActivityResult(resultCode: Int, data: Intent?) {
+        coroutineScope.launch {
+            try {
+                val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+                val account = task.getResult(ApiException::class.java)
+                if (account != null) {
+                    val profile = account.toGoogleUserProfile()
+                    saveAccountToPrefs(profile)
+
+                    try {
+                        if (account.idToken != null) {
+                            val authCred = GoogleAuthProvider.getCredential(account.idToken, null)
+                            auth.signInWithCredential(authCred).await()
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Firebase credential sign-in note: ${e.message}")
+                    }
+
+                    currentSyncState = readCurrentState()
+                    pendingOnSuccess?.invoke(profile)
+                } else {
+                    pendingOnError?.invoke("No se seleccionó ninguna cuenta")
+                }
+            } catch (e: ApiException) {
+                Log.e(TAG, "Google Sign-In failed with status code ${e.statusCode}", e)
+                val msg = when (e.statusCode) {
+                    GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> "Inicio de sesión cancelado"
+                    GoogleSignInStatusCodes.NETWORK_ERROR -> "Error de red al conectar con Google"
+                    else -> "Error (${e.statusCode}): ${e.message}"
+                }
+                pendingOnError?.invoke(msg)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error handling Google Sign-In result", e)
+                CrashReporter.recordException(e, "GoogleSignInResult")
+                pendingOnError?.invoke(e.message ?: "Error al procesar cuenta de Google")
+            } finally {
+                pendingOnSuccess = null
+                pendingOnError = null
             }
         }
     }
@@ -158,11 +214,13 @@ class AndroidGoogleDriveService(
             try {
                 auth.signOut()
                 val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
-                GoogleSignIn.getClient(context, gso).signOut()
-                driveManager.clearCache()
-                currentSyncState = readCurrentState()
+                GoogleSignIn.getClient(context, gso).signOut().await()
             } catch (e: Exception) {
                 Log.w(TAG, "Error during signOut: ${e.message}")
+            } finally {
+                clearAccountPrefs()
+                driveManager.clearCache()
+                currentSyncState = readCurrentState()
             }
         }
     }
@@ -190,6 +248,24 @@ class AndroidGoogleDriveService(
 actual fun rememberGoogleDriveService(): GoogleDriveService {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val service = remember { AndroidGoogleDriveService(context, coroutineScope) }
+    val service = remember(context, coroutineScope) {
+        AndroidGoogleDriveService(context, coroutineScope)
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        service.handleActivityResult(result.resultCode, result.data)
+    }
+
+    DisposableEffect(service, launcher) {
+        service.activityLauncher = { intent ->
+            launcher.launch(intent)
+        }
+        onDispose {
+            service.activityLauncher = null
+        }
+    }
+
     return service
 }

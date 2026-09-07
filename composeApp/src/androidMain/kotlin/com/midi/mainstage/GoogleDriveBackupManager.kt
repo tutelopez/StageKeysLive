@@ -28,9 +28,18 @@ class GoogleDriveBackupManager(private val context: Context) {
 
     suspend fun getAccessToken(): String? = withContext(Dispatchers.IO) {
         try {
-            val user = FirebaseAuth.getInstance().currentUser ?: return@withContext null
-            val email = user.email ?: return@withContext null
-            GoogleAuthUtil.getToken(context, email, DRIVE_SCOPE)
+            val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(context)
+            val email = account?.email ?: run {
+                val accountPrefs = context.getSharedPreferences("google_account_prefs", Context.MODE_PRIVATE)
+                accountPrefs.getString("user_email", null)
+            } ?: FirebaseAuth.getInstance().currentUser?.email ?: return@withContext null
+
+            val acct = account?.account
+            if (acct != null) {
+                GoogleAuthUtil.getToken(context, acct, DRIVE_SCOPE)
+            } else {
+                GoogleAuthUtil.getToken(context, email, DRIVE_SCOPE)
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to obtain Drive OAuth token: ${e.message}")
             CrashReporter.recordException(e, "GoogleDriveGetToken")
