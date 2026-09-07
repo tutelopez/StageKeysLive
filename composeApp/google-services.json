@@ -1,13 +1,13 @@
-﻿{
+{
   "project_info": {
-    "project_number": "100000000000",
-    "project_id": "stagekeys-live-app",
-    "storage_bucket": "stagekeys-live-app.appspot.com"
+    "project_number": "869858283130",
+    "project_id": "stagekeys-live",
+    "storage_bucket": "stagekeys-live.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:100000000000:android:a1b2c3d4e5f60718293a4b",
+        "mobilesdk_app_id": "1:869858283130:android:e4d4768aec8ccbdb7675c3",
         "android_client_info": {
           "package_name": "com.midi.mainstage"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDummyKeyForStageKeysLiveTelemetry01"
+          "current_key": "AIzaSyCZkELIpkNCkFPlaj6bptw8xQ9Qk3uVA1o"
         }
       ],
       "services": {
