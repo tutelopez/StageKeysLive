@@ -45,6 +45,17 @@ class AndroidGoogleDriveService(
         get() = currentSyncState
 
     init {
+        driveManager.onAuthRecoveryNeeded = { intent ->
+            val launcher = activityLauncher
+            if (launcher != null) {
+                launcher.invoke(intent)
+            } else if (context is Activity) {
+                context.startActivity(intent)
+            } else {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            }
+        }
         auth.addAuthStateListener {
             coroutineScope.launch {
                 currentSyncState = readCurrentState()

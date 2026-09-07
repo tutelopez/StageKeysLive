@@ -2,7 +2,9 @@ package com.midi.mainstage
 
 import android.content.Context
 import android.util.Log
+import com.google.android.gms.auth.GoogleAuthException
 import com.google.android.gms.auth.GoogleAuthUtil
+import com.google.android.gms.auth.UserRecoverableAuthException
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,53 +27,98 @@ private const val MAX_BACKUPS_RETAINED = 10
 class GoogleDriveBackupManager(private val context: Context) {
 
     private val prefs = context.getSharedPreferences("GoogleDriveBackupPrefs", Context.MODE_PRIVATE)
+    var onAuthRecoveryNeeded: ((android.content.Intent) -> Unit)? = null
 
     suspend fun getAccessToken(): String? = withContext(Dispatchers.IO) {
-        try {
-            val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(context)
-            val email = account?.email ?: run {
-                val accountPrefs = context.getSharedPreferences("google_account_prefs", Context.MODE_PRIVATE)
-                accountPrefs.getString("user_email", null)
-            } ?: FirebaseAuth.getInstance().currentUser?.email ?: return@withContext null
+        val accountPrefs = context.getSharedPreferences("google_account_prefs", Context.MODE_PRIVATE)
+        val email = accountPrefs.getString("user_email", null)
+            ?: com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(context)?.email
+            ?: FirebaseAuth.getInstance().currentUser?.email
+            ?: return@withContext null
 
-            val acct = account?.account
-            if (acct != null) {
-                GoogleAuthUtil.getToken(context, acct, DRIVE_SCOPE)
-            } else {
-                GoogleAuthUtil.getToken(context, email, DRIVE_SCOPE)
+        try {
+            Log.i(TAG, "Requesting Drive OAuth token for $email")
+            val token = GoogleAuthUtil.getToken(context, email, DRIVE_SCOPE)
+            Log.i(TAG, "Drive OAuth token obtained successfully")
+            token
+        } catch (e: UserRecoverableAuthException) {
+            Log.w(TAG, "User recoverable auth exception for Drive: ${e.message}")
+            val intent = e.intent
+            if (intent != null) {
+                onAuthRecoveryNeeded?.invoke(intent) ?: run {
+                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                }
             }
+            throw IllegalStateException("Por favor autoriza el permiso de Google Drive en la pantalla de tu dispositivo y vuelve a intentar.")
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to obtain Drive OAuth token: ${e.message}")
+            Log.e(TAG, "Failed to obtain Drive OAuth token: ${e.message}", e)
             CrashReporter.recordException(e, "GoogleDriveGetToken")
-            null
+            val msg = when {
+                e.message?.contains("UnregisteredOnApiConsole", ignoreCase = true) == true ->
+                    "Google Drive API no está habilitada o la huella SHA-1 de la app no está registrada en Google Cloud / Firebase Console."
+                else -> "Error de autenticación con Google Drive: ${e.message}"
+            }
+            throw IllegalStateException(msg)
+        }
+    }
+
+    fun invalidateToken(token: String) {
+        try {
+            GoogleAuthUtil.clearToken(context, token)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to clear Drive token: ${e.message}")
         }
     }
 
     suspend fun getOrCreateFolderId(token: String): String = withContext(Dispatchers.IO) {
         val cachedId = prefs.getString("drive_folder_id", null)
         if (!cachedId.isNullOrBlank()) {
-            return@withContext cachedId
+            // Verify if cached folder exists and is valid
+            try {
+                val checkUrl = "https://www.googleapis.com/drive/v3/files/$cachedId?fields=id,trashed"
+                val conn = (URL(checkUrl).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    setRequestProperty("Authorization", "Bearer $token")
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                }
+                if (conn.responseCode == 200) {
+                    val resp = conn.inputStream.bufferedReader().use { it.readText() }
+                    val json = JSONObject(resp)
+                    if (!json.optBoolean("trashed", false)) {
+                        return@withContext cachedId
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Cached folder check failed: ${e.message}")
+            }
+            prefs.edit().remove("drive_folder_id").apply()
         }
 
         // Search for existing folder
-        val query = java.net.URLEncoder.encode("name = '$FOLDER_NAME' and mimeType = 'application/vnd.google-apps.folder' and trashed = false", "UTF-8")
-        val searchUrl = "https://www.googleapis.com/drive/v3/files?q=$query&fields=files(id,name)"
-        val conn = (URL(searchUrl).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            setRequestProperty("Authorization", "Bearer $token")
-            connectTimeout = 15000
-            readTimeout = 15000
-        }
-
-        if (conn.responseCode == 200) {
-            val response = conn.inputStream.bufferedReader().use { it.readText() }
-            val json = JSONObject(response)
-            val files = json.optJSONArray("files")
-            if (files != null && files.length() > 0) {
-                val folderId = files.getJSONObject(0).getString("id")
-                prefs.edit().putString("drive_folder_id", folderId).apply()
-                return@withContext folderId
+        try {
+            val query = java.net.URLEncoder.encode("name = '$FOLDER_NAME' and mimeType = 'application/vnd.google-apps.folder' and trashed = false", "UTF-8")
+            val searchUrl = "https://www.googleapis.com/drive/v3/files?q=$query&fields=files(id,name)"
+            val conn = (URL(searchUrl).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Authorization", "Bearer $token")
+                connectTimeout = 15000
+                readTimeout = 15000
             }
+
+            if (conn.responseCode == 200) {
+                val response = conn.inputStream.bufferedReader().use { it.readText() }
+                val json = JSONObject(response)
+                val files = json.optJSONArray("files")
+                if (files != null && files.length() > 0) {
+                    val folderId = files.getJSONObject(0).getString("id")
+                    prefs.edit().putString("drive_folder_id", folderId).apply()
+                    return@withContext folderId
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Search folder error: ${e.message}")
         }
 
         // Create folder if not found
@@ -98,7 +145,9 @@ class GoogleDriveBackupManager(private val context: Context) {
             prefs.edit().putString("drive_folder_id", folderId).apply()
             return@withContext folderId
         } else {
-            throw IOException("Failed to create Drive folder: HTTP ${createConn.responseCode}")
+            val err = createConn.errorStream?.bufferedReader()?.use { it.readText() } ?: ""
+            Log.e(TAG, "Failed to create Drive folder: HTTP ${createConn.responseCode} - $err")
+            throw IOException("Fallo al crear carpeta en Google Drive: HTTP ${createConn.responseCode}")
         }
     }
 
@@ -149,12 +198,12 @@ class GoogleDriveBackupManager(private val context: Context) {
                     put("timestamp", timestamp)
                 }
                 zout.putNextEntry(ZipEntry("manifest.json"))
-                zout.write(manifest.toString().toByteArray())
+                zout.write(manifest.toString().toByteArray(Charsets.UTF_8))
                 zout.closeEntry()
 
                 val concertsJsonStr = ConcertSerializer.serialize(updatedConcerts)
                 zout.putNextEntry(ZipEntry("concerts.json"))
-                zout.write(concertsJsonStr.toByteArray())
+                zout.write(concertsJsonStr.toByteArray(Charsets.UTF_8))
                 zout.closeEntry()
 
                 sf2Paths.forEach { absPath ->
@@ -186,31 +235,30 @@ class GoogleDriveBackupManager(private val context: Context) {
                 put("parents", JSONArray().put(folderId))
             }
 
-            val outputStream = conn.outputStream
-            val writer = PrintWriter(OutputStreamWriter(outputStream, "UTF-8"), true)
+            conn.outputStream.use { out ->
+                // Metadata Part
+                out.write("--$boundary\r\n".toByteArray(Charsets.UTF_8))
+                out.write("Content-Type: application/json; charset=UTF-8\r\n\r\n".toByteArray(Charsets.UTF_8))
+                out.write(metaJson.toString().toByteArray(Charsets.UTF_8))
+                out.write("\r\n".toByteArray(Charsets.UTF_8))
 
-            // Metadata Part
-            writer.append("--$boundary\r\n")
-            writer.append("Content-Type: application/json; charset=UTF-8\r\n\r\n")
-            writer.append(metaJson.toString()).append("\r\n")
-            writer.flush()
-
-            // Media Part
-            writer.append("--$boundary\r\n")
-            writer.append("Content-Type: application/zip\r\n\r\n")
-            writer.flush()
-
-            FileInputStream(tempZip).use { input ->
-                input.copyTo(outputStream)
+                // Media Part
+                out.write("--$boundary\r\n".toByteArray(Charsets.UTF_8))
+                out.write("Content-Type: application/zip\r\n\r\n".toByteArray(Charsets.UTF_8))
+                FileInputStream(tempZip).use { input ->
+                    input.copyTo(out)
+                }
+                out.write("\r\n--$boundary--\r\n".toByteArray(Charsets.UTF_8))
+                out.flush()
             }
-            outputStream.flush()
-
-            writer.append("\r\n--$boundary--\r\n")
-            writer.flush()
-            writer.close()
 
             val responseCode = conn.responseCode
             tempZip.delete()
+
+            if (responseCode == 401) {
+                invalidateToken(token)
+                return@withContext Result.failure(IllegalStateException("Token expirado. Por favor intenta respaldar nuevamente."))
+            }
 
             if (responseCode in 200..299) {
                 prefs.edit().putLong("last_cloud_backup_time", timestamp).apply()
@@ -278,60 +326,79 @@ class GoogleDriveBackupManager(private val context: Context) {
             val token = getAccessToken() ?: return@withContext Result.failure(IllegalStateException("No autenticado"))
             val folderId = getOrCreateFolderId(token)
 
-            val query = java.net.URLEncoder.encode("'$folderId' in parents and trashed = false", "UTF-8")
-            val listUrl = "https://www.googleapis.com/drive/v3/files?q=$query&fields=files(id,name,createdTime,size)&orderBy=createdTime+desc"
-            val conn = (URL(listUrl).openConnection() as HttpURLConnection).apply {
+            // Try query by folder parent, fallback to name query if empty
+            var query = java.net.URLEncoder.encode("'$folderId' in parents and trashed = false", "UTF-8")
+            var listUrl = "https://www.googleapis.com/drive/v3/files?q=$query&fields=files(id,name,createdTime,size)&orderBy=createdTime+desc"
+            var conn = (URL(listUrl).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 setRequestProperty("Authorization", "Bearer $token")
                 connectTimeout = 15000
                 readTimeout = 15000
             }
 
+            var files: JSONArray? = null
             if (conn.responseCode == 200) {
                 val res = conn.inputStream.bufferedReader().use { it.readText() }
-                val files = JSONObject(res).optJSONArray("files") ?: JSONArray()
-                val list = mutableListOf<DriveBackupItem>()
-
-                val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-                    timeZone = TimeZone.getTimeZone("UTC")
-                }
-                val humanFormat = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
-
-                for (i in 0 until files.length()) {
-                    val f = files.getJSONObject(i)
-                    val id = f.getString("id")
-                    val name = f.getString("name")
-                    val createdIso = f.optString("createdTime", "")
-                    val size = f.optLong("size", 0L)
-
-                    val timestamp = try {
-                        isoFormat.parse(createdIso)?.time ?: System.currentTimeMillis()
-                    } catch (e: Exception) {
-                        System.currentTimeMillis()
-                    }
-
-                    val dateStr = humanFormat.format(Date(timestamp))
-                    val sizeStr = if (size > 1024 * 1024) {
-                        String.format(Locale.US, "%.1f MB", size.toDouble() / (1024 * 1024))
-                    } else {
-                        String.format(Locale.US, "%.1f KB", size.toDouble() / 1024)
-                    }
-
-                    list.add(
-                        DriveBackupItem(
-                            id = id,
-                            name = name,
-                            createdTimeFormatted = dateStr,
-                            timestamp = timestamp,
-                            sizeFormatted = sizeStr
-                        )
-                    )
-                }
-                Result.success(list)
-            } else {
-                Result.failure(IOException("Error al listar respaldos: HTTP ${conn.responseCode}"))
+                files = JSONObject(res).optJSONArray("files")
             }
+
+            if (files == null || files.length() == 0) {
+                // Secondary search for any StageKeysLive backup in the user's Drive app scope
+                query = java.net.URLEncoder.encode("name contains 'StageKeysLive_Backup_' and trashed = false", "UTF-8")
+                listUrl = "https://www.googleapis.com/drive/v3/files?q=$query&fields=files(id,name,createdTime,size)&orderBy=createdTime+desc"
+                val conn2 = (URL(listUrl).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    setRequestProperty("Authorization", "Bearer $token")
+                    connectTimeout = 15000
+                    readTimeout = 15000
+                }
+                if (conn2.responseCode == 200) {
+                    val res = conn2.inputStream.bufferedReader().use { it.readText() }
+                    files = JSONObject(res).optJSONArray("files")
+                }
+            }
+
+            val validFiles = files ?: JSONArray()
+            val list = mutableListOf<DriveBackupItem>()
+
+            val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            val humanFormat = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+
+            for (i in 0 until validFiles.length()) {
+                val f = validFiles.getJSONObject(i)
+                val id = f.getString("id")
+                val name = f.getString("name")
+                val createdIso = f.optString("createdTime", "")
+                val size = f.optLong("size", 0L)
+
+                val timestamp = try {
+                    isoFormat.parse(createdIso)?.time ?: System.currentTimeMillis()
+                } catch (e: Exception) {
+                    System.currentTimeMillis()
+                }
+
+                val dateStr = humanFormat.format(Date(timestamp))
+                val sizeStr = if (size > 1024 * 1024) {
+                    String.format(Locale.US, "%.1f MB", size.toDouble() / (1024 * 1024))
+                } else {
+                    String.format(Locale.US, "%.1f KB", size.toDouble() / 1024)
+                }
+
+                list.add(
+                    DriveBackupItem(
+                        id = id,
+                        name = name,
+                        createdTimeFormatted = dateStr,
+                        timestamp = timestamp,
+                        sizeFormatted = sizeStr
+                    )
+                )
+            }
+            Result.success(list)
         } catch (e: Exception) {
+            Log.e(TAG, "Error listing backups: ${e.message}", e)
             CrashReporter.recordException(e, "GoogleDriveListBackups")
             Result.failure(e)
         }

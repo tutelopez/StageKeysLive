@@ -230,6 +230,27 @@ fun AutoBackupSettingsScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
+                    // Inline Status/Feedback Message
+                    var driveStatusMessage by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
+                    if (driveStatusMessage != null) {
+                        val (msg, isSuccess) = driveStatusMessage!!
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isSuccess) StatusSuccess.copy(alpha = 0.15f) else StatusError.copy(alpha = 0.15f))
+                                .border(1.dp, if (isSuccess) StatusSuccess.copy(alpha = 0.5f) else StatusError.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = msg,
+                                color = if (isSuccess) StatusSuccess else StatusError,
+                                fontSize = 11.5.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
                     // Cloud Action Buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -239,12 +260,16 @@ fun AutoBackupSettingsScreen(
                         Button(
                             onClick = {
                                 if (!driveState.isBackingUp) {
+                                    driveStatusMessage = null
                                     coroutineScope.launch {
                                         val res = googleDriveService.backupNow(concerts)
                                         res.onSuccess {
+                                            driveStatusMessage = Pair("¡Copia subida a Google Drive exitosamente!", true)
                                             onShowSnackbar("¡Copia subida a Google Drive!")
                                         }.onFailure { err ->
-                                            onShowSnackbar("Error al subir a Drive: ${err.message}")
+                                            val errText = err.message ?: "Error desconocido"
+                                            driveStatusMessage = Pair("Error al subir a Drive: $errText", false)
+                                            onShowSnackbar("Error al subir a Drive: $errText")
                                         }
                                     }
                                 }
