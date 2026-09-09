@@ -137,4 +137,11 @@ actual class PlatformAudioSynth actual constructor() {
     actual fun setMasterChorusParams(nr: Int, level: Float, speed: Float, depth: Float) {}
     actual fun setMasterLimiterEnabled(enabled: Boolean) {}
     actual fun isMasterLimiterActive(): Boolean = false
+
+    // --- Audio Diagnostics & Telemetry ---
+    actual fun getActiveVoiceCount(): Int = 0
+    actual fun getDspCpuLoad(): Double = 0.0
+    actual fun getPeakDspCpuLoad(): Double = 0.0
+    actual fun resetPeakDspCpuLoad() {}
+    actual fun getXRunCount(): Int = 0
 }

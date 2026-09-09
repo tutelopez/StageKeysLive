@@ -74,4 +74,11 @@ expect class PlatformAudioSynth() {
     // --- Master Bus Limiter ---
     fun setMasterLimiterEnabled(enabled: Boolean)
     fun isMasterLimiterActive(): Boolean
+
+    // --- Audio Diagnostics & Telemetry ---
+    fun getActiveVoiceCount(): Int
+    fun getDspCpuLoad(): Double
+    fun getPeakDspCpuLoad(): Double
+    fun resetPeakDspCpuLoad()
+    fun getXRunCount(): Int
 }

@@ -15,30 +15,37 @@
 
 #include <fluidsynth.h>
 #include <android/asset_manager_jni.h>
+#include <oboe/Oboe.h>
 #include "pad_engine.h"
 
-class MainstageAudioEngine {
+#define NUM_PHYSICAL_CHANNELS 32
+#define NUM_LOGICAL_CHANNELS 8
+#define GLOBAL_POLYPHONY 64
+#define SHADOW_SYSTEM_ENABLED 1
+#define PREVIEW_CHANNEL (NUM_PHYSICAL_CHANNELS - 1)
+
+class MainstageAudioEngine : public oboe::AudioStreamDataCallback {
 private:
     std::mutex synthMutex;
     
     // Internal synth settings per channel
-    int sfids[16];
-    int currentPrograms[16];
+    int sfids[NUM_PHYSICAL_CHANNELS];
+    int currentPrograms[NUM_PHYSICAL_CHANNELS];
     
     std::map<std::string, int> loadedSfPaths;
     std::map<int, int> sfidRefCount;
 
-    int activeNotes[16]; 
-    int physicalActive[8]; 
-    std::vector<int> shadowChannelsOf[8];
-    bool physicalInUse[16];
-    long long shadowTimestamp[16];
+    int activeNotes[NUM_PHYSICAL_CHANNELS]; 
+    int physicalActive[NUM_LOGICAL_CHANNELS]; 
+    std::vector<int> shadowChannelsOf[NUM_LOGICAL_CHANNELS];
+    bool physicalInUse[NUM_PHYSICAL_CHANNELS];
+    long long shadowTimestamp[NUM_PHYSICAL_CHANNELS];
     float masterVolume = 0.8f;
     float reverbMix = 0.3f;
     float filterCutoff = 0.5f;
     bool audioReady = false;
 
-    // Scratch/Preview channel state (reserved on physical channel 15)
+    // Scratch/Preview channel state (reserved on physical channel PREVIEW_CHANNEL)
     int previewSfid = -1;
     std::atomic<int> previewGeneration{0};
 
@@ -48,46 +55,87 @@ private:
 
     fluid_settings_t* fluidSettings = nullptr;
     fluid_synth_t* fluidSynth = nullptr;
-    fluid_audio_driver_t* fluidAudioDriver = nullptr;
+    std::shared_ptr<oboe::AudioStream> mStream;
+    
+    std::atomic<double> smoothedDspCpuLoad{0.0};
+    std::atomic<double> peakDspCpuLoad{0.0};
+    double actualSampleRate = 48000.0;
+    std::string actualSharingMode = "Shared";
+    int actualBufferFrames = 256;
 
-    static int audioProcessCallback(void *data, int len, int nfx, float *fx[], int nout, float *out[]) {
-        MainstageAudioEngine* engine = static_cast<MainstageAudioEngine*>(data);
-        if (engine == nullptr || engine->fluidSynth == nullptr) return FLUID_FAILED;
+    void applyLimiterInterleaved(float* buf, int len) {
+        const float threshold = 0.85f;
+        const float invScale = 1.0f / (1.0f - threshold);
+        bool triggered = false;
+        int totalSamples = len * 2;
 
-        int ret;
-        if (nfx == 0) {
-            float *fxb[4] = {out[0], out[1], out[0], out[1]};
-            ret = fluid_synth_process(engine->fluidSynth, len, 4, fxb, nout, out);
-        } else {
-            ret = fluid_synth_process(engine->fluidSynth, len, nfx, fx, nout, out);
+        for (int i = 0; i < totalSamples; i++) {
+            float s = buf[i];
+            if (s > threshold) {
+                buf[i] = threshold + (1.0f - threshold) * std::tanh((s - threshold) * invScale);
+                triggered = true;
+            } else if (s < -threshold) {
+                buf[i] = -threshold + (1.0f - threshold) * std::tanh((s + threshold) * invScale);
+                triggered = true;
+            }
         }
-
-        if (engine->isLimiterEnabled()) {
-            engine->applyLimiter(out, nout, len);
+        if (triggered) {
+            limiterTriggered.store(true, std::memory_order_relaxed);
         }
-
-        return ret;
     }
 
 public:
     MainstageAudioEngine() {
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < NUM_PHYSICAL_CHANNELS; i++) {
             sfids[i] = -1;
             currentPrograms[i] = 0;
             activeNotes[i] = 0;
             physicalInUse[i] = false;
             shadowTimestamp[i] = 0;
         }
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < NUM_LOGICAL_CHANNELS; i++) {
             physicalActive[i] = i; // Map logical channel i to physical channel i initially
             physicalInUse[i] = true;
         }
-        // Channel 15 is reserved exclusively for scratch SoundFont preview
-        physicalInUse[15] = true;
+        // Reserve last channel for preview
+        physicalInUse[PREVIEW_CHANNEL] = true;
     }
 
     ~MainstageAudioEngine() {
         stop();
+    }
+
+    oboe::DataCallbackResult onAudioReady(oboe::AudioStream* audioStream, void* audioData, int32_t numFrames) override {
+        auto t0 = std::chrono::high_resolution_clock::now();
+
+        float* outBuffer = static_cast<float*>(audioData);
+        if (fluidSynth != nullptr) {
+            fluid_synth_write_float(fluidSynth, numFrames, outBuffer, 0, 2, outBuffer, 1, 2);
+        } else {
+            memset(outBuffer, 0, numFrames * 2 * sizeof(float));
+        }
+
+        if (isLimiterEnabled()) {
+            applyLimiterInterleaved(outBuffer, numFrames);
+        }
+
+        auto t1 = std::chrono::high_resolution_clock::now();
+        double elapsedSec = std::chrono::duration<double>(t1 - t0).count();
+        double sr = (actualSampleRate > 0.0) ? actualSampleRate : 48000.0;
+        double budgetSec = (double)numFrames / sr;
+        if (budgetSec > 0.0) {
+            double instantCpu = (elapsedSec / budgetSec) * 100.0;
+            double prev = smoothedDspCpuLoad.load(std::memory_order_relaxed);
+            double smoothed = (prev == 0.0) ? instantCpu : ((prev * 0.90) + (instantCpu * 0.10));
+            smoothedDspCpuLoad.store(smoothed, std::memory_order_relaxed);
+            
+            double curPeak = peakDspCpuLoad.load(std::memory_order_relaxed);
+            if (instantCpu > curPeak) {
+                peakDspCpuLoad.store(instantCpu, std::memory_order_relaxed);
+            }
+        }
+
+        return oboe::DataCallbackResult::Continue;
     }
 
     bool isAudioReady() const { return audioReady; }
@@ -96,100 +144,97 @@ public:
     void setLimiterEnabled(bool enabled) { limiterEnabled.store(enabled, std::memory_order_relaxed); }
     bool isLimiterActive() { return limiterTriggered.exchange(false, std::memory_order_relaxed); }
 
-    void applyLimiter(float *out[], int nout, int len) {
-        const float threshold = 0.85f;
-        const float invScale = 1.0f / (1.0f - threshold);
-        bool triggered = false;
-
-        for (int c = 0; c < nout; c++) {
-            float* buf = out[c];
-            if (buf == nullptr) continue;
-            for (int i = 0; i < len; i++) {
-                float s = buf[i];
-                if (s > threshold) {
-                    buf[i] = threshold + (1.0f - threshold) * std::tanh((s - threshold) * invScale);
-                    triggered = true;
-                } else if (s < -threshold) {
-                    buf[i] = -threshold + (1.0f - threshold) * std::tanh((s + threshold) * invScale);
-                    triggered = true;
-                }
+    int getXRunCount() {
+        if (mStream) {
+            auto res = mStream->getXRunCount();
+            if (res) {
+                return res.value();
             }
         }
-        if (triggered) {
-            limiterTriggered.store(true, std::memory_order_relaxed);
-        }
+        return 0;
     }
 
-    std::string actualSharingMode = "Shared";
-    int actualBufferFrames = 256;
+    double getDspCpuLoad() {
+        return smoothedDspCpuLoad.load(std::memory_order_relaxed);
+    }
+
+    double getPeakDspCpuLoad() {
+        return peakDspCpuLoad.load(std::memory_order_relaxed);
+    }
+
+    void resetPeakDspCpuLoad() {
+        peakDspCpuLoad.store(0.0, std::memory_order_relaxed);
+    }
 
     void init(int sampleRate, int bufferFrames, bool isUsbDevice = false) {
         std::lock_guard<std::mutex> lock(synthMutex);
         audioReady = false;
+        actualSampleRate = (sampleRate > 0) ? (double)sampleRate : 48000.0;
+        smoothedDspCpuLoad.store(0.0);
+        peakDspCpuLoad.store(0.0);
 
         fluidSettings = new_fluid_settings();
         
-        // Use Oboe as the audio driver (FluidSynth 2.2+ supports Oboe on Android)
-        fluid_settings_setstr(fluidSettings, "audio.driver", "oboe");
-        
-        // Optimize fluidsynth settings for low latency mobile rendering
         fluid_settings_setstr(fluidSettings, "synth.reverb.active", "yes");
-        fluid_settings_setstr(fluidSettings, "synth.chorus.active", "no");
-        fluid_settings_setnum(fluidSettings, "synth.sample-rate", (double)sampleRate);
-        fluid_settings_setint(fluidSettings, "synth.polyphony", 64);
-        
-        // Try to set Oboe specific hints
-        fluid_settings_setstr(fluidSettings, "audio.oboe.performance-mode", "LowLatency");
-        if (bufferFrames > 0) {
-            fluid_settings_setint(fluidSettings, "audio.period-size", bufferFrames);
-            actualBufferFrames = bufferFrames;
-        } else {
-            actualBufferFrames = 0; // Auto burst
-        }
-        fluid_settings_setint(fluidSettings, "audio.periods", 2);
+        fluid_settings_setstr(fluidSettings, "synth.chorus.active", "yes");
+        fluid_settings_setnum(fluidSettings, "synth.sample-rate", actualSampleRate);
+        fluid_settings_setint(fluidSettings, "synth.polyphony", GLOBAL_POLYPHONY);
+        fluid_settings_setint(fluidSettings, "synth.midi-channels", NUM_PHYSICAL_CHANNELS);
         
         fluidSynth = new_fluid_synth(fluidSettings);
         if (fluidSynth == nullptr) {
             LOGE("FluidSynth: failed to create synth instance");
             return;
         } 
-        LOGI("FluidSynth: synth instance created OK");
+        LOGI("FluidSynth: synth instance created OK (%d midi-channels, %d polyphony)", NUM_PHYSICAL_CHANNELS, GLOBAL_POLYPHONY);
 
+        oboe::AudioStreamBuilder builder;
+        builder.setDirection(oboe::Direction::Output);
+        builder.setPerformanceMode(oboe::PerformanceMode::LowLatency);
+        builder.setFormat(oboe::AudioFormat::Float);
+        builder.setChannelCount(2); // Stereo
+        builder.setSampleRate((int)actualSampleRate);
+        if (bufferFrames > 0) {
+            builder.setFramesPerDataCallback(bufferFrames);
+        }
+        builder.setDataCallback(this);
+
+        oboe::Result result = oboe::Result::ErrorInternal;
         if (isUsbDevice) {
-            LOGI("FluidSynth: USB device detected, trying audio.oboe.sharing-mode = Exclusive");
-            fluid_settings_setstr(fluidSettings, "audio.oboe.sharing-mode", "Exclusive");
-            fluidAudioDriver = new_fluid_audio_driver2(fluidSettings, audioProcessCallback, this);
-            if (fluidAudioDriver != nullptr) {
-                actualSharingMode = "Exclusive";
-                LOGI("FluidSynth: Opened in Exclusive sharing mode successfully");
+            LOGI("MainstageAudioEngine: USB device detected, trying Exclusive mode");
+            builder.setSharingMode(oboe::SharingMode::Exclusive);
+            result = builder.openStream(mStream);
+            if (result != oboe::Result::OK) {
+                LOGW("MainstageAudioEngine: Exclusive mode failed (%s). Falling back to Shared mode.", oboe::convertToText(result));
+                builder.setSharingMode(oboe::SharingMode::Shared);
+                result = builder.openStream(mStream);
+                actualSharingMode = "Shared";
             } else {
-                LOGW("FluidSynth: Exclusive sharing mode failed. Falling back to Shared mode.");
-                fluid_settings_setstr(fluidSettings, "audio.oboe.sharing-mode", "Shared");
-                fluidAudioDriver = new_fluid_audio_driver2(fluidSettings, audioProcessCallback, this);
-                if (fluidAudioDriver != nullptr) {
-                    actualSharingMode = "Shared";
-                    LOGI("FluidSynth: Opened in Shared mode (fallback) successfully");
-                }
+                actualSharingMode = "Exclusive";
+                LOGI("MainstageAudioEngine: Opened stream in Exclusive mode OK");
             }
         } else {
             actualSharingMode = "Shared";
-            fluid_settings_setstr(fluidSettings, "audio.oboe.sharing-mode", "Shared");
-            fluidAudioDriver = new_fluid_audio_driver2(fluidSettings, audioProcessCallback, this);
+            builder.setSharingMode(oboe::SharingMode::Shared);
+            result = builder.openStream(mStream);
         }
 
-        if (fluidAudioDriver == nullptr) {
-            LOGE("FluidSynth: failed to create Oboe audio driver with process callback, falling back to opensles");
-            fluid_settings_setstr(fluidSettings, "audio.driver", "opensles");
-            actualSharingMode = "OpenSLES";
-            fluidAudioDriver = new_fluid_audio_driver2(fluidSettings, audioProcessCallback, this);
+        if (result != oboe::Result::OK || !mStream) {
+            LOGE("MainstageAudioEngine: Failed to open Oboe stream. Error: %s", oboe::convertToText(result));
+            return;
         }
 
-        if (fluidAudioDriver != nullptr) {
-            audioReady = true;
-            LOGI("FluidSynth: audio driver with Master Limiter created successfully (%s)", actualSharingMode.c_str());
-        } else {
-            LOGE("CRITICAL: FluidSynth could not create any audio driver!");
+        result = mStream->requestStart();
+        if (result != oboe::Result::OK) {
+            LOGE("MainstageAudioEngine: Failed to start Oboe stream. Error: %s", oboe::convertToText(result));
+            return;
         }
+
+        audioReady = true;
+        actualBufferFrames = mStream->getFramesPerBurst();
+        actualSampleRate = mStream->getSampleRate();
+        LOGI("MainstageAudioEngine: Oboe stream started successfully (SR=%.0f, Burst=%d, Sharing=%s)",
+             actualSampleRate, actualBufferFrames, actualSharingMode.c_str());
     }
 
     void stop() {
@@ -197,13 +242,14 @@ public:
         audioReady = false;
 
         // Reset sfids before destroying the synth to avoid orphaned IDs on restart
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < NUM_PHYSICAL_CHANNELS; i++) {
             sfids[i] = -1;
         }
 
-        if (fluidAudioDriver != nullptr) {
-            delete_fluid_audio_driver(fluidAudioDriver);
-            fluidAudioDriver = nullptr;
+        if (mStream) {
+            mStream->stop();
+            mStream->close();
+            mStream.reset();
         }
         if (fluidSynth != nullptr) {
             delete_fluid_synth(fluidSynth);
@@ -222,18 +268,19 @@ public:
 
         {
             std::lock_guard<std::mutex> lock(synthMutex);
-            if (fluidSynth == nullptr || logicalChannel < 0 || logicalChannel > 7) {
+            if (fluidSynth == nullptr || logicalChannel < 0 || logicalChannel >= NUM_LOGICAL_CHANNELS) {
                 return false;
             }
             
+#if SHADOW_SYSTEM_ENABLED
             int oldPhys = physicalActive[logicalChannel];
             
             // Ping-pong if there are active notes on current physical channel
             if (activeNotes[oldPhys] > 0) {
                 targetPhys = -1;
                 
-                // 1. Search for a free physical channel
-                for (int i = 0; i < 16; i++) {
+                // 1. Search for a free physical channel (reserve PREVIEW_CHANNEL for preview)
+                for (int i = 0; i < PREVIEW_CHANNEL; i++) {
                     if (!physicalInUse[i]) {
                         targetPhys = i;
                         break;
@@ -246,7 +293,7 @@ public:
                     int oldestPhys = -1;
                     int oldestLogicalOwner = -1;
                     
-                    for (int l = 0; l < 8; l++) {
+                    for (int l = 0; l < NUM_LOGICAL_CHANNELS; l++) {
                         for (int s : shadowChannelsOf[l]) {
                             if (oldestTime == -1 || shadowTimestamp[s] < oldestTime) {
                                 oldestTime = shadowTimestamp[s];
@@ -271,10 +318,8 @@ public:
                             }
                         }
                     } else {
-                        // Extreme fallback if there are no shadows at all, just active channels
-                        targetPhys = (oldPhys < 8) ? (oldPhys + 8) : (oldPhys - 8);
-                        fluid_synth_all_sounds_off(fluidSynth, targetPhys);
-                        activeNotes[targetPhys] = 0;
+                        // Fallback if no shadow channel available
+                        targetPhys = oldPhys;
                     }
                 }
                 
@@ -325,6 +370,9 @@ public:
             } else {
                 targetPhys = oldPhys;
             }
+#else
+            targetPhys = logicalChannel;
+#endif
 
             int oldTargetSfid = sfids[targetPhys];
             
@@ -366,7 +414,7 @@ public:
 
     void noteOn(int note, int velocity, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < NUM_LOGICAL_CHANNELS) {
             int targetPhys = physicalActive[logicalChannel];
             fluid_synth_noteon(fluidSynth, targetPhys, note, velocity);
             activeNotes[targetPhys]++;
@@ -375,15 +423,17 @@ public:
 
     void noteOff(int note, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < NUM_LOGICAL_CHANNELS) {
             int activePhys = physicalActive[logicalChannel];
             fluid_synth_noteoff(fluidSynth, activePhys, note);
             if (activeNotes[activePhys] > 0) activeNotes[activePhys]--;
             
+#if SHADOW_SYSTEM_ENABLED
             for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
                 fluid_synth_noteoff(fluidSynth, shadowPhys, note);
                 if (activeNotes[shadowPhys] > 0) activeNotes[shadowPhys]--;
             }
+#endif
         }
     }
 
@@ -397,11 +447,13 @@ public:
     
     void setChannelVolume(float volume, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < NUM_LOGICAL_CHANNELS) {
              fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 7, (int)(volume * 127.0f));
+#if SHADOW_SYSTEM_ENABLED
              for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
                  fluid_synth_cc(fluidSynth, shadowPhys, 7, (int)(volume * 127.0f));
              }
+#endif
         }
     }
 
@@ -411,12 +463,14 @@ public:
             int panCc = (int)(panValue * 127.0f);
             if (panCc < 0) panCc = 0;
             if (panCc > 127) panCc = 127;
-            if (channel >= 0 && channel < 8) {
+            if (channel >= 0 && channel < NUM_LOGICAL_CHANNELS) {
                 fluid_synth_cc(fluidSynth, physicalActive[channel], 10, panCc);
+#if SHADOW_SYSTEM_ENABLED
                 for (int shadowPhys : shadowChannelsOf[channel]) {
                     fluid_synth_cc(fluidSynth, shadowPhys, 10, panCc);
                 }
-            } else if (channel >= 0 && channel < 16) {
+#endif
+            } else if (channel >= 0 && channel < NUM_PHYSICAL_CHANNELS) {
                 fluid_synth_cc(fluidSynth, channel, 10, panCc);
             }
         }
@@ -435,27 +489,31 @@ public:
 
     void setChannelReverbSend(int logicalChannel, float value) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < NUM_LOGICAL_CHANNELS) {
             int ccVal = (int)(value * 127.0f);
             if (ccVal < 0) ccVal = 0;
             if (ccVal > 127) ccVal = 127;
             fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 91, ccVal);
+#if SHADOW_SYSTEM_ENABLED
             for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
                 fluid_synth_cc(fluidSynth, shadowPhys, 91, ccVal);
             }
+#endif
         }
     }
 
     void setChannelChorusSend(int logicalChannel, float value) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < NUM_LOGICAL_CHANNELS) {
             int ccVal = (int)(value * 127.0f);
             if (ccVal < 0) ccVal = 0;
             if (ccVal > 127) ccVal = 127;
             fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 93, ccVal);
+#if SHADOW_SYSTEM_ENABLED
             for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
                 fluid_synth_cc(fluidSynth, shadowPhys, 93, ccVal);
             }
+#endif
         }
     }
 
@@ -483,20 +541,22 @@ public:
     void setFilterCutoff(float cutoff, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
         filterCutoff = cutoff;
-        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < NUM_LOGICAL_CHANNELS) {
             int ccVal = (int)(cutoff * 127.0f);
             if (ccVal < 0) ccVal = 0;
             if (ccVal > 127) ccVal = 127;
             fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 74, ccVal);
+#if SHADOW_SYSTEM_ENABLED
             for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
                  fluid_synth_cc(fluidSynth, shadowPhys, 74, ccVal);
             }
+#endif
         }
     }
 
     void setPatch(int programNumber, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (logicalChannel >= 0 && logicalChannel < 8) {
+        if (logicalChannel >= 0 && logicalChannel < NUM_LOGICAL_CHANNELS) {
             currentPrograms[logicalChannel] = programNumber;
             int targetPhys = physicalActive[logicalChannel];
             if (fluidSynth != nullptr && sfids[targetPhys] != -1) {
@@ -508,7 +568,7 @@ public:
     void allNotesOff() {
         std::lock_guard<std::mutex> lock(synthMutex);
         if (fluidSynth != nullptr) {
-            for (int i = 0; i < 16; ++i) {
+            for (int i = 0; i < NUM_PHYSICAL_CHANNELS; ++i) {
                 fluid_synth_all_notes_off(fluidSynth, i);
                 fluid_synth_all_sounds_off(fluidSynth, i);
                 activeNotes[i] = 0;
@@ -518,11 +578,13 @@ public:
 
     void setModulation(float value, int logicalChannel) {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < 8) {
+        if (fluidSynth != nullptr && logicalChannel >= 0 && logicalChannel < NUM_LOGICAL_CHANNELS) {
             fluid_synth_cc(fluidSynth, physicalActive[logicalChannel], 1, (int)(value * 127.0f));
+#if SHADOW_SYSTEM_ENABLED
             for (int shadowPhys : shadowChannelsOf[logicalChannel]) {
                  fluid_synth_cc(fluidSynth, shadowPhys, 1, (int)(value * 127.0f));
             }
+#endif
         }
     }
 
@@ -535,9 +597,9 @@ public:
                 std::lock_guard<std::mutex> lock(synthMutex);
                 if (fluidSynth == nullptr) return;
 
-                // Stop previous sound on preview channel 15
-                fluid_synth_all_notes_off(fluidSynth, 15);
-                fluid_synth_all_sounds_off(fluidSynth, 15);
+                // Stop previous sound on preview channel PREVIEW_CHANNEL
+                fluid_synth_all_notes_off(fluidSynth, PREVIEW_CHANNEL);
+                fluid_synth_all_sounds_off(fluidSynth, PREVIEW_CHANNEL);
 
                 // If previous preview loaded an sfid, release it
                 if (previewSfid != -1) {
@@ -574,11 +636,11 @@ public:
                 }
 
                 previewSfid = tempSfid;
-                sfids[15] = tempSfid;
-                fluid_synth_program_select(fluidSynth, 15, tempSfid, 0, 0);
-                fluid_synth_cc(fluidSynth, 15, 7, 100); // Scratch volume
-                fluid_synth_cc(fluidSynth, 15, 10, 64); // Center pan
-                fluid_synth_noteon(fluidSynth, 15, note, velocity);
+                sfids[PREVIEW_CHANNEL] = tempSfid;
+                fluid_synth_program_select(fluidSynth, PREVIEW_CHANNEL, tempSfid, 0, 0);
+                fluid_synth_cc(fluidSynth, PREVIEW_CHANNEL, 7, 100); // Scratch volume
+                fluid_synth_cc(fluidSynth, PREVIEW_CHANNEL, 10, 64); // Center pan
+                fluid_synth_noteon(fluidSynth, PREVIEW_CHANNEL, note, velocity);
             }
 
             // Let the note ring for durationMs
@@ -588,7 +650,7 @@ public:
                 {
                     std::lock_guard<std::mutex> lock(synthMutex);
                     if (fluidSynth != nullptr) {
-                        fluid_synth_noteoff(fluidSynth, 15, note);
+                        fluid_synth_noteoff(fluidSynth, PREVIEW_CHANNEL, note);
                     }
                 }
 
@@ -598,9 +660,9 @@ public:
                 if (previewGeneration.load() == gen) {
                     std::lock_guard<std::mutex> lock(synthMutex);
                     if (fluidSynth != nullptr && previewSfid != -1) {
-                        fluid_synth_all_notes_off(fluidSynth, 15);
-                        fluid_synth_all_sounds_off(fluidSynth, 15);
-                        sfids[15] = -1;
+                        fluid_synth_all_notes_off(fluidSynth, PREVIEW_CHANNEL);
+                        fluid_synth_all_sounds_off(fluidSynth, PREVIEW_CHANNEL);
+                        sfids[PREVIEW_CHANNEL] = -1;
                         int sId = previewSfid;
                         previewSfid = -1;
                         sfidRefCount[sId]--;
@@ -623,9 +685,9 @@ public:
         previewGeneration++;
         std::lock_guard<std::mutex> lock(synthMutex);
         if (fluidSynth != nullptr && previewSfid != -1) {
-            fluid_synth_all_notes_off(fluidSynth, 15);
-            fluid_synth_all_sounds_off(fluidSynth, 15);
-            sfids[15] = -1;
+            fluid_synth_all_notes_off(fluidSynth, PREVIEW_CHANNEL);
+            fluid_synth_all_sounds_off(fluidSynth, PREVIEW_CHANNEL);
+            sfids[PREVIEW_CHANNEL] = -1;
             int sId = previewSfid;
             previewSfid = -1;
             sfidRefCount[sId]--;
@@ -642,28 +704,35 @@ public:
 
     std::string getAudioDiagnostics() {
         std::lock_guard<std::mutex> lock(synthMutex);
-        if (fluidSettings == nullptr) {
+        if (!audioReady || !mStream) {
             return "NO INICIALIZADO";
         }
         
-        char driverStr[64] = "unknown";
-        fluid_settings_copystr(fluidSettings, "audio.driver", driverStr, sizeof(driverStr));
-        
-        double actualSampleRate = 0.0;
-        fluid_settings_getnum(fluidSettings, "synth.sample-rate", &actualSampleRate);
-        
-        int actualPeriodSize = 0;
-        fluid_settings_getint(fluidSettings, "audio.period-size", &actualPeriodSize);
+        int xruns = getXRunCount();
+        int burst = mStream->getFramesPerBurst();
+        int bufSize = mStream->getBufferSizeInFrames();
         
         char buffer[256];
-        if (actualPeriodSize > 0) {
-            snprintf(buffer, sizeof(buffer), "API: %s (%s) | SR: %.0f Hz | Buffer: %d frames", 
-                     driverStr, actualSharingMode.c_str(), actualSampleRate, actualPeriodSize);
-        } else {
-            snprintf(buffer, sizeof(buffer), "API: %s (%s) | SR: %.0f Hz | Buffer: Auto", 
-                     driverStr, actualSharingMode.c_str(), actualSampleRate);
-        }
+        snprintf(buffer, sizeof(buffer), "Oboe (%s) | SR: %.0f Hz | Buffer: %d/%d frames | xRuns: %d", 
+                 actualSharingMode.c_str(), actualSampleRate, burst, bufSize, xruns);
         return std::string(buffer);
+    }
+
+    int getActiveVoiceCount() {
+        std::lock_guard<std::mutex> lock(synthMutex);
+        if (fluidSynth != nullptr) {
+            return fluid_synth_get_active_voice_count(fluidSynth);
+        }
+        return 0;
+    }
+
+
+    int getLogicalChannelCount() const {
+        return NUM_LOGICAL_CHANNELS;
+    }
+
+    int getGlobalPolyphony() const {
+        return GLOBAL_POLYPHONY;
     }
 };
 
@@ -905,4 +974,60 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeIsMasterLimiterActive(JNIEnv *e
     return JNI_FALSE;
 }
 
+JNIEXPORT jint JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeGetActiveVoiceCount(JNIEnv *env, jobject thiz) {
+    if (gEngine != nullptr) {
+        return gEngine->getActiveVoiceCount();
+    }
+    return 0;
 }
+
+JNIEXPORT jdouble JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeGetDspCpuLoad(JNIEnv *env, jobject thiz) {
+    if (gEngine != nullptr) {
+        return gEngine->getDspCpuLoad();
+    }
+    return 0.0;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeGetLogicalChannelCount(JNIEnv *env, jobject thiz) {
+    if (gEngine != nullptr) {
+        return gEngine->getLogicalChannelCount();
+    }
+    return NUM_LOGICAL_CHANNELS;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeGetGlobalPolyphony(JNIEnv *env, jobject thiz) {
+    if (gEngine != nullptr) {
+        return gEngine->getGlobalPolyphony();
+    }
+    return GLOBAL_POLYPHONY;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeGetXRunCount(JNIEnv *env, jobject thiz) {
+    if (gEngine != nullptr) {
+        return gEngine->getXRunCount();
+    }
+    return 0;
+}
+
+JNIEXPORT jdouble JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeGetPeakDspCpuLoad(JNIEnv *env, jobject thiz) {
+    if (gEngine != nullptr) {
+        return gEngine->getPeakDspCpuLoad();
+    }
+    return 0.0;
+}
+
+JNIEXPORT void JNICALL
+Java_com_midi_mainstage_PlatformAudioSynth_nativeResetPeakDspCpuLoad(JNIEnv *env, jobject thiz) {
+    if (gEngine != nullptr) {
+        gEngine->resetPeakDspCpuLoad();
+    }
+}
+
+}
+

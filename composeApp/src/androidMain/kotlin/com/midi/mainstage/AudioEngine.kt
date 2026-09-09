@@ -275,6 +275,15 @@ actual class PlatformAudioSynth actual constructor() {
         return nativeIsMasterLimiterActive()
     }
 
+    // --- Audio Diagnostics & Telemetry ---
+    actual fun getActiveVoiceCount(): Int = nativeGetActiveVoiceCount()
+    actual fun getDspCpuLoad(): Double = nativeGetDspCpuLoad()
+    actual fun getPeakDspCpuLoad(): Double = nativeGetPeakDspCpuLoad()
+    actual fun resetPeakDspCpuLoad() {
+        nativeResetPeakDspCpuLoad()
+    }
+    actual fun getXRunCount(): Int = nativeGetXRunCount()
+
     // Native JNI bindings to C++ Audio/FluidSynth engine
     private external fun nativeInit(sampleRate: Int, bufferFrames: Int, isUsbDevice: Boolean)
     private external fun nativeClose()
@@ -291,6 +300,11 @@ actual class PlatformAudioSynth actual constructor() {
     private external fun nativeAllNotesOff()
     private external fun nativeSetModulation(value: Float, channel: Int)
     private external fun nativeGetAudioDiagnostics(): String
+    private external fun nativeGetActiveVoiceCount(): Int
+    private external fun nativeGetDspCpuLoad(): Double
+    private external fun nativeGetPeakDspCpuLoad(): Double
+    private external fun nativeResetPeakDspCpuLoad()
+    private external fun nativeGetXRunCount(): Int
     
     // Pad Engine
     private external fun nativePadSetEnabled(enabled: Boolean)
