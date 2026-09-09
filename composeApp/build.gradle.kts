@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     kotlin("multiplatform")
     id("org.jetbrains.compose")
@@ -117,9 +120,41 @@ if (!disableAndroid) {
                 excludes += "/META-INF/{AL2.0,LGPL2.1}"
             }
         }
+        val localProps = Properties().apply {
+            val localPropsFile = project.rootProject.file("local.properties")
+            if (localPropsFile.exists()) {
+                FileInputStream(localPropsFile).use { load(it) }
+            }
+        }
+
+        signingConfigs {
+            create("release") {
+                val storeFilePath = localProps.getProperty("RELEASE_STORE_FILE") ?: System.getenv("RELEASE_STORE_FILE")
+                val storePasswordVal = localProps.getProperty("RELEASE_STORE_PASSWORD") ?: System.getenv("RELEASE_STORE_PASSWORD")
+                val keyAliasVal = localProps.getProperty("RELEASE_KEY_ALIAS") ?: System.getenv("RELEASE_KEY_ALIAS")
+                val keyPasswordVal = localProps.getProperty("RELEASE_KEY_PASSWORD") ?: System.getenv("RELEASE_KEY_PASSWORD")
+
+                if (!storeFilePath.isNullOrBlank() && File(storeFilePath).exists()) {
+                    storeFile = File(storeFilePath)
+                    storePassword = storePasswordVal
+                    keyAlias = keyAliasVal
+                    keyPassword = keyPasswordVal
+                }
+            }
+        }
+
         buildTypes {
             getByName("release") {
-                isMinifyEnabled = false
+                isMinifyEnabled = true
+                isShrinkResources = true
+                proguardFiles(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+                )
+                val releaseSigning = signingConfigs.getByName("release")
+                if (releaseSigning.storeFile != null && releaseSigning.storeFile!!.exists()) {
+                    signingConfig = releaseSigning
+                }
             }
         }
         compileOptions {

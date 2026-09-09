@@ -13,6 +13,9 @@ out/
 
 # Local configuration files (contains local SDK paths — never commit this)
 local.properties
+*.jks
+*.keystore
+keystores/
 
 
 # OS generated files

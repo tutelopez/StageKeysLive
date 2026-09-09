@@ -739,29 +739,88 @@ private fun PatchesPanel(
 
             Spacer(Modifier.height(4.dp))
 
-            LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                items(displayPatches) { patch ->
-                    val actualIdx = patches.indexOf(patch)
-                    val isSelected = actualIdx == selectedIndex
-                    val canMoveUp = !showFavoritesOnly && actualIdx > 0
-                    val canMoveDown = !showFavoritesOnly && actualIdx < patches.size - 1
+            if (patches.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SurfaceElevated.copy(alpha = 0.5f))
+                        .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                        .padding(8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Brush.linearGradient(listOf(AccentSky.copy(alpha = 0.3f), AccentPurple.copy(alpha = 0.3f)))),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = TablerIcons.Music,
+                                contentDescription = null,
+                                tint = AccentSky,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Text(
+                            text = "Sin patches",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "Agrega tu primer patch",
+                            color = TextDark,
+                            fontSize = 8.5.sp,
+                            lineHeight = 11.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Button(
+                            onClick = onAdd,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(28.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentSky),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text("+ Agregar", color = Color.Black, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(displayPatches) { patch ->
+                        val actualIdx = patches.indexOf(patch)
+                        val isSelected = actualIdx == selectedIndex
+                        val canMoveUp = !showFavoritesOnly && actualIdx > 0
+                        val canMoveDown = !showFavoritesOnly && actualIdx < patches.size - 1
 
-                    PatchRow(
-                        patch = patch,
-                        isSelected = isSelected,
-                        canMoveUp = canMoveUp,
-                        canMoveDown = canMoveDown,
-                        onClick = { onSelect(actualIdx) },
-                        onEdit = { onEdit(patch) },
-                        onDelete = { onDelete(patch) },
-                        onExport = { onExport(patch) },
-                        onToggleFavorite = { onToggleFavorite(patch) },
-                        onMoveUp = { onMovePatch(actualIdx, actualIdx - 1) },
-                        onMoveDown = { onMovePatch(actualIdx, actualIdx + 1) }
-                    )
+                        PatchRow(
+                            patch = patch,
+                            isSelected = isSelected,
+                            canMoveUp = canMoveUp,
+                            canMoveDown = canMoveDown,
+                            onClick = { onSelect(actualIdx) },
+                            onEdit = { onEdit(patch) },
+                            onDelete = { onDelete(patch) },
+                            onExport = { onExport(patch) },
+                            onToggleFavorite = { onToggleFavorite(patch) },
+                            onMoveUp = { onMovePatch(actualIdx, actualIdx - 1) },
+                            onMoveDown = { onMovePatch(actualIdx, actualIdx + 1) }
+                        )
+                    }
                 }
             }
 

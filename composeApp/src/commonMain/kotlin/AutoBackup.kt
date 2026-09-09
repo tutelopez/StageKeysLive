@@ -164,6 +164,29 @@ fun AutoBackupSettingsScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Iniciar sesión con Google", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable {
+                            uriHandler.openUri("https://tutelopezmusic.com/stagekeyslive/privacidad")
+                        }
+                    ) {
+                        Text(
+                            text = "Al continuar aceptas nuestra ",
+                            color = TextDark,
+                            fontSize = 11.sp
+                        )
+                        Text(
+                            text = "Política de Privacidad",
+                            color = AccentSky,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                        )
+                    }
                 } else {
                     // Signed in state
                     val user = driveState.user
@@ -773,7 +796,6 @@ fun AutoBackupSettingsScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Option to use system account chooser
                     OutlinedButton(
                         onClick = {
                             showAccountChooserDialog = false
@@ -792,6 +814,26 @@ fun AutoBackupSettingsScreen(
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text("Usar otra cuenta de Google...", fontSize = 12.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { uriHandler.openUri("https://tutelopezmusic.com/stagekeyslive/privacidad") },
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Consulta nuestra ", color = TextDark, fontSize = 10.5.sp)
+                        Text(
+                            "Política de Privacidad",
+                            color = AccentSky,
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                        )
                     }
                 }
             },

@@ -925,43 +925,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 emptyList()
             }
         } else {
-            // Seed default concerts database
-            val defaultConcerts = listOf(
-                Concert(
-                    id = "1",
-                    name = "Tour Rock Latino 2026",
-                    lastModified = System.currentTimeMillis() - 3600000,
-                    patches = listOf(
-                        PatchState("Grand Piano Stage", "Keyboards", 0, "Acoustic Grand Steinway soundbank"),
-                        PatchState("Rhodes EP Classic", "Keyboards", 4, "Vintage MK I tines with chorus"),
-                        PatchState("Synth Horns Poly", "Synths", 62, "Fat 80s polyphonic synth brass"),
-                        PatchState("Deep Synth Bass", "Synths", 38, "Warm analog bass with low filter cutoff")
-                    ),
-                    channels = listOf(
-                        ChannelStripState(1, "Canal 1", "Piano.sf2", null, 0.8f, false, false, 0, 127, "#00D2FF"),
-                        ChannelStripState(2, "Canal 2", "RhodesEP.sf2", null, 0.7f, false, false, 0, 127, "#FFFF8C00"),
-                        ChannelStripState(3, "Canal 3", "BassSynth.sf2", null, 0.6f, false, false, 0, 59, "#FF39FF14"),
-                        ChannelStripState(4, "Canal 4", "BrassPoly.sf2", null, 0.75f, false, false, 60, 127, "#FFFF0055")
-                    )
-                ),
-                Concert(
-                    id = "2",
-                    name = "Jazz Fusion Live Set",
-                    lastModified = System.currentTimeMillis() - 86400000,
-                    patches = listOf(
-                        PatchState("Hammond B3 Organ", "Organs", 16, "Hammond rotary simulation on Channel 1"),
-                        PatchState("Soft Tines Vibraphone", "Mallets", 11, "Electric vibraphone with stereo chorus"),
-                        PatchState("Warm Strings Pad", "Strings", 49, "Slow attack pad for jazz ballads")
-                    ),
-                    channels = listOf(
-                        ChannelStripState(1, "Canal 1", "TonewheelOrgan.sf2", null, 0.8f, false, false, 0, 127, "#38BDF8"),
-                        ChannelStripState(2, "Canal 2", "VibeMallets.sf2", null, 0.65f, false, false, 0, 127, "#FBBF24"),
-                        ChannelStripState(3, "Canal 3", "AmbientStrings.sf2", null, 0.7f, false, false, 0, 127, "#39FF14")
-                    )
-                )
-            )
-            saveTextToFile("concerts.json", ConcertSerializer.serialize(defaultConcerts))
-            defaultConcerts
+            emptyList()
         }
         concerts = loadedConcerts
 
@@ -3536,6 +3500,51 @@ fun SupportSettingsScreen(
                 DiagnosticRow("Configuración de Audio", audioInfo)
                 DiagnosticRow("Dispositivos MIDI", midiInfo)
                 DiagnosticRow("Cuenta Vinculada", accountInfo)
+            }
+        }
+
+        // Legal & Privacy Policy Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = DarkPanel),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, Color(0xFF2A2D3A))
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    "Legal & Privacidad",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = AccentSky,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp
+                )
+
+                Text(
+                    "Tus datos y bancos de sonido residen 100% de forma local. Consulta nuestra política de tratamiento de datos y respaldos en la nube.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextDark,
+                    fontSize = 11.5.sp
+                )
+
+                OutlinedButton(
+                    onClick = {
+                        try {
+                            uriHandler.openUri("https://tutelopezmusic.com/stagekeyslive/privacidad")
+                        } catch (e: Exception) {
+                            onShowSnackbar("No se pudo abrir el navegador. Visita: tutelopezmusic.com/stagekeyslive/privacidad")
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(42.dp),
+                    border = BorderStroke(1.dp, Color(0xFF384055)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("📄 Ver Política de Privacidad", color = TextLight, fontSize = 12.5.sp)
+                }
             }
         }
     }
