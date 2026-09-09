@@ -1,0 +1,539 @@
+{
+  "modeName": "CONFIG_C_16CH_128POLY",
+  "logicalChannels": 16,
+  "globalPolyphony": 128,
+  "durationSeconds": 900,
+  "avgDspCpuPercent": 46.09813948827361,
+  "peakDspCpuPercent": 78.8149447216708,
+  "totalXRuns": 0,
+  "avgRamPssMb": 437.69510591947113,
+  "peakRamPssMb": 566.228515625,
+  "startTempC": 27.2,
+  "endTempC": 27.2,
+  "maxTempC": 27.2,
+  "tempDeltaC": 0,
+  "maxThermalStatus": 0,
+  "thermalStatusDescription": "NONE",
+  "samples": [
+    {
+      "sec": 0,
+      "voices": 12,
+      "dspCpu": 2.5137343541701362,
+      "xruns": 0,
+      "ramMb": 393.8525390625,
+      "heapMb": 203.53250122070312,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 2,
+      "voices": 128,
+      "dspCpu": 30.33866726670191,
+      "xruns": 0,
+      "ramMb": 377.4453125,
+      "heapMb": 208.99359130859375,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 4,
+      "voices": 128,
+      "dspCpu": 78.8149447216708,
+      "xruns": 0,
+      "ramMb": 372.4658203125,
+      "heapMb": 208.58541870117188,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 6,
+      "voices": 128,
+      "dspCpu": 53.79701868482406,
+      "xruns": 0,
+      "ramMb": 375.1494140625,
+      "heapMb": 208.96641540527344,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 8,
+      "voices": 128,
+      "dspCpu": 29.96712740314275,
+      "xruns": 0,
+      "ramMb": 370.224609375,
+      "heapMb": 208.7364959716797,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 10,
+      "voices": 128,
+      "dspCpu": 29.498094931718587,
+      "xruns": 0,
+      "ramMb": 371.484375,
+      "heapMb": 208.85391235351562,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 12,
+      "voices": 128,
+      "dspCpu": 29.066688367018855,
+      "xruns": 0,
+      "ramMb": 373.1142578125,
+      "heapMb": 209.0520782470703,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 14,
+      "voices": 128,
+      "dspCpu": 28.648727010852976,
+      "xruns": 0,
+      "ramMb": 374.6279296875,
+      "heapMb": 209.26097106933594,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 16,
+      "voices": 128,
+      "dspCpu": 29.584785400857854,
+      "xruns": 0,
+      "ramMb": 377.4736328125,
+      "heapMb": 209.45584106445312,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 18,
+      "voices": 128,
+      "dspCpu": 56.783783469755576,
+      "xruns": 0,
+      "ramMb": 377.0986328125,
+      "heapMb": 209.6722869873047,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 20,
+      "voices": 128,
+      "dspCpu": 69.77935334063586,
+      "xruns": 0,
+      "ramMb": 370.6162109375,
+      "heapMb": 208.73675537109375,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 22,
+      "voices": 128,
+      "dspCpu": 64.95274748869649,
+      "xruns": 0,
+      "ramMb": 372.0966796875,
+      "heapMb": 208.9307403564453,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 24,
+      "voices": 128,
+      "dspCpu": 60.48720233702125,
+      "xruns": 0,
+      "ramMb": 373.5966796875,
+      "heapMb": 209.13258361816406,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 26,
+      "voices": 128,
+      "dspCpu": 64.96614093872036,
+      "xruns": 0,
+      "ramMb": 375.2177734375,
+      "heapMb": 209.3529815673828,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 29,
+      "voices": 128,
+      "dspCpu": 65.91712706385405,
+      "xruns": 0,
+      "ramMb": 376.892578125,
+      "heapMb": 209.54641723632812,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 31,
+      "voices": 128,
+      "dspCpu": 67.08704524931709,
+      "xruns": 0,
+      "ramMb": 371.96484375,
+      "heapMb": 208.66970825195312,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 33,
+      "voices": 128,
+      "dspCpu": 61.845356156659015,
+      "xruns": 0,
+      "ramMb": 371.12109375,
+      "heapMb": 208.86561584472656,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 35,
+      "voices": 128,
+      "dspCpu": 46.16855296319331,
+      "xruns": 0,
+      "ramMb": 377.185546875,
+      "heapMb": 210.1316680908203,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 37,
+      "voices": 128,
+      "dspCpu": 47.7944163577096,
+      "xruns": 0,
+      "ramMb": 378.5458984375,
+      "heapMb": 210.32171630859375,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 39,
+      "voices": 128,
+      "dspCpu": 34.435304834673126,
+      "xruns": 0,
+      "ramMb": 381.8544921875,
+      "heapMb": 210.5206756591797,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 41,
+      "voices": 128,
+      "dspCpu": 30.576605389697185,
+      "xruns": 0,
+      "ramMb": 373.626953125,
+      "heapMb": 209.7444610595703,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 43,
+      "voices": 128,
+      "dspCpu": 53.79252089107082,
+      "xruns": 0,
+      "ramMb": 375.0947265625,
+      "heapMb": 210.155029296875,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 45,
+      "voices": 128,
+      "dspCpu": 43.93575340997451,
+      "xruns": 0,
+      "ramMb": 378.6064453125,
+      "heapMb": 210.13015747070312,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 47,
+      "voices": 128,
+      "dspCpu": 38.99771698608112,
+      "xruns": 0,
+      "ramMb": 378.1103515625,
+      "heapMb": 210.3506317138672,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 49,
+      "voices": 128,
+      "dspCpu": 31.296046444532006,
+      "xruns": 0,
+      "ramMb": 379.7890625,
+      "heapMb": 210.5467529296875,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 51,
+      "voices": 128,
+      "dspCpu": 27.9212768200356,
+      "xruns": 0,
+      "ramMb": 373.2158203125,
+      "heapMb": 209.73284912109375,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 54,
+      "voices": 128,
+      "dspCpu": 29.442930933894075,
+      "xruns": 0,
+      "ramMb": 368.2880859375,
+      "heapMb": 210.07998657226562,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 56,
+      "voices": 128,
+      "dspCpu": 31.18946941980118,
+      "xruns": 0,
+      "ramMb": 368.9140625,
+      "heapMb": 210.31619262695312,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 58,
+      "voices": 128,
+      "dspCpu": 27.880781907782655,
+      "xruns": 0,
+      "ramMb": 372.275390625,
+      "heapMb": 210.52806091308594,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 60,
+      "voices": 128,
+      "dspCpu": 30.095796865703917,
+      "xruns": 0,
+      "ramMb": 371.4443359375,
+      "heapMb": 210.71018981933594,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 62,
+      "voices": 128,
+      "dspCpu": 30.73932502210225,
+      "xruns": 0,
+      "ramMb": 364.943359375,
+      "heapMb": 209.8526153564453,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 64,
+      "voices": 128,
+      "dspCpu": 47.14404322864829,
+      "xruns": 0,
+      "ramMb": 366.1533203125,
+      "heapMb": 210.06658935546875,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 66,
+      "voices": 128,
+      "dspCpu": 44.935267262239925,
+      "xruns": 0,
+      "ramMb": 367.6796875,
+      "heapMb": 210.26181030273438,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 68,
+      "voices": 128,
+      "dspCpu": 30.226019833095396,
+      "xruns": 0,
+      "ramMb": 403.9853515625,
+      "heapMb": 209.18202209472656,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 70,
+      "voices": 128,
+      "dspCpu": 34.8655355008129,
+      "xruns": 0,
+      "ramMb": 550.2783203125,
+      "heapMb": 209.29443359375,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 73,
+      "voices": 128,
+      "dspCpu": 29.33670788205917,
+      "xruns": 0,
+      "ramMb": 554.54296875,
+      "heapMb": 209.50033569335938,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 75,
+      "voices": 128,
+      "dspCpu": 28.611985355252706,
+      "xruns": 0,
+      "ramMb": 558.5908203125,
+      "heapMb": 209.7066192626953,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 77,
+      "voices": 128,
+      "dspCpu": 60.626559362352545,
+      "xruns": 0,
+      "ramMb": 556.4140625,
+      "heapMb": 209.98678588867188,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 79,
+      "voices": 128,
+      "dspCpu": 64.85715625497721,
+      "xruns": 0,
+      "ramMb": 558.02734375,
+      "heapMb": 210.18960571289062,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 81,
+      "voices": 128,
+      "dspCpu": 61.95245757667491,
+      "xruns": 0,
+      "ramMb": 559.685546875,
+      "heapMb": 210.37802124023438,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 83,
+      "voices": 128,
+      "dspCpu": 49.63026297096367,
+      "xruns": 0,
+      "ramMb": 561.455078125,
+      "heapMb": 210.59169006347656,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 85,
+      "voices": 128,
+      "dspCpu": 44.875854326271586,
+      "xruns": 0,
+      "ramMb": 563.146484375,
+      "heapMb": 210.78457641601562,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 87,
+      "voices": 128,
+      "dspCpu": 59.41745920684038,
+      "xruns": 0,
+      "ramMb": 564.826171875,
+      "heapMb": 210.97972106933594,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 89,
+      "voices": 128,
+      "dspCpu": 37.87267954337634,
+      "xruns": 0,
+      "ramMb": 566.228515625,
+      "heapMb": 211.19659423828125,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 91,
+      "voices": 128,
+      "dspCpu": 54.91171196090521,
+      "xruns": 0,
+      "ramMb": 545.6513671875,
+      "heapMb": 209.35977172851562,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 93,
+      "voices": 128,
+      "dspCpu": 48.53576500003744,
+      "xruns": 0,
+      "ramMb": 547.1669921875,
+      "heapMb": 209.55288696289062,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 95,
+      "voices": 128,
+      "dspCpu": 64.45168383717083,
+      "xruns": 0,
+      "ramMb": 548.744140625,
+      "heapMb": 209.74795532226562,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 97,
+      "voices": 128,
+      "dspCpu": 57.09912966215685,
+      "xruns": 0,
+      "ramMb": 552.34765625,
+      "heapMb": 209.96189880371094,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 100,
+      "voices": 128,
+      "dspCpu": 72.13090926503791,
+      "xruns": 0,
+      "ramMb": 551.9130859375,
+      "heapMb": 210.1593780517578,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 102,
+      "voices": 128,
+      "dspCpu": 40.257948803871415,
+      "xruns": 0,
+      "ramMb": 553.927734375,
+      "heapMb": 210.35202026367188,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 104,
+      "voices": 128,
+      "dspCpu": 66.62365737622798,
+      "xruns": 0,
+      "ramMb": 555.671875,
+      "heapMb": 210.55615234375,
+      "tempC": 27.2,
+      "thermal": 0
+    },
+    {
+      "sec": 106,
+      "voices": 128,
+      "dspCpu": 70.42541674938481,
+      "xruns": 0,
+      "ramMb": 557.3720703125,
+      "heapMb": 210.77256774902344,
+      "tempC": 27.2,
+      "thermal": 0
+    }
+  ]
+}

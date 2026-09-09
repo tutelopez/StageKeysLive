@@ -994,7 +994,7 @@ private fun MixerPanel(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 channels.forEach { chState ->
-                    val levelIdx = (chState.id - 1).coerceIn(0, 7)
+                    val levelIdx = (chState.id - 1).coerceIn(0, vuLevels.lastIndex)
                     val animLevel = vuLevels[levelIdx].value
                     val isRevMapped = midiMappings.values.any { it is MidiTarget.ChannelReverb && it.channelIndex == chState.id - 1 }
                     val isChoMapped = midiMappings.values.any { it is MidiTarget.ChannelChorus && it.channelIndex == chState.id - 1 }
@@ -1015,7 +1015,7 @@ private fun MixerPanel(
                     )
                 }
 
-                if (channels.size < 8) {
+                if (channels.size < 16) {
                     AddChannelButton(onClick = onAddChannelClick)
                 }
 

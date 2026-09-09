@@ -12,6 +12,8 @@ data class PerformanceStats(val cpuPercent: Int?, val ramMb: Int)
 expect class PlatformAudioSynth() {
     fun startPerformanceMonitor()
     fun stopPerformanceMonitor()
+    var onBenchmarkVuUpdate: ((Int, Float) -> Unit)?
+    var onBenchmarkStarted: ((Int) -> Unit)?
     fun setPerformanceListener(onStats: (PerformanceStats) -> Unit)
     fun noteOn(note: Int, velocity: Int, channel: Int = 0)
     fun noteOff(note: Int, channel: Int = 0)

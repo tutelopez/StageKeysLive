@@ -23,6 +23,9 @@ actual class PlatformAudioSynth actual constructor() {
         var optimalBufferFrames: Int = 256
     }
 
+    actual var onBenchmarkVuUpdate: ((Int, Float) -> Unit)? = null
+    actual var onBenchmarkStarted: ((Int) -> Unit)? = null
+
     private val mainHandler = Handler(Looper.getMainLooper())
     private var learnTimeoutRunnable: Runnable? = null
 
@@ -311,9 +314,29 @@ actual class PlatformAudioSynth actual constructor() {
     private external fun nativeSetMasterReverbParams(roomsize: Float, damp: Float, width: Float, level: Float)
     private external fun nativeSetMasterChorusParams(nr: Int, level: Float, speed: Float, depth: Float)
 
+    // Benchmark and Diagnostics queries
+    fun getActiveVoiceCount(): Int = nativeGetActiveVoiceCount()
+    fun getDspCpuLoad(): Double = nativeGetDspCpuLoad()
+    fun getPeakDspCpuLoad(): Double = nativeGetPeakDspCpuLoad()
+    fun resetPeakDspCpuLoad() = nativeResetPeakDspCpuLoad()
+    fun getXRunCount(): Int = nativeGetXRunCount()
+    fun getLogicalChannelCount(): Int = nativeGetLogicalChannelCount()
+    fun getGlobalPolyphony(): Int = nativeGetGlobalPolyphony()
+    fun getBenchmarkModeName(): String = nativeGetBenchmarkModeName()
+
     // Master Limiter
     private external fun nativeSetMasterLimiterEnabled(enabled: Boolean)
     private external fun nativeIsMasterLimiterActive(): Boolean
+    
+    // Benchmark externals
+    private external fun nativeGetActiveVoiceCount(): Int
+    private external fun nativeGetDspCpuLoad(): Double
+    private external fun nativeGetPeakDspCpuLoad(): Double
+    private external fun nativeResetPeakDspCpuLoad()
+    private external fun nativeGetXRunCount(): Int
+    private external fun nativeGetLogicalChannelCount(): Int
+    private external fun nativeGetGlobalPolyphony(): Int
+    private external fun nativeGetBenchmarkModeName(): String
     
     fun setAssetManager(am: android.content.res.AssetManager) {
         nativeSetAssetManager(am)

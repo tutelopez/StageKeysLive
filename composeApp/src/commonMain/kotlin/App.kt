@@ -356,8 +356,53 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     val heldKeys = remember { mutableStateMapOf<Int, Boolean>() }
     val sustainedKeys = remember { mutableStateMapOf<Int, Boolean>() }
 
-    // VU meter level animations per channel strip (up to 8 channels)
-    val vuLevels = remember { List(8) { Animatable(0f) } }
+    // VU meter level animations per channel strip (up to 16 channels)
+    val vuLevels = remember { List(16) { Animatable(0f) } }
+
+    DisposableEffect(synth) {
+        synth.onBenchmarkVuUpdate = { ch, level ->
+            if (ch in vuLevels.indices) {
+                coroutineScope.launch {
+                    vuLevels[ch].animateTo(level, tween(50))
+                }
+            }
+        }
+        synth.onBenchmarkStarted = { chCount ->
+            coroutineScope.launch {
+                val dummyChannels = (1..chCount).map { id ->
+                    ChannelStripState(
+                        id = id,
+                        name = "Canal $id",
+                        sf2Name = "PianoDefault.sf2",
+                        sf2Path = null,
+                        volume = 0.85f,
+                        isMuted = false,
+                        isSoloed = false,
+                        keyRangeStart = 0,
+                        keyRangeEnd = 127,
+                        colorHex = when (id % 4) {
+                            1 -> "#00D2FF"
+                            2 -> "#FFFF8C00"
+                            3 -> "#FF39FF14"
+                            else -> "#FFFF0055"
+                        }
+                    )
+                }
+                activeConcert = Concert(
+                    id = "bench_concert",
+                    name = "Benchmark Concert ($chCount Ch)",
+                    lastModified = System.currentTimeMillis(),
+                    patches = listOf(PatchState("Bench Patch", "Benchmark", 0, "Bench")),
+                    channels = dummyChannels
+                )
+                currentScreen = ScreenState.CONCERT
+            }
+        }
+        onDispose {
+            synth.onBenchmarkVuUpdate = null
+            synth.onBenchmarkStarted = null
+        }
+    }
 
     // MIDI mapping state (Mapea CC a Controladores)
     val midiCcMappings = remember { mutableStateMapOf<Int, MidiTarget>(

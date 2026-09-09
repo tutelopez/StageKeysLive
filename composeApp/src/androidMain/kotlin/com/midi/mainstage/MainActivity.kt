@@ -62,8 +62,9 @@ class MainActivity : ComponentActivity() {
         
         synth.setAssetManager(assets)
         
-        // Hide system bars (Full Screen Immersive Mode)
+        // Hide system bars (Full Screen Immersive Mode) & keep screen awake
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         controller.hide(WindowInsetsCompat.Type.systemBars())
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -96,6 +97,9 @@ class MainActivity : ComponentActivity() {
                 }
                 synth.loadSoundFont(outFile.absolutePath)
                 Log.i(TAG, "Audio engine and SoundFont initialized ✓")
+
+                // Handle benchmark intent if requested on startup
+                handleBenchmarkIntent(intent)
             } catch (e: Exception) {
                 Log.e(TAG, "Initialization error", e)
             } finally {
@@ -107,6 +111,28 @@ class MainActivity : ComponentActivity() {
             StageKeysTheme {
                 App(synth)
             }
+        }
+    }
+
+    private var benchmarkRunner: BenchmarkRunner? = null
+
+    override fun onNewIntent(intent: android.content.Intent?) {
+        super.onNewIntent(intent)
+        handleBenchmarkIntent(intent)
+    }
+
+    private fun handleBenchmarkIntent(intent: android.content.Intent?) {
+        val benchCmd = intent?.getStringExtra("benchmark") ?: return
+        val duration = intent.getLongExtra("duration", 900L) // default 15 min (900s)
+        if (benchCmd.equals("START", ignoreCase = true)) {
+            Log.i(TAG, "Lanzando BenchmarkRunner por intent con duración: ${duration}s")
+            if (benchmarkRunner == null) {
+                benchmarkRunner = BenchmarkRunner(this, synth)
+            }
+            benchmarkRunner?.startBenchmark(durationSeconds = duration)
+        } else if (benchCmd.equals("STOP", ignoreCase = true)) {
+            Log.i(TAG, "Deteniendo BenchmarkRunner por intent")
+            benchmarkRunner?.stopBenchmark()
         }
     }
 
