@@ -31,7 +31,7 @@ PadEngine::~PadEngine() {
     destroy();
 }
 
-bool PadEngine::init(AAssetManager* assetManager, int sampleRate, bool isUsbDevice) {
+bool PadEngine::init(AAssetManager* assetManager, int sampleRate, bool isUsbDevice, int deviceId) {
     std::lock_guard<std::mutex> lock(mMutex);
     mAssetManager = assetManager;
     mSampleRate = sampleRate;
@@ -42,6 +42,10 @@ bool PadEngine::init(AAssetManager* assetManager, int sampleRate, bool isUsbDevi
     builder.setFormat(oboe::AudioFormat::Float);
     builder.setChannelCount(2); // Stereo
     builder.setSampleRate(mSampleRate);
+    if (deviceId != 0 && deviceId != -1) {
+        LOGI("PadEngine: Routing to audio deviceId=%d", deviceId);
+        builder.setDeviceId(deviceId);
+    }
     builder.setDataCallback(this);
 
     oboe::Result result = oboe::Result::ErrorInternal;

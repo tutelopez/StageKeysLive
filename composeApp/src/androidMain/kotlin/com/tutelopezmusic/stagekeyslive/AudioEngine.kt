@@ -186,6 +186,9 @@ actual class PlatformAudioSynth actual constructor() {
 
     actual fun selectAudioDevice(deviceId: Int) {
         audioDeviceManager?.selectDevice(deviceId)
+        val sampleRate = globalPrefs?.getInt("sampleRate", optimalSampleRate) ?: optimalSampleRate
+        val bufferOption = globalPrefs?.getInt("bufferOption", 0) ?: 0
+        initializeEngine(sampleRate, bufferOption)
     }
 
     actual fun setAudioDeviceListener(onDeviceListChanged: (List<AudioOutputDeviceInfo>) -> Unit) {
@@ -199,6 +202,7 @@ actual class PlatformAudioSynth actual constructor() {
     // --- Dynamic Engine Config ---
     actual fun initializeEngine(sampleRate: Int, bufferOption: Int, isUsbDevice: Boolean) {
         val effectiveIsUsb = if (isUsbDevice) true else (audioDeviceManager?.isSelectedDeviceUsb() == true)
+        val selectedId = audioDeviceManager?.selectedDeviceId ?: -1
         val bufferFrames = when (bufferOption) {
             1 -> 128 // Low
             2 -> 512 // High
@@ -208,7 +212,7 @@ actual class PlatformAudioSynth actual constructor() {
             ?.putInt("sampleRate", sampleRate)
             ?.putInt("bufferOption", bufferOption)
             ?.apply()
-        nativeInit(sampleRate, bufferFrames, effectiveIsUsb)
+        nativeInit(sampleRate, bufferFrames, effectiveIsUsb, selectedId)
     }
 
     actual fun getAudioDiagnostics(): String {
@@ -285,7 +289,7 @@ actual class PlatformAudioSynth actual constructor() {
     actual fun getXRunCount(): Int = nativeGetXRunCount()
 
     // Native JNI bindings to C++ Audio/FluidSynth engine
-    private external fun nativeInit(sampleRate: Int, bufferFrames: Int, isUsbDevice: Boolean)
+    private external fun nativeInit(sampleRate: Int, bufferFrames: Int, isUsbDevice: Boolean, deviceId: Int)
     private external fun nativeClose()
     private external fun nativeNoteOn(note: Int, velocity: Int, channel: Int)
     private external fun nativeNoteOff(note: Int, channel: Int)

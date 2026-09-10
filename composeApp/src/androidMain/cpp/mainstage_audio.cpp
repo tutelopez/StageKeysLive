@@ -166,7 +166,7 @@ public:
         peakDspCpuLoad.store(0.0, std::memory_order_relaxed);
     }
 
-    void init(int sampleRate, int bufferFrames, bool isUsbDevice = false) {
+    void init(int sampleRate, int bufferFrames, bool isUsbDevice = false, int deviceId = -1) {
         std::lock_guard<std::mutex> lock(synthMutex);
         audioReady = false;
         actualSampleRate = (sampleRate > 0) ? (double)sampleRate : 48000.0;
@@ -194,6 +194,10 @@ public:
         builder.setFormat(oboe::AudioFormat::Float);
         builder.setChannelCount(2); // Stereo
         builder.setSampleRate((int)actualSampleRate);
+        if (deviceId != 0 && deviceId != -1) {
+            LOGI("MainstageAudioEngine: Routing to audio deviceId=%d", deviceId);
+            builder.setDeviceId(deviceId);
+        }
         if (bufferFrames > 0) {
             builder.setFramesPerDataCallback(bufferFrames);
         }
@@ -233,8 +237,8 @@ public:
         audioReady = true;
         actualBufferFrames = mStream->getFramesPerBurst();
         actualSampleRate = mStream->getSampleRate();
-        LOGI("MainstageAudioEngine: Oboe stream started successfully (SR=%.0f, Burst=%d, Sharing=%s)",
-             actualSampleRate, actualBufferFrames, actualSharingMode.c_str());
+        LOGI("MainstageAudioEngine: Oboe stream started successfully (SR=%.0f, Burst=%d, Sharing=%s, DeviceId=%d)",
+             actualSampleRate, actualBufferFrames, actualSharingMode.c_str(), mStream->getDeviceId());
     }
 
     void stop() {
@@ -799,13 +803,13 @@ Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetPatch(JNIEnv *
 }
 
 JNIEXPORT void JNICALL
-Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeInit(JNIEnv *env, jobject thiz, jint sampleRate, jint bufferFrames, jboolean isUsbDevice) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeInit(JNIEnv *env, jobject thiz, jint sampleRate, jint bufferFrames, jboolean isUsbDevice, jint deviceId) {
     if (gEngine != nullptr) {
         gEngine->stop();
     } else {
         gEngine = new MainstageAudioEngine();
     }
-    gEngine->init(sampleRate, bufferFrames, isUsbDevice == JNI_TRUE);
+    gEngine->init(sampleRate, bufferFrames, isUsbDevice == JNI_TRUE, deviceId);
 
     if (gPadEngine != nullptr) {
         gPadEngine->destroy();
@@ -813,7 +817,7 @@ Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeInit(JNIEnv *env,
         gPadEngine = new PadEngine();
     }
     if (gAssetManager != nullptr) {
-        gPadEngine->init(gAssetManager, sampleRate, isUsbDevice == JNI_TRUE);
+        gPadEngine->init(gAssetManager, sampleRate, isUsbDevice == JNI_TRUE, deviceId);
     }
 }
 
