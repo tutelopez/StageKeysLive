@@ -7,6 +7,7 @@ import javax.sound.midi.MidiChannel
 import com.tutelopezmusic.stagekeyslive.PerformanceStats
 
 actual class PlatformAudioSynth actual constructor() {
+    actual var onEngineRestarted: (() -> Unit)? = null
     actual fun startPerformanceMonitor() {}
     actual fun stopPerformanceMonitor() {}
     actual fun setPerformanceListener(onStats: (PerformanceStats) -> Unit) {}

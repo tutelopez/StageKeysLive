@@ -11,6 +11,8 @@ private const val LEARN_TIMEOUT_MS = 7000L
 
 actual class PlatformAudioSynth actual constructor() {
 
+    actual var onEngineRestarted: (() -> Unit)? = null
+
     // [POINT 2 FIX] Companion object holds a weak reference to the AndroidMidiManager
     // set by MainActivity after both objects are created.  Using companion so that
     // App.kt (commonMain) can call startMidiLearn() without knowing about Android specifics.
@@ -189,6 +191,7 @@ actual class PlatformAudioSynth actual constructor() {
         val sampleRate = globalPrefs?.getInt("sampleRate", optimalSampleRate) ?: optimalSampleRate
         val bufferOption = globalPrefs?.getInt("bufferOption", 0) ?: 0
         initializeEngine(sampleRate, bufferOption)
+        onEngineRestarted?.invoke()
     }
 
     actual fun setAudioDeviceListener(onDeviceListChanged: (List<AudioOutputDeviceInfo>) -> Unit) {

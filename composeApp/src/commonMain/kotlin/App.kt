@@ -382,6 +382,51 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         }
     }
 
+    // Rehydrate C++ audio engine after hot restart
+    DisposableEffect(synth, activeConcert, selectedPatchIndex, masterVolume, masterPan, masterFxSettings, masterLimiterEnabled, padEnabled, padVolume, padBank, activePadNote) {
+        synth.onEngineRestarted = {
+            val concert = activeConcert
+            if (concert != null) {
+                concert.channels.forEach { ch ->
+                    if (ch.sf2Path != null) {
+                        synth.loadSoundFont(ch.sf2Path, ch.id)
+                    }
+                    val effectivePan = ((ch.pan - 0.5f) + (masterPan - 0.5f) + 0.5f).coerceIn(0f, 1f)
+                    synth.setPan(ch.id, effectivePan)
+                    synth.setChannelVolume(ch.volume, ch.id)
+                    synth.setChannelReverbSend(ch.id, ch.reverbSend)
+                    synth.setChannelChorusSend(ch.id, ch.chorusSend)
+                    synth.setFilterCutoff(ch.filterCutoff, ch.id)
+                }
+                val currentProg = if (selectedPatchIndex in concert.patches.indices) concert.patches[selectedPatchIndex].programNumber else 0
+                synth.setPatch(currentProg, 0)
+            }
+            synth.setVolume(masterVolume)
+            synth.padSetPan(masterPan)
+            synth.setMasterReverbParams(
+                masterFxSettings.reverbRoomSize,
+                masterFxSettings.reverbDamping,
+                masterFxSettings.reverbWidth,
+                masterFxSettings.reverbLevel
+            )
+            synth.setMasterChorusParams(
+                masterFxSettings.chorusNr,
+                masterFxSettings.chorusLevel,
+                masterFxSettings.chorusSpeed,
+                masterFxSettings.chorusDepth
+            )
+            synth.setMasterLimiterEnabled(masterLimiterEnabled)
+            synth.padSetEnabled(padEnabled)
+            synth.padSetVolume(padVolume)
+            if (padBank.isNotEmpty()) synth.padSetBank(padBank)
+            if (padEnabled && activePadNote != null) synth.padNoteOn(activePadNote!!)
+            audioDiagnostics = synth.getAudioDiagnostics()
+        }
+        onDispose {
+            synth.onEngineRestarted = null
+        }
+    }
+
     // Load initial concerts database on startup
     LaunchedEffect(activeConcert?.id) {
         val concert = activeConcert

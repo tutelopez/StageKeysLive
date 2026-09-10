@@ -10,6 +10,7 @@ package com.tutelopezmusic.stagekeyslive
 data class PerformanceStats(val cpuPercent: Int?, val ramMb: Int)
 
 expect class PlatformAudioSynth() {
+    var onEngineRestarted: (() -> Unit)?
     fun startPerformanceMonitor()
     fun stopPerformanceMonitor()
     fun setPerformanceListener(onStats: (PerformanceStats) -> Unit)
