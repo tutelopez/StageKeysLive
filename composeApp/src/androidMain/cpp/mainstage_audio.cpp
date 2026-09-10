@@ -281,6 +281,34 @@ public:
             
             // Ping-pong if there are active notes on current physical channel
             if (activeNotes[oldPhys] > 0) {
+                // Strict Limit: Before assigning a new shadow channel, evict any existing shadow for this logical channel
+                while (shadowChannelsOf[logicalChannel].size() >= 1) {
+                    int existingShadow = shadowChannelsOf[logicalChannel].front();
+                    shadowChannelsOf[logicalChannel].erase(shadowChannelsOf[logicalChannel].begin());
+                    if (fluidSynth != nullptr) {
+                        fluid_synth_all_sounds_off(fluidSynth, existingShadow);
+                    }
+                    activeNotes[existingShadow] = 0;
+                    physicalInUse[existingShadow] = false;
+
+                    int sfidToRelease = sfids[existingShadow];
+                    if (sfidToRelease != -1) {
+                        sfidRefCount[sfidToRelease]--;
+                        if (sfidRefCount[sfidToRelease] <= 0) {
+                            if (fluidSynth != nullptr) {
+                                fluid_synth_sfunload(fluidSynth, sfidToRelease, 0);
+                            }
+                            sfidRefCount.erase(sfidToRelease);
+                            for (auto it = loadedSfPaths.begin(); it != loadedSfPaths.end(); ) {
+                                if (it->second == sfidToRelease) it = loadedSfPaths.erase(it);
+                                else ++it;
+                            }
+                        }
+                        sfids[existingShadow] = -1;
+                    }
+                    LOGI("FluidSynth: Evicted existing shadow channel %d for logical %d (Strict 1-shadow limit)", existingShadow, logicalChannel);
+                }
+
                 targetPhys = -1;
                 
                 // 1. Search for a free physical channel (reserve PREVIEW_CHANNEL for preview)
@@ -291,7 +319,7 @@ public:
                     }
                 }
                 
-                // 2. If no free channel, evict the oldest shadow
+                // 2. If no free channel, evict the oldest shadow across all logical channels
                 if (targetPhys == -1) {
                     long long oldestTime = -1;
                     int oldestPhys = -1;
@@ -309,17 +337,34 @@ public:
                     
                     if (oldestPhys != -1) {
                         LOGW("FluidSynth: Canales físicos agotados. Cortando sombra %d del lógico %d", oldestPhys, oldestLogicalOwner);
-                        fluid_synth_all_sounds_off(fluidSynth, oldestPhys);
+                        if (fluidSynth != nullptr) {
+                            fluid_synth_all_sounds_off(fluidSynth, oldestPhys);
+                        }
                         activeNotes[oldestPhys] = 0;
                         targetPhys = oldestPhys;
                         
-                        // Remove from its logical owner's shadow list
+                        // Remove from its logical owner's shadow list and unload its SF2 if unused
                         auto& list = shadowChannelsOf[oldestLogicalOwner];
                         for (auto it = list.begin(); it != list.end(); ++it) {
                             if (*it == oldestPhys) {
                                 list.erase(it);
                                 break;
                             }
+                        }
+                        int sfidToRelease = sfids[oldestPhys];
+                        if (sfidToRelease != -1) {
+                            sfidRefCount[sfidToRelease]--;
+                            if (sfidRefCount[sfidToRelease] <= 0) {
+                                if (fluidSynth != nullptr) {
+                                    fluid_synth_sfunload(fluidSynth, sfidToRelease, 0);
+                                }
+                                sfidRefCount.erase(sfidToRelease);
+                                for (auto it = loadedSfPaths.begin(); it != loadedSfPaths.end(); ) {
+                                    if (it->second == sfidToRelease) it = loadedSfPaths.erase(it);
+                                    else ++it;
+                                }
+                            }
+                            sfids[oldestPhys] = -1;
                         }
                     } else {
                         // Fallback if no shadow channel available
@@ -334,43 +379,7 @@ public:
                 
                 physicalActive[logicalChannel] = targetPhys;
                 physicalInUse[targetPhys] = true;
-                
-                // Spawn deferred cleanup thread for the old physical channel
-                std::thread([this, logicalChannel, oldPhys]() {
-                    std::this_thread::sleep_for(std::chrono::seconds(8));
-                    std::lock_guard<std::mutex> lock(synthMutex);
-                    
-                    // Check if it's still in the shadow list for this logical channel
-                    bool stillShadow = false;
-                    auto& list = shadowChannelsOf[logicalChannel];
-                    for (auto it = list.begin(); it != list.end(); ++it) {
-                        if (*it == oldPhys) {
-                            list.erase(it);
-                            stillShadow = true;
-                            break;
-                        }
-                    }
-                    
-                    if (stillShadow) {
-                        fluid_synth_all_sounds_off(fluidSynth, oldPhys);
-                        activeNotes[oldPhys] = 0;
-                        physicalInUse[oldPhys] = false;
-                        
-                        int sfidToRelease = sfids[oldPhys];
-                        if (sfidToRelease != -1) {
-                            sfidRefCount[sfidToRelease]--;
-                            if (sfidRefCount[sfidToRelease] <= 0) {
-                                fluid_synth_sfunload(fluidSynth, sfidToRelease, 0);
-                                sfidRefCount.erase(sfidToRelease);
-                                for (auto it = loadedSfPaths.begin(); it != loadedSfPaths.end(); ) {
-                                    if (it->second == sfidToRelease) it = loadedSfPaths.erase(it);
-                                    else ++it;
-                                }
-                            }
-                            sfids[oldPhys] = -1;
-                        }
-                    }
-                }).detach();
+                LOGI("FluidSynth: Promoted channel %d to active (shadow=%d) for logical %d", targetPhys, oldPhys, logicalChannel);
             } else {
                 targetPhys = oldPhys;
             }
@@ -731,6 +740,53 @@ public:
     }
 
 
+    void releaseShadowChannel(int logicalChannel, int physicalChannel = -1) {
+        std::lock_guard<std::mutex> lock(synthMutex);
+        if (logicalChannel < 0 || logicalChannel >= NUM_LOGICAL_CHANNELS) return;
+
+        auto& list = shadowChannelsOf[logicalChannel];
+        std::vector<int> toRelease;
+
+        if (physicalChannel == -1) {
+            toRelease = list;
+            list.clear();
+        } else {
+            for (auto it = list.begin(); it != list.end(); ) {
+                if (*it == physicalChannel) {
+                    toRelease.push_back(*it);
+                    it = list.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+
+        for (int phys : toRelease) {
+            if (fluidSynth != nullptr) {
+                fluid_synth_all_sounds_off(fluidSynth, phys);
+            }
+            activeNotes[phys] = 0;
+            physicalInUse[phys] = false;
+
+            int sfidToRelease = sfids[phys];
+            if (sfidToRelease != -1) {
+                sfidRefCount[sfidToRelease]--;
+                if (sfidRefCount[sfidToRelease] <= 0) {
+                    if (fluidSynth != nullptr) {
+                        fluid_synth_sfunload(fluidSynth, sfidToRelease, 0);
+                    }
+                    sfidRefCount.erase(sfidToRelease);
+                    for (auto it = loadedSfPaths.begin(); it != loadedSfPaths.end(); ) {
+                        if (it->second == sfidToRelease) it = loadedSfPaths.erase(it);
+                        else ++it;
+                    }
+                }
+                sfids[phys] = -1;
+            }
+            LOGI("FluidSynth: Explicitly released shadow channel %d for logical %d", phys, logicalChannel);
+        }
+    }
+
     int getLogicalChannelCount() const {
         return NUM_LOGICAL_CHANNELS;
     }
@@ -745,6 +801,13 @@ static PadEngine* gPadEngine = nullptr;
 static AAssetManager* gAssetManager = nullptr;
 
 extern "C" {
+
+JNIEXPORT void JNICALL
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeReleaseShadowChannel(JNIEnv *env, jobject thiz, jint logicalChannel, jint physicalChannel) {
+    if (gEngine != nullptr) {
+        gEngine->releaseShadowChannel(logicalChannel, physicalChannel);
+    }
+}
 
 JNIEXPORT void JNICALL
 Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeNoteOn(JNIEnv *env, jobject thiz, jint note, jint velocity, jint channel) {

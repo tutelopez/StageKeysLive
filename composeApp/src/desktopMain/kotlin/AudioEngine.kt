@@ -68,6 +68,8 @@ actual class PlatformAudioSynth actual constructor() {
         return false
     }
 
+    actual fun releaseShadowChannel(logicalChannel: Int, physicalChannel: Int) {}
+
     actual fun allNotesOff() {
         synthesizer?.channels?.forEach {
             it.allNotesOff()

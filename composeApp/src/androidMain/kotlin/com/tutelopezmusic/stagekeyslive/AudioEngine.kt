@@ -95,6 +95,10 @@ actual class PlatformAudioSynth actual constructor() {
         }
     }
 
+    actual fun releaseShadowChannel(logicalChannel: Int, physicalChannel: Int) {
+        nativeReleaseShadowChannel(logicalChannel, physicalChannel)
+    }
+
     actual fun allNotesOff() {
         nativeAllNotesOff()
     }
@@ -306,6 +310,7 @@ actual class PlatformAudioSynth actual constructor() {
     private external fun nativeSetFilterCutoff(cutoff: Float, channel: Int)
     private external fun nativeSetPatch(programNumber: Int, channel: Int)
     private external fun nativeLoadSoundFont(path: String, channel: Int): Boolean
+    private external fun nativeReleaseShadowChannel(logicalChannel: Int, physicalChannel: Int)
     private external fun nativeIsAudioReady(): Boolean
     private external fun nativeAllNotesOff()
     private external fun nativeSetModulation(value: Float, channel: Int)

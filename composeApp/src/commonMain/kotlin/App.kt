@@ -521,6 +521,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         saveConcertsList(concerts)
     }
 
+    val shadowCleanupJobs = remember { mutableStateMapOf<Int, kotlinx.coroutines.Job>() }
+
     val applyPatch = { patchIndex: Int ->
         val concert = activeConcert
         if (concert != null && patchIndex in concert.patches.indices) {
@@ -584,6 +586,13 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             restoredChannels.forEach { ch ->
                 if (ch.sf2Path != null) {
                     synth.loadSoundFont(ch.sf2Path, ch.id)
+
+                    // Cancel previous shadow cleanup job for this channel and schedule deferred cleanup
+                    shadowCleanupJobs[ch.id]?.cancel()
+                    shadowCleanupJobs[ch.id] = coroutineScope.launch {
+                        delay(8000L)
+                        synth.releaseShadowChannel(ch.id, -1)
+                    }
                 }
                 val effectivePan = ((ch.pan - 0.5f) + (masterPan - 0.5f) + 0.5f).coerceIn(0f, 1f)
                 synth.setPan(ch.id, effectivePan)
@@ -721,7 +730,12 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                 masterVuLevel.animateTo(0f, tween(50))
                 vuLevels.forEach { it.animateTo(0f, tween(50)) }
             }
+            concert.channels.forEach { ch ->
+                synth.releaseShadowChannel(ch.id, -1)
+            }
         }
+        shadowCleanupJobs.values.forEach { it.cancel() }
+        shadowCleanupJobs.clear()
         heldKeys.clear()
         sustainedKeys.clear()
         activeNote = null

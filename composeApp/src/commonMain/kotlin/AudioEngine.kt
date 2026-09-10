@@ -23,6 +23,7 @@ expect class PlatformAudioSynth() {
     fun setFilterCutoff(cutoff: Float, channel: Int = 0)
     fun setPatch(programNumber: Int, channel: Int = 0)
     fun loadSoundFont(path: String, channel: Int = 0): Boolean
+    fun releaseShadowChannel(logicalChannel: Int, physicalChannel: Int = -1)
     fun allNotesOff()
     fun setModulation(value: Float, channel: Int = 0)
     fun close()
