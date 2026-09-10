@@ -157,22 +157,25 @@ class AndroidMidiManager(
                     val note = data[dataIndex].toInt() and 0x7F
                     val velocity = data[dataIndex + 1].toInt() and 0x7F
                     
-                    handler.post {
-                        onMidiActivity?.invoke()
-                        if (velocity > 0) {
-                            onNoteReceived?.invoke(note, velocity, true)
-                        } else {
-                            onNoteReceived?.invoke(note, 0, false)
-                        }
+                    // UI pulse goes to main thread
+                    handler.post { onMidiActivity?.invoke() }
+                    
+                    // Audio trigger runs directly and synchronously on MIDI thread
+                    if (velocity > 0) {
+                        onNoteReceived?.invoke(note, velocity, true)
+                    } else {
+                        onNoteReceived?.invoke(note, 0, false)
                     }
                     i = dataIndex + 2
 
                 } else if (status == 0x80 && dataIndex + 1 < end) { // Note Off
                     val note = data[dataIndex].toInt() and 0x7F
-                    handler.post {
-                        onMidiActivity?.invoke()
-                        onNoteReceived?.invoke(note, 0, false)
-                    }
+                    
+                    // UI pulse goes to main thread
+                    handler.post { onMidiActivity?.invoke() }
+                    
+                    // Audio trigger runs directly and synchronously on MIDI thread
+                    onNoteReceived?.invoke(note, 0, false)
                     i = dataIndex + 2
 
                 } else if (status == 0xE0 && dataIndex + 1 < end) { // Pitch Bend
@@ -181,10 +184,12 @@ class AndroidMidiManager(
                     val pitchVal = (msb shl 7) or lsb
                     // Normalize 0..16383 to -1.0..1.0 (center is 8192)
                     val floatVal = (pitchVal - 8192) / 8192.0f
-                    handler.post {
-                        onMidiActivity?.invoke()
-                        onPitchBendReceived?.invoke(floatVal)
-                    }
+                    
+                    // UI pulse goes to main thread
+                    handler.post { onMidiActivity?.invoke() }
+                    
+                    // Audio trigger runs directly and synchronously on MIDI thread
+                    onPitchBendReceived?.invoke(floatVal)
                     i = dataIndex + 2
 
                 } else if (status == 0xB0 && dataIndex + 1 < end) { // Control Change
@@ -192,9 +197,10 @@ class AndroidMidiManager(
                     val value = data[dataIndex + 1].toInt() and 0x7F
                     val floatValue = value / 127f
 
+                    // UI pulse goes to main thread
                     handler.post { onMidiActivity?.invoke() }
 
-                    // [POINT 2 FIX] ✨ MIDI Learn intercept:
+                    // [POINT 2 FIX] ✨ MIDI Learn intercept (UI Mode):
                     val learnCallback = onLearnModeCcReceived
                     if (learnCallback != null) {
                         Log.i(TAG, "MIDI Learn captured CC $controller → mapping target")
@@ -206,13 +212,11 @@ class AndroidMidiManager(
                         continue
                     }
 
-                    // [POINT 2 FIX] ✨ Dynamic mapping lookup:
+                    // [POINT 2 FIX] ✨ Dynamic mapping lookup (Direct & Synchronous):
                     val mappedTarget = ccMappings[controller]
                     if (mappedTarget != null) {
                         Log.d(TAG, "Mapped CC $controller → '$mappedTarget' = $floatValue")
-                        handler.post {
-                            onMappedCcReceived?.invoke(controller, mappedTarget, floatValue)
-                        }
+                        onMappedCcReceived?.invoke(controller, mappedTarget, floatValue)
                         i = dataIndex + 2
                         continue
                     }
@@ -221,9 +225,10 @@ class AndroidMidiManager(
                 } else if (status == 0xC0 && dataIndex < end) { // Program Change
                     val program = data[dataIndex].toInt() and 0x7F
 
+                    // UI pulse goes to main thread
                     handler.post { onMidiActivity?.invoke() }
 
-                    // MIDI Learn intercept for Program Change:
+                    // MIDI Learn intercept for Program Change (UI Mode):
                     val learnCallback = onLearnModeCcReceived
                     if (learnCallback != null) {
                         Log.i(TAG, "MIDI Learn captured PC $program → mapping target")
@@ -235,21 +240,17 @@ class AndroidMidiManager(
                         continue
                     }
 
-                    // Check if program is mapped explicitly to a MidiTarget
+                    // Check if program is mapped explicitly to a MidiTarget (Direct & Synchronous)
                     val mappedTarget = ccMappings[program]
                     if (mappedTarget != null) {
                         Log.d(TAG, "Mapped PC $program → '$mappedTarget'")
-                        handler.post {
-                            onMappedCcReceived?.invoke(program, mappedTarget, 1.0f)
-                        }
+                        onMappedCcReceived?.invoke(program, mappedTarget, 1.0f)
                         i = dataIndex + 1
                         continue
                     }
 
-                    // Default routing for Program Change
-                    handler.post {
-                        onProgramChangeReceived?.invoke(program)
-                    }
+                    // Default routing for Program Change (Direct & Synchronous)
+                    onProgramChangeReceived?.invoke(program)
                     i = dataIndex + 1
                 } else {
                     // System messages or unrecognized, skip 1 byte and reset running status if it was a status byte
