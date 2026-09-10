@@ -1,4 +1,4 @@
-package com.midi.mainstage
+package com.tutelopezmusic.stagekeyslive
 
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow

@@ -1,4 +1,4 @@
-﻿package com.midi.mainstage
+﻿package com.tutelopezmusic.stagekeyslive
 
 expect object CrashReporter {
     fun log(message: String)

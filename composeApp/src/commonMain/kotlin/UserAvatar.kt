@@ -1,4 +1,4 @@
-package com.midi.mainstage
+package com.tutelopezmusic.stagekeyslive
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier

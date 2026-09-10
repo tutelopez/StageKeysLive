@@ -12,6 +12,34 @@
           "package_name": "com.midi.mainstage"
         }
       },
+      "oauth_client": [
+        {
+          "client_id": "869858283130-r06k7npcmh1s7j2na8ho8q8g83v81l03.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.midi.mainstage",
+            "certificate_hash": "284b33f1fe3c6a84590b642b77ed9ac94f086acb"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZkELIpkNCkFPlaj6bptw8xQ9Qk3uVA1o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:869858283130:android:d4a0e778cb3a1fd97675c3",
+        "android_client_info": {
+          "package_name": "com.tutelopezmusic.stagekeyslive"
+        }
+      },
       "oauth_client": [],
       "api_key": [
         {

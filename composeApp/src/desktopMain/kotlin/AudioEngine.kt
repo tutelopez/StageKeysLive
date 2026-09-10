@@ -1,10 +1,10 @@
-package com.midi.mainstage
+package com.tutelopezmusic.stagekeyslive
 
 import javax.sound.midi.MidiSystem
 import javax.sound.midi.Synthesizer
 import javax.sound.midi.MidiChannel
 
-import com.midi.mainstage.PerformanceStats
+import com.tutelopezmusic.stagekeyslive.PerformanceStats
 
 actual class PlatformAudioSynth actual constructor() {
     actual fun startPerformanceMonitor() {}

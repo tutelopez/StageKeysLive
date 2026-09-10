@@ -1,4 +1,4 @@
-package com.midi.mainstage
+package com.tutelopezmusic.stagekeyslive
 
 // [POINT 2 FIX] Extend the expect interface with:
 // - isAudioReady(): reports whether the Oboe stream is running (Point 3 expose)

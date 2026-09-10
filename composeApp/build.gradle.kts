@@ -81,7 +81,7 @@ kotlin {
 
 if (!disableAndroid) {
     configure<com.android.build.api.dsl.ApplicationExtension> {
-        namespace = "com.midi.mainstage"
+        namespace = "com.tutelopezmusic.stagekeyslive"
         compileSdk = 34
 
         buildFeatures {
@@ -96,7 +96,7 @@ if (!disableAndroid) {
         }
 
         defaultConfig {
-            applicationId = "com.midi.mainstage"
+            applicationId = "com.tutelopezmusic.stagekeyslive"
             minSdk = 24
             targetSdk = 34
             versionCode = 1

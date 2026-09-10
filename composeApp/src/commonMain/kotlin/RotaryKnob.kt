@@ -1,4 +1,4 @@
-﻿package com.midi.mainstage
+﻿package com.tutelopezmusic.stagekeyslive
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background

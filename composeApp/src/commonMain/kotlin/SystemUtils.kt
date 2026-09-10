@@ -1,4 +1,4 @@
-package com.midi.mainstage
+package com.tutelopezmusic.stagekeyslive
 
 expect fun setKeepScreenOn(keep: Boolean)
 expect fun getBatteryLevel(): Int

@@ -1,5 +1,5 @@
-﻿# ===================================================================
-# StageKeysLive (com.midi.mainstage) ProGuard / R8 Rules
+# ===================================================================
+# StageKeysLive (com.tutelopezmusic.stagekeyslive) ProGuard / R8 Rules
 # ===================================================================
 
 # Standard Attributes preservation for Crashlytics and Reflection
@@ -12,46 +12,46 @@
     native <methods>;
 }
 
--keep class com.midi.mainstage.PlatformAudioSynth {
+-keep class com.tutelopezmusic.stagekeyslive.PlatformAudioSynth {
     *;
 }
 
--keep class com.midi.mainstage.AudioEngineKt {
+-keep class com.tutelopezmusic.stagekeyslive.AudioEngineKt {
     *;
 }
 
--keep class com.midi.mainstage.AndroidPerformanceMonitor {
+-keep class com.tutelopezmusic.stagekeyslive.AndroidPerformanceMonitor {
     *;
 }
 
--keep class com.midi.mainstage.PerformanceStats {
+-keep class com.tutelopezmusic.stagekeyslive.PerformanceStats {
     *;
 }
 
--keep class com.midi.mainstage.AudioOutputDeviceInfo {
+-keep class com.tutelopezmusic.stagekeyslive.AudioOutputDeviceInfo {
     *;
 }
 
 # -------------------------------------------------------------------
 # Data Models, State Snapshots & Serialization
 # -------------------------------------------------------------------
--keep class com.midi.mainstage.Concert { *; }
--keep class com.midi.mainstage.PatchState { *; }
--keep class com.midi.mainstage.ChannelStripState { *; }
--keep class com.midi.mainstage.PatchChannelSnapshot { *; }
--keep class com.midi.mainstage.MidiTarget { *; }
--keep class com.midi.mainstage.GoogleUserProfile { *; }
--keep class com.midi.mainstage.DriveBackupItem { *; }
--keep class com.midi.mainstage.DriveSyncState { *; }
--keep class com.midi.mainstage.MasterFxSettings { *; }
--keep class com.midi.mainstage.RecordingEvent { *; }
--keep class com.midi.mainstage.ConcertSerializer { *; }
--keep class com.midi.mainstage.PatchSerializer { *; }
--keep class com.midi.mainstage.CommonPersistenceKt { *; }
--keep class com.midi.mainstage.PersistenceKt { *; }
+-keep class com.tutelopezmusic.stagekeyslive.Concert { *; }
+-keep class com.tutelopezmusic.stagekeyslive.PatchState { *; }
+-keep class com.tutelopezmusic.stagekeyslive.ChannelStripState { *; }
+-keep class com.tutelopezmusic.stagekeyslive.PatchChannelSnapshot { *; }
+-keep class com.tutelopezmusic.stagekeyslive.MidiTarget { *; }
+-keep class com.tutelopezmusic.stagekeyslive.GoogleUserProfile { *; }
+-keep class com.tutelopezmusic.stagekeyslive.DriveBackupItem { *; }
+-keep class com.tutelopezmusic.stagekeyslive.DriveSyncState { *; }
+-keep class com.tutelopezmusic.stagekeyslive.MasterFxSettings { *; }
+-keep class com.tutelopezmusic.stagekeyslive.RecordingEvent { *; }
+-keep class com.tutelopezmusic.stagekeyslive.ConcertSerializer { *; }
+-keep class com.tutelopezmusic.stagekeyslive.PatchSerializer { *; }
+-keep class com.tutelopezmusic.stagekeyslive.CommonPersistenceKt { *; }
+-keep class com.tutelopezmusic.stagekeyslive.PersistenceKt { *; }
 
-# Keep all com.midi.mainstage public and internal APIs intact
--keep class com.midi.mainstage.** {
+# Keep all com.tutelopezmusic.stagekeyslive public and internal APIs intact
+-keep class com.tutelopezmusic.stagekeyslive.** {
     <fields>;
     <methods>;
 }

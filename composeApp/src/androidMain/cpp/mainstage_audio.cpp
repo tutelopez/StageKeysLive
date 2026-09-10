@@ -743,63 +743,63 @@ static AAssetManager* gAssetManager = nullptr;
 extern "C" {
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeNoteOn(JNIEnv *env, jobject thiz, jint note, jint velocity, jint channel) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeNoteOn(JNIEnv *env, jobject thiz, jint note, jint velocity, jint channel) {
     if (gEngine != nullptr) {
         gEngine->noteOn(note, velocity, channel);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeNoteOff(JNIEnv *env, jobject thiz, jint note, jint channel) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeNoteOff(JNIEnv *env, jobject thiz, jint note, jint channel) {
     if (gEngine != nullptr) {
         gEngine->noteOff(note, channel);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetVolume(JNIEnv *env, jobject thiz, jfloat volume) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetVolume(JNIEnv *env, jobject thiz, jfloat volume) {
     if (gEngine != nullptr) {
         gEngine->setVolume(volume);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetChannelVolume(JNIEnv *env, jobject thiz, jfloat volume, jint channel) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetChannelVolume(JNIEnv *env, jobject thiz, jfloat volume, jint channel) {
     if (gEngine != nullptr) {
         gEngine->setChannelVolume(volume, channel);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetPan(JNIEnv *env, jobject thiz, jint channel, jfloat pan) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetPan(JNIEnv *env, jobject thiz, jint channel, jfloat pan) {
     if (gEngine != nullptr) {
         gEngine->setPan(channel, pan);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetReverb(JNIEnv *env, jobject thiz, jfloat reverb) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetReverb(JNIEnv *env, jobject thiz, jfloat reverb) {
     if (gEngine != nullptr) {
         gEngine->setReverb(reverb);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetFilterCutoff(JNIEnv *env, jobject thiz, jfloat cutoff, jint channel) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetFilterCutoff(JNIEnv *env, jobject thiz, jfloat cutoff, jint channel) {
     if (gEngine != nullptr) {
         gEngine->setFilterCutoff(cutoff, channel);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetPatch(JNIEnv *env, jobject thiz, jint program_number, jint channel) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetPatch(JNIEnv *env, jobject thiz, jint program_number, jint channel) {
     if (gEngine != nullptr) {
         gEngine->setPatch(program_number, channel);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeInit(JNIEnv *env, jobject thiz, jint sampleRate, jint bufferFrames, jboolean isUsbDevice) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeInit(JNIEnv *env, jobject thiz, jint sampleRate, jint bufferFrames, jboolean isUsbDevice) {
     if (gEngine != nullptr) {
         gEngine->stop();
     } else {
@@ -818,7 +818,7 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeInit(JNIEnv *env, jobject thiz,
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeClose(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeClose(JNIEnv *env, jobject thiz) {
     if (gEngine != nullptr) {
         gEngine->stop();
         delete gEngine;
@@ -832,7 +832,7 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeClose(JNIEnv *env, jobject thiz
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeLoadSoundFont(JNIEnv *env, jobject thiz, jstring path, jint channel) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeLoadSoundFont(JNIEnv *env, jobject thiz, jstring path, jint channel) {
     if (gEngine != nullptr && path != nullptr) {
         const char *sf2Path = env->GetStringUTFChars(path, nullptr);
         bool success = gEngine->loadSoundFont(sf2Path, channel);
@@ -843,27 +843,27 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeLoadSoundFont(JNIEnv *env, jobj
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeIsAudioReady(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeIsAudioReady(JNIEnv *env, jobject thiz) {
     if (gEngine == nullptr) return JNI_FALSE;
     return gEngine->isAudioReady() ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeAllNotesOff(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeAllNotesOff(JNIEnv *env, jobject thiz) {
     if (gEngine != nullptr) {
         gEngine->allNotesOff();
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetModulation(JNIEnv *env, jobject thiz, jfloat value, jint channel) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetModulation(JNIEnv *env, jobject thiz, jfloat value, jint channel) {
     if (gEngine != nullptr) {
         gEngine->setModulation(value, channel);
     }
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeGetAudioDiagnostics(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeGetAudioDiagnostics(JNIEnv *env, jobject thiz) {
     if (gEngine == nullptr) {
         return env->NewStringUTF("NO INICIALIZADO");
     }
@@ -872,27 +872,27 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeGetAudioDiagnostics(JNIEnv *env
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetAssetManager(JNIEnv *env, jobject thiz, jobject assetManager) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetAssetManager(JNIEnv *env, jobject thiz, jobject assetManager) {
     gAssetManager = AAssetManager_fromJava(env, assetManager);
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativePadSetEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativePadSetEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
     if (gPadEngine != nullptr) gPadEngine->setEnabled(enabled == JNI_TRUE);
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativePadSetVolume(JNIEnv *env, jobject thiz, jfloat volume) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativePadSetVolume(JNIEnv *env, jobject thiz, jfloat volume) {
     if (gPadEngine != nullptr) gPadEngine->setVolume(volume);
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativePadSetPan(JNIEnv *env, jobject thiz, jfloat pan) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativePadSetPan(JNIEnv *env, jobject thiz, jfloat pan) {
     if (gPadEngine != nullptr) gPadEngine->setPan(pan);
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativePadSetBank(JNIEnv *env, jobject thiz, jstring bankName) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativePadSetBank(JNIEnv *env, jobject thiz, jstring bankName) {
     if (gPadEngine != nullptr && bankName != nullptr) {
         const char *bankStr = env->GetStringUTFChars(bankName, nullptr);
         gPadEngine->setBank(bankStr);
@@ -901,22 +901,22 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativePadSetBank(JNIEnv *env, jobject
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativePadNoteOn(JNIEnv *env, jobject thiz, jint pitchClass) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativePadNoteOn(JNIEnv *env, jobject thiz, jint pitchClass) {
     if (gPadEngine != nullptr) gPadEngine->noteOn(pitchClass);
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativePadNoteOff(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativePadNoteOff(JNIEnv *env, jobject thiz) {
     if (gPadEngine != nullptr) gPadEngine->noteOff();
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativePadHardKillAll(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativePadHardKillAll(JNIEnv *env, jobject thiz) {
     if (gPadEngine != nullptr) gPadEngine->hardKillAll();
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativePreviewSoundFont(JNIEnv *env, jobject thiz, jstring sf2Path, jint note, jint velocity, jint durationMs) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativePreviewSoundFont(JNIEnv *env, jobject thiz, jstring sf2Path, jint note, jint velocity, jint durationMs) {
     if (gEngine != nullptr && sf2Path != nullptr) {
         const char *path = env->GetStringUTFChars(sf2Path, nullptr);
         gEngine->previewSoundFont(path, note, velocity, durationMs);
@@ -925,49 +925,49 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativePreviewSoundFont(JNIEnv *env, j
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeStopPreview(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeStopPreview(JNIEnv *env, jobject thiz) {
     if (gEngine != nullptr) {
         gEngine->stopPreview();
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetChannelReverbSend(JNIEnv *env, jobject thiz, jint channel, jfloat value) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetChannelReverbSend(JNIEnv *env, jobject thiz, jint channel, jfloat value) {
     if (gEngine != nullptr) {
         gEngine->setChannelReverbSend(channel, value);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetChannelChorusSend(JNIEnv *env, jobject thiz, jint channel, jfloat value) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetChannelChorusSend(JNIEnv *env, jobject thiz, jint channel, jfloat value) {
     if (gEngine != nullptr) {
         gEngine->setChannelChorusSend(channel, value);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetMasterReverbParams(JNIEnv *env, jobject thiz, jfloat roomsize, jfloat damp, jfloat width, jfloat level) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetMasterReverbParams(JNIEnv *env, jobject thiz, jfloat roomsize, jfloat damp, jfloat width, jfloat level) {
     if (gEngine != nullptr) {
         gEngine->setMasterReverbParams(roomsize, damp, width, level);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetMasterChorusParams(JNIEnv *env, jobject thiz, jint nr, jfloat level, jfloat speed, jfloat depth) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetMasterChorusParams(JNIEnv *env, jobject thiz, jint nr, jfloat level, jfloat speed, jfloat depth) {
     if (gEngine != nullptr) {
         gEngine->setMasterChorusParams(nr, level, speed, depth);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeSetMasterLimiterEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeSetMasterLimiterEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
     if (gEngine != nullptr) {
         gEngine->setLimiterEnabled(enabled);
     }
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeIsMasterLimiterActive(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeIsMasterLimiterActive(JNIEnv *env, jobject thiz) {
     if (gEngine != nullptr) {
         return gEngine->isLimiterActive() ? JNI_TRUE : JNI_FALSE;
     }
@@ -975,7 +975,7 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeIsMasterLimiterActive(JNIEnv *e
 }
 
 JNIEXPORT jint JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeGetActiveVoiceCount(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeGetActiveVoiceCount(JNIEnv *env, jobject thiz) {
     if (gEngine != nullptr) {
         return gEngine->getActiveVoiceCount();
     }
@@ -983,7 +983,7 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeGetActiveVoiceCount(JNIEnv *env
 }
 
 JNIEXPORT jdouble JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeGetDspCpuLoad(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeGetDspCpuLoad(JNIEnv *env, jobject thiz) {
     if (gEngine != nullptr) {
         return gEngine->getDspCpuLoad();
     }
@@ -991,7 +991,7 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeGetDspCpuLoad(JNIEnv *env, jobj
 }
 
 JNIEXPORT jint JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeGetLogicalChannelCount(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeGetLogicalChannelCount(JNIEnv *env, jobject thiz) {
     if (gEngine != nullptr) {
         return gEngine->getLogicalChannelCount();
     }
@@ -999,7 +999,7 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeGetLogicalChannelCount(JNIEnv *
 }
 
 JNIEXPORT jint JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeGetGlobalPolyphony(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeGetGlobalPolyphony(JNIEnv *env, jobject thiz) {
     if (gEngine != nullptr) {
         return gEngine->getGlobalPolyphony();
     }
@@ -1007,7 +1007,7 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeGetGlobalPolyphony(JNIEnv *env,
 }
 
 JNIEXPORT jint JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeGetXRunCount(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeGetXRunCount(JNIEnv *env, jobject thiz) {
     if (gEngine != nullptr) {
         return gEngine->getXRunCount();
     }
@@ -1015,7 +1015,7 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeGetXRunCount(JNIEnv *env, jobje
 }
 
 JNIEXPORT jdouble JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeGetPeakDspCpuLoad(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeGetPeakDspCpuLoad(JNIEnv *env, jobject thiz) {
     if (gEngine != nullptr) {
         return gEngine->getPeakDspCpuLoad();
     }
@@ -1023,7 +1023,7 @@ Java_com_midi_mainstage_PlatformAudioSynth_nativeGetPeakDspCpuLoad(JNIEnv *env, 
 }
 
 JNIEXPORT void JNICALL
-Java_com_midi_mainstage_PlatformAudioSynth_nativeResetPeakDspCpuLoad(JNIEnv *env, jobject thiz) {
+Java_com_tutelopezmusic_stagekeyslive_PlatformAudioSynth_nativeResetPeakDspCpuLoad(JNIEnv *env, jobject thiz) {
     if (gEngine != nullptr) {
         gEngine->resetPeakDspCpuLoad();
     }

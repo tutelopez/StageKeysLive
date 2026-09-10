@@ -1,4 +1,4 @@
-﻿package com.midi.mainstage
+﻿package com.tutelopezmusic.stagekeyslive
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,4 +1,4 @@
-package com.midi.mainstage
+package com.tutelopezmusic.stagekeyslive
 
 data class AudioOutputDeviceInfo(
     val id: Int,

@@ -1,6 +1,6 @@
 @file:JvmName("CommonPersistence")
 
-package com.midi.mainstage
+package com.tutelopezmusic.stagekeyslive
 
 import kotlin.jvm.JvmName
 
