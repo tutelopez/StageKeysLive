@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
         PlatformAudioSynth.optimalBufferFrames = framesStr?.toIntOrNull() ?: 256
         
         PlatformAudioSynth.globalPrefs = prefs
+        PlatformAudioSynth.appContext = applicationContext
         
         synth.setAssetManager(assets)
         
@@ -113,7 +114,8 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         if (instance == this) instance = null
-        // Release hardware and native engine resources
+        AudioForegroundService.stop(this)
+        PlatformAudioSynth.appContext = null
         PlatformAudioSynth.midiManager = null
         PlatformAudioSynth.audioDeviceManager = null
         midiManager.stopListening()

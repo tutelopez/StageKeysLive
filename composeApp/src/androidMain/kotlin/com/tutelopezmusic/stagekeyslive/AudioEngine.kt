@@ -21,6 +21,7 @@ actual class PlatformAudioSynth actual constructor() {
         internal var audioDeviceManager: AndroidAudioDeviceManager? = null
         internal var perfMonitor = AndroidPerformanceMonitor()
         var globalPrefs: android.content.SharedPreferences? = null
+        var appContext: android.content.Context? = null
         var optimalSampleRate: Int = 48000
         var optimalBufferFrames: Int = 256
     }
@@ -105,6 +106,7 @@ actual class PlatformAudioSynth actual constructor() {
     actual fun close() {
         cancelMidiLearn()
         nativeClose()
+        appContext?.let { AudioForegroundService.stop(it) }
     }
 
     // [POINT 3 FIX] Exposes Oboe stream health to the UI layer
@@ -216,6 +218,7 @@ actual class PlatformAudioSynth actual constructor() {
             ?.putInt("bufferOption", bufferOption)
             ?.apply()
         nativeInit(sampleRate, bufferFrames, effectiveIsUsb, selectedId)
+        appContext?.let { AudioForegroundService.start(it) }
     }
 
     actual fun getAudioDiagnostics(): String {
