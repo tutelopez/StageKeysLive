@@ -520,7 +520,6 @@ fun DashboardScreen(
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(DarkPanel.copy(alpha = 0.72f))
                                     .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
-                                    .clickable { onSelectConcert(concert) }
                                     .padding(horizontal = 14.dp, vertical = 11.dp)
                             ) {
                                 Row(
@@ -528,83 +527,92 @@ fun DashboardScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    // Cover Badge
-                                    Box(
+                                    // Main Clickable Area: Cover Badge + Info
+                                    Row(
                                         modifier = Modifier
-                                            .size(40.dp)
-                                            .shadow(
-                                                elevation = 8.dp,
-                                                shape = RoundedCornerShape(11.dp),
-                                                ambientColor = coverColor.copy(alpha = 0.25f),
-                                                spotColor = coverColor.copy(alpha = 0.35f)
-                                            )
-                                            .clip(RoundedCornerShape(11.dp))
-                                            .background(coverBg),
-                                        contentAlignment = Alignment.Center
+                                            .weight(1f)
+                                            .clickable { onSelectConcert(concert) },
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        Icon(
-                                            TablerIcons.Music,
-                                            contentDescription = null,
-                                            tint = coverColor,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
+                                        // Cover Badge
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .shadow(
+                                                    elevation = 8.dp,
+                                                    shape = RoundedCornerShape(11.dp),
+                                                    ambientColor = coverColor.copy(alpha = 0.25f),
+                                                    spotColor = coverColor.copy(alpha = 0.35f)
+                                                )
+                                                .clip(RoundedCornerShape(11.dp))
+                                                .background(coverBg),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                TablerIcons.Music,
+                                                contentDescription = null,
+                                                tint = coverColor,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
 
-                                    // Info
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = concert.name,
-                                            color = Color.White,
-                                            fontSize = 13.5.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        val patchCount = concert.patches.size
-                                        Text(
-                                            text = if (patchCount == 1) "1 patch" else "$patchCount patches",
-                                            color = TextDark,
-                                            fontSize = 11.sp
-                                        )
+                                        // Info
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = concert.name,
+                                                color = Color.White,
+                                                fontSize = 13.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            val patchCount = concert.patches.size
+                                            Text(
+                                                text = if (patchCount == 1) "1 patch" else "$patchCount patches",
+                                                color = TextDark,
+                                                fontSize = 11.sp
+                                            )
+                                        }
                                     }
 
                                     // Actions Mini
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
                                         IconButton(
                                             onClick = { onEditConcertClick(concert) },
-                                            modifier = Modifier.size(28.dp)
+                                            modifier = Modifier.size(36.dp)
                                         ) {
                                             Icon(
                                                 TablerIcons.Edit,
                                                 contentDescription = "Editar",
                                                 tint = TextDark,
-                                                modifier = Modifier.size(15.dp)
+                                                modifier = Modifier.size(16.dp)
                                             )
                                         }
                                         IconButton(
                                             onClick = { onExportConcertClick(concert) },
-                                            modifier = Modifier.size(28.dp)
+                                            modifier = Modifier.size(36.dp)
                                         ) {
                                             Icon(
                                                 TablerIcons.Share,
                                                 contentDescription = "Exportar",
                                                 tint = TextDark,
-                                                modifier = Modifier.size(15.dp)
+                                                modifier = Modifier.size(16.dp)
                                             )
                                         }
                                         IconButton(
                                             onClick = { onDeleteConcert(concert) },
-                                            modifier = Modifier.size(28.dp)
+                                            modifier = Modifier.size(36.dp)
                                         ) {
                                             Icon(
                                                 TablerIcons.Trash,
                                                 contentDescription = "Eliminar",
                                                 tint = StatusError,
-                                                modifier = Modifier.size(15.dp)
+                                                modifier = Modifier.size(16.dp)
                                             )
                                         }
                                     }

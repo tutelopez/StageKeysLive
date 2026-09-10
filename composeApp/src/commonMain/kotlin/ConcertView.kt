@@ -1000,6 +1000,13 @@ private fun PatchRow(
                 IconButton(onClick = onEdit, modifier = Modifier.size(16.dp)) {
                     Icon(TablerIcons.Edit, contentDescription = "Edit", tint = AccentSky, modifier = Modifier.size(11.dp))
                 }
+
+                Spacer(Modifier.width(2.dp))
+
+                // Delete Icon
+                IconButton(onClick = onDelete, modifier = Modifier.size(16.dp)) {
+                    Icon(TablerIcons.Trash, contentDescription = "Eliminar Patch", tint = StatusError, modifier = Modifier.size(11.dp))
+                }
             }
         }
     }

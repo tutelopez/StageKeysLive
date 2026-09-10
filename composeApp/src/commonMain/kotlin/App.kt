@@ -153,7 +153,13 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
     // Dialog flags
     var showCreateConcertDialog by remember { mutableStateOf(false) }
-    var showDeleteConfirmDialog by remember { mutableStateOf<Concert?>(null) }
+    // Undo para borrar concierto
+    var pendingDeleteConcert by remember { mutableStateOf<Concert?>(null) }
+    var pendingDeleteConcertList by remember { mutableStateOf<List<Concert>?>(null) }
+
+    // Undo para borrar patch  
+    var pendingDeletePatch by remember { mutableStateOf<PatchState?>(null) }
+    var pendingDeletePatchIndex by remember { mutableStateOf(-1) }
     var concertToEdit by remember { mutableStateOf<Concert?>(null) }
     var newConcertName by remember { mutableStateOf("") }
     var showWhatsNewDialog by remember { mutableStateOf(false) }
@@ -1094,7 +1100,36 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     currentScreen = ScreenState.CONCERT
                 },
                 onDeleteConcert = { concert ->
-                    showDeleteConfirmDialog = concert
+                    val previousList = concerts
+                    val newList = concerts.filter { it.id != concert.id }
+                    pendingDeleteConcert = concert
+                    pendingDeleteConcertList = previousList
+                    
+                    val wasActive = (activeConcert?.id == concert.id)
+                    if (wasActive) {
+                        stopConcert()
+                        activeConcert = null
+                    }
+                    concerts = newList
+                    
+                    coroutineScope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "\"${concert.name}\" eliminado",
+                            actionLabel = "Deshacer",
+                            duration = SnackbarDuration.Short
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            concerts = previousList
+                            if (wasActive) {
+                                activeConcert = concert
+                                currentScreen = ScreenState.CONCERT
+                            }
+                        } else {
+                            saveConcertsList(newList)
+                        }
+                        pendingDeleteConcert = null
+                        pendingDeleteConcertList = null
+                    }
                 },
                 onExportConcertClick = { concertToExport = it },
                 onImportClick = { showPackagePicker = true },
@@ -1140,13 +1175,41 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     },
                     onDeletePatch = { patch ->
                         val active = activeConcert ?: return@ConcertViewScreen
-                        val updatedPatches = active.patches.filter { it.id != patch.id }
-                        val updatedConcert = active.copy(patches = updatedPatches, lastModified = System.currentTimeMillis())
-                        val newList = concerts.map { if (it.id == active.id) updatedConcert else it }
-                        saveConcertsList(newList)
-                        activeConcert = updatedConcert
-                        if (selectedPatchIndex >= updatedPatches.size) {
-                            selectedPatchIndex = (updatedPatches.size - 1).coerceAtLeast(0)
+                        val patchIdx = active.patches.indexOfFirst { it.id == patch.id }
+                        if (patchIdx != -1) {
+                            val previousPatches = active.patches
+                            val updatedPatches = active.patches.filter { it.id != patch.id }
+                            val updatedConcert = active.copy(patches = updatedPatches, lastModified = System.currentTimeMillis())
+                            
+                            pendingDeletePatch = patch
+                            pendingDeletePatchIndex = patchIdx
+                            
+                            activeConcert = updatedConcert
+                            if (selectedPatchIndex >= updatedPatches.size) {
+                                selectedPatchIndex = (updatedPatches.size - 1).coerceAtLeast(0)
+                            }
+                            
+                            coroutineScope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "\"${patch.name}\" eliminado",
+                                    actionLabel = "Deshacer",
+                                    duration = SnackbarDuration.Short
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    val restoredPatches = previousPatches
+                                    val restoredConcert = (activeConcert ?: updatedConcert).copy(
+                                        patches = restoredPatches,
+                                        lastModified = System.currentTimeMillis()
+                                    )
+                                    activeConcert = restoredConcert
+                                    selectedPatchIndex = patchIdx.coerceIn(0, (restoredPatches.size - 1).coerceAtLeast(0))
+                                    saveConcertsList(concerts.map { if (it.id == restoredConcert.id) restoredConcert else it })
+                                } else {
+                                    saveConcertsList(concerts.map { if (it.id == updatedConcert.id) updatedConcert else it })
+                                }
+                                pendingDeletePatch = null
+                                pendingDeletePatchIndex = -1
+                            }
                         }
                     },
                     onExportPatchClick = { patchToExport = it },
@@ -1708,54 +1771,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         )
     }
 
-    // Delete Concert Confirmation Dialog
-    showDeleteConfirmDialog?.let { concert ->
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirmDialog = null },
-            title = {
-                Text(
-                    "¿Eliminar concierto?",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(
-                    "¿Estás seguro de que deseas eliminar \"${concert.name}\"? Esta acción no se puede deshacer.",
-                    color = TextDark,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val newList = concerts.filter { it.id != concert.id }
-                        saveConcertsList(newList)
-                        if (activeConcert?.id == concert.id) {
-                            stopConcert()
-                            activeConcert = null
-                        }
-                        showDeleteConfirmDialog = null
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = StatusError,
-                        contentColor = Color.White
-                    ),
-                    shape = AppShapes.medium
-                ) {
-                    Text("Eliminar", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmDialog = null }) {
-                    Text("Cancelar", color = TextDark)
-                }
-            },
-            containerColor = DarkPanel,
-            shape = AppShapes.large
-        )
-    }
+
 
     // 3. Channel Settings Dialog (Gear Menu on Channel Strip)
     showChannelSettingsDialog?.let { chState ->
