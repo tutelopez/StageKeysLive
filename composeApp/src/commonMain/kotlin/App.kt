@@ -1,6 +1,7 @@
 package com.tutelopezmusic.stagekeyslive
 
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.zIndex
 
@@ -2691,6 +2692,320 @@ private fun getSplitMidiNoteFractionEnd(note: Int): Float {
     }
 }
 
+private fun fractionToMidiNote(frac: Float, useEndSnap: Boolean = false): Int {
+    val clampedFrac = frac.coerceIn(0f, 1f)
+    val whiteIdx = (clampedFrac * 52f).toInt().coerceIn(0, 51)
+    return splitWhitePianoNotes.getOrElse(whiteIdx) { if (useEndSnap) 108 else 21 }
+}
+
+private val splitNoteNames = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+private fun midiNoteToName(note: Int): String {
+    val clamped = note.coerceIn(0, 127)
+    val octave = (clamped / 12) - 1
+    val name = splitNoteNames[clamped % 12]
+    return "$name$octave ($clamped)"
+}
+
+data class DragHandle(
+    val channelId: Int,
+    val isStart: Boolean   // true = borde izquierdo, false = borde derecho
+)
+
+@Composable
+fun SplitKeyboardDragEditor(
+    channels: List<ChannelStripState>,
+    onUpdateRange: (channelId: Int, newStart: Int, newEnd: Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var activeDrag by remember { mutableStateOf<DragHandle?>(null) }
+    var dragMidiNote by remember { mutableStateOf(0) }
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF0F1117))
+            .border(1.dp, Color(0xFF232733), RoundedCornerShape(12.dp))
+            .padding(10.dp)
+    ) {
+        val totalWidth = maxWidth
+        val barHeight = when {
+            channels.size <= 2 -> 6.dp
+            channels.size <= 4 -> 4.5.dp
+            else -> 3.5.dp
+        }
+        val barSpacing = when {
+            channels.size <= 3 -> 2.dp
+            else -> 1.5.dp
+        }
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            // 1. Stacked Channel Layer Bars (MainStage style)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(barSpacing)
+            ) {
+                channels.forEach { ch ->
+                    val accentColor = parseColorHex(ch.colorHex)
+                    val alpha = if (ch.isMuted) 0.3f else 0.95f
+                    val startFrac = getSplitMidiNoteFractionStart(ch.keyRangeStart)
+                    val endFrac = getSplitMidiNoteFractionEnd(ch.keyRangeEnd)
+                    val startX = totalWidth * startFrac
+                    val barWidth = (totalWidth * (endFrac - startFrac)).coerceAtLeast(6.dp)
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(barHeight)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .offset(x = startX)
+                                .width(barWidth)
+                                .fillMaxHeight()
+                                .shadow(
+                                    elevation = if (ch.isMuted) 0.dp else 4.dp,
+                                    shape = RoundedCornerShape(2.dp),
+                                    ambientColor = accentColor.copy(alpha = 0.4f),
+                                    spotColor = accentColor.copy(alpha = 0.5f)
+                                )
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(accentColor.copy(alpha = alpha))
+                                .border(0.5.dp, Color.White.copy(alpha = if (ch.isMuted) 0.1f else 0.4f), RoundedCornerShape(2.dp))
+                        )
+                    }
+                }
+            }
+
+            // 2. Mini 88-Key Piano Keyboard with Drag Handles
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF0F1115))
+                    .border(1.dp, Color(0xFF1E222D), RoundedCornerShape(6.dp))
+                    .pointerInput(channels) {
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                var closest: DragHandle? = null
+                                var minDist = Float.MAX_VALUE
+                                channels.forEach { ch ->
+                                    val startX = size.width * getSplitMidiNoteFractionStart(ch.keyRangeStart)
+                                    val endX = size.width * getSplitMidiNoteFractionEnd(ch.keyRangeEnd)
+                                    val distStart = kotlin.math.abs(offset.x - startX)
+                                    val distEnd = kotlin.math.abs(offset.x - endX)
+                                    if (distStart < minDist && distStart < 60f) {
+                                        minDist = distStart
+                                        closest = DragHandle(ch.id, isStart = true)
+                                        dragMidiNote = ch.keyRangeStart
+                                    }
+                                    if (distEnd < minDist && distEnd < 60f) {
+                                        minDist = distEnd
+                                        closest = DragHandle(ch.id, isStart = false)
+                                        dragMidiNote = ch.keyRangeEnd
+                                    }
+                                }
+                                activeDrag = closest
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                val drag = activeDrag ?: return@detectDragGestures
+                                val ch = channels.find { it.id == drag.channelId } ?: return@detectDragGestures
+                                val currentFrac = if (drag.isStart)
+                                    getSplitMidiNoteFractionStart(ch.keyRangeStart)
+                                else
+                                    getSplitMidiNoteFractionEnd(ch.keyRangeEnd)
+                                val newFrac = (currentFrac + dragAmount.x / size.width).coerceIn(0f, 1f)
+                                val newNote = fractionToMidiNote(newFrac, useEndSnap = !drag.isStart)
+                                if (drag.isStart && newNote < ch.keyRangeEnd) {
+                                    dragMidiNote = newNote
+                                    onUpdateRange(ch.id, newNote, ch.keyRangeEnd)
+                                } else if (!drag.isStart && newNote > ch.keyRangeStart) {
+                                    dragMidiNote = newNote
+                                    onUpdateRange(ch.id, ch.keyRangeStart, newNote)
+                                }
+                            },
+                            onDragEnd = { activeDrag = null },
+                            onDragCancel = { activeDrag = null }
+                        )
+                    }
+            ) {
+                // White Keys
+                Row(modifier = Modifier.fillMaxSize()) {
+                    splitWhitePianoNotes.forEach { _ ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(Color(0xFFE2E8F0))
+                                .border(0.5.dp, Color(0xFF0F1115))
+                        )
+                    }
+                }
+
+                // Black Keys
+                Row(modifier = Modifier.fillMaxSize()) {
+                    splitWhitePianoNotes.forEachIndexed { idx, note ->
+                        val hasBlack = splitBlackPianoNotesMap.containsKey(note) && idx < 51
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            if (hasBlack) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = 3.dp)
+                                        .zIndex(2f)
+                                        .width(7.dp)
+                                        .fillMaxHeight(0.62f)
+                                        .clip(RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
+                                        .background(Color(0xFF1E222D))
+                                        .border(0.5.dp, Color.Black, RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Semi-transparent Channel Range Overlays
+                channels.forEach { ch ->
+                    val accentColor = parseColorHex(ch.colorHex)
+                    val alpha = if (ch.isMuted) 0.18f else 0.42f
+                    val startFrac = getSplitMidiNoteFractionStart(ch.keyRangeStart)
+                    val endFrac = getSplitMidiNoteFractionEnd(ch.keyRangeEnd)
+                    val startX = totalWidth * startFrac
+                    val barWidth = (totalWidth * (endFrac - startFrac)).coerceAtLeast(4.dp)
+
+                    Box(
+                        modifier = Modifier
+                            .offset(x = startX)
+                            .width(barWidth)
+                            .fillMaxHeight()
+                            .background(accentColor.copy(alpha = alpha))
+                            .border(1.dp, accentColor.copy(alpha = if (ch.isMuted) 0.3f else 0.85f))
+                    )
+                }
+
+                // Drag Handles for each channel
+                channels.forEach { ch ->
+                    val accentColor = parseColorHex(ch.colorHex)
+                    val startFrac = getSplitMidiNoteFractionStart(ch.keyRangeStart)
+                    val endFrac = getSplitMidiNoteFractionEnd(ch.keyRangeEnd)
+
+                    val isStartDragging = activeDrag?.channelId == ch.id && activeDrag?.isStart == true
+                    val isEndDragging = activeDrag?.channelId == ch.id && activeDrag?.isStart == false
+
+                    // Left Handle (keyRangeStart)
+                    Box(
+                        modifier = Modifier
+                            .offset(x = (totalWidth * startFrac - 7.dp).coerceIn(0.dp, totalWidth - 14.dp))
+                            .width(14.dp)
+                            .fillMaxHeight()
+                            .zIndex(if (isStartDragging) 10f else 3f)
+                            .shadow(
+                                elevation = if (isStartDragging) 6.dp else 0.dp,
+                                shape = RoundedCornerShape(topStart = 3.dp, bottomStart = 3.dp),
+                                ambientColor = accentColor,
+                                spotColor = accentColor
+                            )
+                            .background(accentColor.copy(alpha = if (isStartDragging) 0.5f else 0.25f))
+                            .drawBehind {
+                                drawRect(
+                                    color = accentColor.copy(alpha = if (isStartDragging) 1f else 0.85f),
+                                    topLeft = Offset.Zero,
+                                    size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)
+                                )
+                            }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .width(2.dp)
+                                .height(12.dp)
+                                .background(Color.White.copy(alpha = if (isStartDragging) 1f else 0.8f), RoundedCornerShape(1.dp))
+                        )
+                    }
+
+                    // Right Handle (keyRangeEnd)
+                    Box(
+                        modifier = Modifier
+                            .offset(x = (totalWidth * endFrac - 7.dp).coerceIn(0.dp, totalWidth - 14.dp))
+                            .width(14.dp)
+                            .fillMaxHeight()
+                            .zIndex(if (isEndDragging) 10f else 3f)
+                            .shadow(
+                                elevation = if (isEndDragging) 6.dp else 0.dp,
+                                shape = RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp),
+                                ambientColor = accentColor,
+                                spotColor = accentColor
+                            )
+                            .background(accentColor.copy(alpha = if (isEndDragging) 0.5f else 0.25f))
+                            .drawBehind {
+                                drawRect(
+                                    color = accentColor.copy(alpha = if (isEndDragging) 1f else 0.85f),
+                                    topLeft = Offset(size.width - 3.dp.toPx(), 0f),
+                                    size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)
+                                )
+                            }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .width(2.dp)
+                                .height(12.dp)
+                                .background(Color.White.copy(alpha = if (isEndDragging) 1f else 0.8f), RoundedCornerShape(1.dp))
+                        )
+                    }
+                }
+
+                // Octave C Labels at Bottom
+                val cNotes = listOf(24 to "C1", 36 to "C2", 48 to "C3", 60 to "C4", 72 to "C5", 84 to "C6", 96 to "C7", 108 to "C8")
+                cNotes.forEach { (note, label) ->
+                    val frac = getSplitMidiNoteFractionStart(note)
+                    Text(
+                        text = label,
+                        fontSize = 7.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black.copy(alpha = 0.55f),
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .offset(x = totalWidth * frac + 1.dp, y = (-1).dp)
+                    )
+                }
+
+                // Tooltip en tiempo real
+                activeDrag?.let { drag ->
+                    val activeCh = channels.find { it.id == drag.channelId }
+                    if (activeCh != null) {
+                        val currentNote = if (drag.isStart) activeCh.keyRangeStart else activeCh.keyRangeEnd
+                        val frac = if (drag.isStart) getSplitMidiNoteFractionStart(currentNote) else getSplitMidiNoteFractionEnd(currentNote)
+                        val tooltipX = (totalWidth * frac - 24.dp).coerceIn(0.dp, (totalWidth - 64.dp).coerceAtLeast(0.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .offset(x = tooltipX, y = (-22).dp)
+                                .zIndex(20f)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF1E222D))
+                                .border(1.dp, parseColorHex(activeCh.colorHex), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = midiNoteToName(currentNote),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun SplitKeyboardVisualizer(
     channels: List<ChannelStripState>,
@@ -2861,9 +3176,10 @@ fun SplitKeyboardSettingsScreen(
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        // Mini Keyboard with MainStage-style Layer Bars and Overlap Tint
-        SplitKeyboardVisualizer(
+        // Mini Keyboard with Drag Handles and Overlap Tint
+        SplitKeyboardDragEditor(
             channels = concert.channels,
+            onUpdateRange = onUpdateRange,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
@@ -2873,38 +3189,21 @@ fun SplitKeyboardSettingsScreen(
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
                     .background(MaterialTheme.colorScheme.surfaceVariant, AppShapes.small)
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = ch.sf2Name.substringBefore(".sf2").uppercase(),
                     color = parseColorHex(ch.colorHex),
                     style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.width(100.dp)
+                    modifier = Modifier.weight(1f)
                 )
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Nota Min: ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Slider(
-                        value = ch.keyRangeStart.toFloat(),
-                        onValueChange = { onUpdateRange(ch.id, it.toInt(), ch.keyRangeEnd) },
-                        valueRange = 0f..ch.keyRangeEnd.toFloat(),
-                        modifier = Modifier.width(80.dp)
-                    )
-                    Text(ch.keyRangeStart.toString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(30.dp))
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Nota Max: ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Slider(
-                        value = ch.keyRangeEnd.toFloat(),
-                        onValueChange = { onUpdateRange(ch.id, ch.keyRangeStart, it.toInt()) },
-                        valueRange = ch.keyRangeStart.toFloat()..127f,
-                        modifier = Modifier.width(80.dp)
-                    )
-                    Text(ch.keyRangeEnd.toString(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(30.dp))
-                }
+                Text(
+                    text = "${midiNoteToName(ch.keyRangeStart)} → ${midiNoteToName(ch.keyRangeEnd)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
