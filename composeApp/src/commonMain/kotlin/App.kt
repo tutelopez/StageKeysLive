@@ -152,6 +152,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     }
 
     // Dialog flags
+    var showOnboarding by remember { mutableStateOf(false) }
     var showCreateConcertDialog by remember { mutableStateOf(false) }
     // Undo para borrar concierto
     var pendingDeleteConcert by remember { mutableStateOf<Concert?>(null) }
@@ -165,6 +166,11 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     var showWhatsNewDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        val hasSeenOnboarding = readTextFromFile("onboarding_done.txt") == "1"
+        if (!hasSeenOnboarding) {
+            showOnboarding = true
+        }
+
         val lastSeen = readTextFromFile("last_seen_version.txt")?.trim()?.toIntOrNull() ?: 0
         if (CURRENT_APP_VERSION_CODE > lastSeen) {
             showWhatsNewDialog = true
@@ -1074,6 +1080,16 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
 
     // UI SCREEN CONTROLLER
     Box(modifier = Modifier.fillMaxSize()) {
+        if (showOnboarding) {
+            OnboardingScreen(
+                onFinish = {
+                    saveTextToFile("onboarding_done.txt", "1")
+                    showOnboarding = false
+                }
+            )
+            return@Box
+        }
+
         when (currentScreen) {
         ScreenState.DASHBOARD -> {
             DashboardScreen(
