@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var midiManager: AndroidMidiManager
     private lateinit var audioDeviceManager: AndroidAudioDeviceManager
     private val synth = PlatformAudioSynth()
+    private val inAppReviewManager by lazy { InAppReviewManager(this) }
     
     @Volatile
     private var isAppReady = false
@@ -38,6 +39,15 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
         instance = this
+        
+        inAppReviewManager.recordSession()
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (!isFinishing && !isDestroyed) {
+                if (inAppReviewManager.shouldRequestReview()) {
+                    inAppReviewManager.requestReview(this@MainActivity)
+                }
+            }
+        }, 8000L)
         
         if (Build.VERSION.SDK_INT >= 33) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {

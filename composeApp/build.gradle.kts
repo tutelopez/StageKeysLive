@@ -23,7 +23,11 @@ if (!disableAndroid) {
 
 kotlin {
     if (!disableAndroid) {
-        androidTarget()
+        androidTarget {
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            }
+        }
     }
 
     jvm("desktop")
@@ -65,6 +69,7 @@ kotlin {
                     implementation("com.google.android.gms:play-services-auth:21.2.0")
                     implementation("io.coil-kt:coil-compose:2.6.0")
                     implementation("androidx.core:core-splashscreen:1.0.1")
+                    implementation("com.google.android.play:review-ktx:2.0.1")
                     // Oboe headers come from cpp/include/oboe/ (downloaded from GitHub 1.8.0).
                     // liboboe.so at runtime comes from FluidSynth v2.6.0 bundle — no Prefab needed.
                 }
@@ -85,6 +90,7 @@ if (!disableAndroid) {
         compileSdk = 34
 
         buildFeatures {
+            buildConfig = true
             // prefab not needed: Oboe is now provided as local headers + FluidSynth-bundled .so
         }
 
