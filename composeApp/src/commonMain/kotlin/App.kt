@@ -5,6 +5,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.zIndex
 
+import androidx.compose.animation.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -3154,11 +3155,221 @@ fun SplitKeyboardVisualizer(
 }
 
 @Composable
+fun SplitRangeKeyboard(
+    channels: List<ChannelStripState>,
+    selectedChannelId: Int,
+    editingLow: Boolean,
+    scrollState: ScrollState,
+    onNoteSelected: (Int) -> Unit
+) {
+    val keyWidth = 32.dp
+    val selectedCh = channels.find { it.id == selectedChannelId }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+
+    LaunchedEffect(selectedChannelId) {
+        if (selectedCh != null) {
+            val centerNote = (selectedCh.keyRangeStart + selectedCh.keyRangeEnd) / 2
+            val whiteIdx = splitWhitePianoNotes.indexOfFirst { it >= centerNote }.let { if (it >= 0) it else 26 }
+            val keyWidthPx = with(density) { keyWidth.toPx() }
+            val targetScroll = (whiteIdx * keyWidthPx - with(density) { 150.dp.toPx() }).coerceAtLeast(0f)
+            scrollState.animateScrollTo(targetScroll.toInt())
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFF0F1117))
+            .border(1.dp, Color(0xFF232733), RoundedCornerShape(8.dp))
+            .horizontalScroll(scrollState)
+    ) {
+        // 1. White Keys
+        Row(modifier = Modifier.fillMaxHeight()) {
+            splitWhitePianoNotes.forEach { note ->
+                val inSelectedRange = selectedCh != null && note in selectedCh.keyRangeStart..selectedCh.keyRangeEnd
+                val inOtherRange = channels.any { it.id != selectedChannelId && note in it.keyRangeStart..it.keyRangeEnd }
+
+                val bgBrush = when {
+                    inSelectedRange -> {
+                        val accent = parseColorHex(selectedCh!!.colorHex)
+                        val isTargetBoundary = (editingLow && note == selectedCh.keyRangeStart) || (!editingLow && note == selectedCh.keyRangeEnd)
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(alpha = 0.7f),
+                                accent.copy(alpha = if (isTargetBoundary) 1f else 0.55f)
+                            )
+                        )
+                    }
+                    inOtherRange -> Brush.verticalGradient(listOf(Color.White, Color(0xFFCDD5E0)))
+                    else -> Brush.verticalGradient(listOf(Color.White, Color(0xFFF0F4F8)))
+                }
+
+                Box(
+                    modifier = Modifier
+                        .width(keyWidth)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
+                        .background(bgBrush)
+                        .border(1.dp, Color(0xFF12141A), RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
+                        .pointerInput(note) {
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false)
+                                waitForUpOrCancellation()
+                                onNoteSelected(note)
+                            }
+                        }
+                ) {
+                    // Octave label at bottom if C note
+                    if (note % 12 == 0) {
+                        val octave = (note / 12) - 1
+                        Text(
+                            text = "C$octave",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black.copy(alpha = 0.5f),
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 10.dp)
+                        )
+                    }
+
+                    if (note == selectedCh?.keyRangeStart) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .width(18.dp)
+                                .height(10.dp)
+                                .background(parseColorHex(selectedCh.colorHex), RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                        ) {
+                            Text(
+                                text = "L",
+                                fontSize = 7.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                    }
+                    if (note == selectedCh?.keyRangeEnd) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .width(18.dp)
+                                .height(10.dp)
+                                .background(parseColorHex(selectedCh.colorHex), RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                        ) {
+                            Text(
+                                text = "H",
+                                fontSize = 7.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Black Keys
+        Row(modifier = Modifier.fillMaxHeight()) {
+            splitWhitePianoNotes.forEachIndexed { idx, note ->
+                val hasBlack = splitBlackPianoNotesMap.containsKey(note) && idx < 51
+
+                Spacer(modifier = Modifier.width(keyWidth / 2))
+
+                if (hasBlack) {
+                    val blackNote = splitBlackPianoNotesMap[note]!!
+                    val inSelectedRange = selectedCh != null && blackNote in selectedCh.keyRangeStart..selectedCh.keyRangeEnd
+                    val inOtherRange = channels.any { it.id != selectedChannelId && blackNote in it.keyRangeStart..it.keyRangeEnd }
+                    val isTargetBoundary = (editingLow && blackNote == selectedCh?.keyRangeStart) || (!editingLow && blackNote == selectedCh?.keyRangeEnd)
+
+                    val bgBrush = when {
+                        inSelectedRange -> {
+                            val accent = parseColorHex(selectedCh!!.colorHex)
+                            Brush.verticalGradient(
+                                listOf(
+                                    accent.copy(alpha = 0.9f),
+                                    if (isTargetBoundary) accent else accent.copy(alpha = 0.7f)
+                                )
+                            )
+                        }
+                        inOtherRange -> Brush.verticalGradient(listOf(Color(0xFF3F4555), Color(0xFF282C37)))
+                        else -> Brush.verticalGradient(listOf(Color(0xFF282C37), Color(0xFF151820)))
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .width(18.dp)
+                            .fillMaxHeight(0.62f)
+                            .clip(RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
+                            .background(bgBrush)
+                            .border(1.dp, Color(0xFF0D0F14), RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
+                            .pointerInput(blackNote) {
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false)
+                                    waitForUpOrCancellation()
+                                    onNoteSelected(blackNote)
+                                }
+                            }
+                    ) {
+                        if (blackNote == selectedCh?.keyRangeStart) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .width(14.dp)
+                                    .height(8.dp)
+                                    .background(parseColorHex(selectedCh.colorHex), RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                            ) {
+                                Text(
+                                    text = "L",
+                                    fontSize = 6.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+                        }
+                        if (blackNote == selectedCh?.keyRangeEnd) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .width(14.dp)
+                                    .height(8.dp)
+                                    .background(parseColorHex(selectedCh.colorHex), RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                            ) {
+                                Text(
+                                    text = "H",
+                                    fontSize = 6.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(18.dp))
+                }
+
+                Spacer(modifier = Modifier.width(keyWidth / 2 - 18.dp))
+            }
+        }
+    }
+}
+
+@Composable
 fun SplitKeyboardSettingsScreen(
     concert: Concert,
     selectedPatchName: String? = null,
     onUpdateRange: (Int, Int, Int) -> Unit
 ) {
+    var selectedChannelId by remember { mutableStateOf<Int?>(null) }
+    var editingLow by remember { mutableStateOf(true) }
+    val keyboardScrollState = rememberScrollState()
+
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Text("RANGOS DE TECLADO Y SPLITS (OCTAVAS A0 - C8)", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         if (selectedPatchName != null) {
@@ -3184,15 +3395,40 @@ fun SplitKeyboardSettingsScreen(
         )
 
         concert.channels.forEach { ch ->
+            val isSelected = selectedChannelId == ch.id
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, AppShapes.small)
+                    .background(
+                        if (isSelected) parseColorHex(ch.colorHex).copy(alpha = 0.15f)
+                        else MaterialTheme.colorScheme.surfaceVariant,
+                        AppShapes.small
+                    )
+                    .border(
+                        width = if (isSelected) 1.5.dp else 0.dp,
+                        color = if (isSelected) parseColorHex(ch.colorHex) else Color.Transparent,
+                        shape = AppShapes.small
+                    )
+                    .clickable {
+                        selectedChannelId = if (selectedChannelId == ch.id) null else ch.id
+                        editingLow = true   // siempre empieza en modo "nota baja"
+                    }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Ícono de selección a la izquierda
+                if (isSelected) {
+                    Icon(
+                        TablerIcons.ChevronRight,
+                        contentDescription = null,
+                        tint = parseColorHex(ch.colorHex),
+                        modifier = Modifier.size(14.dp).padding(end = 4.dp)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.width(14.dp))
+                }
                 Text(
                     text = ch.sf2Name.substringBefore(".sf2").uppercase(),
                     color = parseColorHex(ch.colorHex),
@@ -3202,8 +3438,84 @@ fun SplitKeyboardSettingsScreen(
                 Text(
                     text = "${midiNoteToName(ch.keyRangeStart)} → ${midiNoteToName(ch.keyRangeEnd)}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isSelected) MaterialTheme.colorScheme.onSurface
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = selectedChannelId != null,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            val ch = concert.channels.find { it.id == selectedChannelId }
+            if (ch != null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                ) {
+                    // Header con nombre del canal y modo de edición
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Toca una tecla para fijar el límite",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        // Toggle Nota Baja / Nota Alta
+                        Row(
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp))
+                                .padding(2.dp)
+                        ) {
+                            listOf(true to "Nota baja", false to "Nota alta").forEach { (isLow, label) ->
+                                val accent = parseColorHex(ch.colorHex)
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            if (editingLow == isLow) accent else Color.Transparent,
+                                            RoundedCornerShape(18.dp)
+                                        )
+                                        .clickable { editingLow = isLow }
+                                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        label,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (editingLow == isLow) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (editingLow == isLow) Color.White 
+                                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Teclado interactivo con rangos coloreados
+                    SplitRangeKeyboard(
+                        channels = concert.channels,
+                        selectedChannelId = ch.id,
+                        editingLow = editingLow,
+                        scrollState = keyboardScrollState,
+                        onNoteSelected = { note ->
+                            if (editingLow) {
+                                if (note < ch.keyRangeEnd) {
+                                    onUpdateRange(ch.id, note, ch.keyRangeEnd)
+                                    editingLow = false  // auto-avanzar a nota alta
+                                }
+                            } else {
+                                if (note > ch.keyRangeStart) {
+                                    onUpdateRange(ch.id, ch.keyRangeStart, note)
+                                }
+                            }
+                        }
+                    )
+                }
             }
         }
     }
