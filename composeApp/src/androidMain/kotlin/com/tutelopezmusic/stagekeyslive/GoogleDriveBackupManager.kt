@@ -151,7 +151,26 @@ class GoogleDriveBackupManager(private val context: Context) {
         }
     }
 
+    private fun isNetworkAvailable(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            val network = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        } else {
+            @Suppress("DEPRECATION")
+            cm.activeNetworkInfo?.isConnected == true
+        }
+    }
+
     suspend fun uploadBackup(concerts: List<Concert>): Result<Unit> = withContext(Dispatchers.IO) {
+        if (!isNetworkAvailable()) {
+            Log.i(TAG, "uploadBackup omitido: sin conectividad de red")
+            return@withContext Result.failure(
+                IllegalStateException("Sin conexión a internet. El respaldo se reintentará automáticamente.")
+            )
+        }
         try {
             val token = getAccessToken() ?: return@withContext Result.failure(IllegalStateException("No autenticado en Google"))
             val folderId = getOrCreateFolderId(token)
@@ -322,6 +341,12 @@ class GoogleDriveBackupManager(private val context: Context) {
     }
 
     suspend fun listBackups(): Result<List<DriveBackupItem>> = withContext(Dispatchers.IO) {
+        if (!isNetworkAvailable()) {
+            Log.i(TAG, "listBackups omitido: sin conectividad")
+            return@withContext Result.failure(
+                IllegalStateException("Sin conexión a internet. Conéctate a internet para ver los respaldos en Google Drive.")
+            )
+        }
         try {
             val token = getAccessToken() ?: return@withContext Result.failure(IllegalStateException("No autenticado"))
             val folderId = getOrCreateFolderId(token)
@@ -405,6 +430,12 @@ class GoogleDriveBackupManager(private val context: Context) {
     }
 
     suspend fun downloadAndRestoreBackup(backupId: String): Result<List<Concert>> = withContext(Dispatchers.IO) {
+        if (!isNetworkAvailable()) {
+            Log.i(TAG, "downloadAndRestoreBackup omitido: sin conectividad")
+            return@withContext Result.failure(
+                IllegalStateException("Sin conexión a internet. Conéctate a internet para restaurar un respaldo.")
+            )
+        }
         try {
             val token = getAccessToken() ?: return@withContext Result.failure(IllegalStateException("No autenticado"))
             val downloadUrl = "https://www.googleapis.com/drive/v3/files/$backupId?alt=media"

@@ -201,7 +201,19 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             cloudBackupJob?.cancel()
             cloudBackupJob = coroutineScope.launch {
                 delay(30_000L) // 30-second debounce
-                googleDriveService.backupNow(list)
+                val result = googleDriveService.backupNow(list)
+                result.onFailure { error ->
+                    val msg = error.message ?: ""
+                    // Silenciar silenciosamente errores de red — se reintentará solo
+                    if (!msg.contains("Sin conexión", ignoreCase = true) &&
+                        !msg.contains("sin internet", ignoreCase = true)) {
+                        snackbarHostState.showSnackbar(
+                            "El respaldo en Google Drive falló: $msg"
+                        )
+                    } else {
+                        println("Backup Drive omitido por falta de red — se reintentará en el siguiente ciclo")
+                    }
+                }
             }
         }
     }
@@ -212,7 +224,18 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
             while (isActive) {
                 delay(30 * 60 * 1000L) // 30 minutes
                 if (concerts.isNotEmpty()) {
-                    googleDriveService.backupNow(concerts)
+                    val result = googleDriveService.backupNow(concerts)
+                    result.onFailure { error ->
+                        val msg = error.message ?: ""
+                        if (!msg.contains("Sin conexión", ignoreCase = true) &&
+                            !msg.contains("sin internet", ignoreCase = true)) {
+                            snackbarHostState.showSnackbar(
+                                "El respaldo en Google Drive falló: $msg"
+                            )
+                        } else {
+                            println("Backup Drive omitido por falta de red — se reintentará en el siguiente ciclo")
+                        }
+                    }
                 }
             }
         }
