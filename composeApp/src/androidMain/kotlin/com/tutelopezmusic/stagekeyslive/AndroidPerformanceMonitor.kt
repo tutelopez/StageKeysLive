@@ -22,8 +22,8 @@ class AndroidPerformanceMonitor {
         job = scope.launch {
             while (isActive) {
                 val cpu = getCpuUsage()
-                val ramMb = getNativeHeapMb()
-                listener?.invoke(PerformanceStats(cpu, ramMb))
+                val (ramMb, ramPercent) = getRamUsage()
+                listener?.invoke(PerformanceStats(cpu, ramMb, ramPercent))
                 delay(1500)
             }
         }
@@ -74,8 +74,21 @@ class AndroidPerformanceMonitor {
         }
     }
 
-    private fun getNativeHeapMb(): Int {
-        val bytes = Debug.getNativeHeapAllocatedSize()
-        return (bytes / (1024 * 1024)).toInt()
+    private fun getRamUsage(): Pair<Int, Int> {
+        return try {
+            val runtime = Runtime.getRuntime()
+            val usedBytes = (runtime.totalMemory() - runtime.freeMemory()) + Debug.getNativeHeapAllocatedSize()
+            val maxBytes = runtime.maxMemory() + Debug.getNativeHeapSize()
+            val ramMb = (usedBytes / (1024 * 1024)).toInt()
+            val percent = if (maxBytes > 0) {
+                ((usedBytes.toDouble() / maxBytes.toDouble()) * 100).toInt().coerceIn(1, 100)
+            } else {
+                ((ramMb.toDouble() / 512.0) * 100).toInt().coerceIn(1, 100)
+            }
+            Pair(ramMb, percent)
+        } catch (e: Exception) {
+            val bytes = Debug.getNativeHeapAllocatedSize()
+            Pair((bytes / (1024 * 1024)).toInt(), 0)
+        }
     }
 }

@@ -1215,6 +1215,11 @@ private fun TopBar(
 
             Spacer(Modifier.weight(1f))
 
+            // ─── RESOURCE MONITOR (CPU & RAM) ──────────────────────────────────
+            ResourceMonitorWidget(stats = performanceStats)
+
+            Spacer(Modifier.weight(1f))
+
             // Metronome / BPM pill button
             var showMetroPopup by remember { mutableStateOf(false) }
             Box {
@@ -1492,6 +1497,120 @@ private fun TopBar(
                     tint = if (isPerformanceMode) AccentNeonGreen else TextDark,
                     modifier = Modifier.size(16.dp)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResourceMonitorWidget(
+    stats: PerformanceStats?,
+    modifier: Modifier = Modifier
+) {
+    val cpu = stats?.cpuPercent ?: 0
+    val ramPercent = stats?.ramPercent ?: ((stats?.ramMb ?: 0) * 100 / 512).coerceIn(0, 100)
+
+    val cpuColor = when {
+        cpu >= 80 -> StatusError
+        cpu >= 50 -> StatusWarning
+        else -> AccentNeonGreen
+    }
+
+    val ramColor = when {
+        ramPercent >= 85 -> StatusError
+        ramPercent >= 65 -> StatusWarning
+        else -> AccentSky
+    }
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFF13151F).copy(alpha = 0.9f),
+        border = BorderStroke(1.dp, OutlineVariant.copy(alpha = 0.45f)),
+        modifier = modifier.height(32.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // CPU Indicator
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "CPU",
+                    color = TextDark,
+                    fontSize = 8.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+                Text(
+                    text = "$cpu%",
+                    color = cpuColor,
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                // Micro CPU bar
+                Box(
+                    modifier = Modifier
+                        .width(22.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color(0xFF222533))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth((cpu / 100f).coerceIn(0.06f, 1f))
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(cpuColor)
+                    )
+                }
+            }
+
+            // Separator
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(13.dp)
+                    .background(OutlineVariant.copy(alpha = 0.5f))
+            )
+
+            // RAM Indicator
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "RAM",
+                    color = TextDark,
+                    fontSize = 8.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+                Text(
+                    text = "$ramPercent%",
+                    color = ramColor,
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                // Micro RAM bar
+                Box(
+                    modifier = Modifier
+                        .width(22.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color(0xFF222533))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth((ramPercent / 100f).coerceIn(0.06f, 1f))
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(ramColor)
+                    )
+                }
             }
         }
     }

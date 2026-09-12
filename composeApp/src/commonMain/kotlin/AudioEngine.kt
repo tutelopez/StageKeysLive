@@ -7,7 +7,7 @@ package com.tutelopezmusic.stagekeyslive
 // - cancelMidiLearn(): cancels an in-progress learn session
 // - applyMappedCc(): called when a mapped CC arrives, routes to correct synth parameter
 
-data class PerformanceStats(val cpuPercent: Int?, val ramMb: Int)
+data class PerformanceStats(val cpuPercent: Int?, val ramMb: Int, val ramPercent: Int? = null)
 
 expect class PlatformAudioSynth() {
     var onEngineRestarted: (() -> Unit)?
