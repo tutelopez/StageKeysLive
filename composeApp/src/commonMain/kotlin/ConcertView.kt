@@ -1215,10 +1215,11 @@ private fun TopBar(
 
             Spacer(Modifier.weight(1f))
 
-            // ─── RESOURCE MONITOR (CPU & RAM) ──────────────────────────────────
-            ResourceMonitorWidget(stats = performanceStats)
-
-            Spacer(Modifier.weight(1f))
+            if (isPerformanceMode) {
+                // ─── RESOURCE MONITOR (CPU & RAM) - SOLO EN MODO EJECUCIÓN ───────────
+                ResourceMonitorWidget(stats = performanceStats)
+                Spacer(Modifier.weight(1f))
+            }
 
             // Metronome / BPM pill button
             var showMetroPopup by remember { mutableStateOf(false) }
