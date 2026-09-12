@@ -170,15 +170,34 @@ fun ConcertViewScreen(
                         concert = concert,
                         selectedPatchIndex = selectedPatchIndex,
                         onSelectPatch = onSelectPatch,
-                        activeNote = activeNote,
-                        onNoteDown = onNoteDown,
-                        onNoteUp = onNoteUp,
-                        pitchBend = pitchBend,
-                        modulation = modulation,
-                        onModulationChange = onModulationChange,
-                        sustainActive = sustainActive,
-                        onSustainToggle = onSustainToggle,
-                        coroutineScope = coroutineScope
+                        channels = concert.channels,
+                        vuLevels = vuLevels,
+                        metronomeVolume = metronomeVolume,
+                        onMetronomeVolumeChange = onMetronomeVolumeChange,
+                        masterVolume = masterVolume,
+                        masterPan = masterPan,
+                        isLimiterActive = isMasterLimiterActive,
+                        masterVuLevel = masterVuLevel,
+                        onMasterVolumeChange = onMasterVolumeChange,
+                        onMasterPanChange = onMasterPanChange,
+                        onVolumeChange = onVolumeChange,
+                        onMuteToggle = onMuteToggle,
+                        onSoloToggle = onSoloToggle,
+                        onChannelGearClick = onChannelGearClick,
+                        onSettingsClick = onSettingsClick,
+                        onReverbChange = onReverbChange,
+                        onChorusChange = onChorusChange,
+                        onCutoffChange = onCutoffChange,
+                        midiMappings = midiMappings,
+                        padEnabled = padEnabled,
+                        onPadEnabledChange = onPadEnabledChange,
+                        padVolume = padVolume,
+                        onPadVolumeChange = onPadVolumeChange,
+                        padBank = padBank,
+                        onPadBankChange = onPadBankChange,
+                        availablePadBanks = availablePadBanks,
+                        activePadNote = activePadNote,
+                        onPadNoteToggle = onPadNoteToggle
                     )
                 }
             } else {
@@ -328,155 +347,788 @@ private fun PerformanceModeView(
     concert: Concert,
     selectedPatchIndex: Int,
     onSelectPatch: (Int) -> Unit,
-    activeNote: Int?,
-    onNoteDown: (Int) -> Unit,
-    onNoteUp: (Int) -> Unit,
-    pitchBend: Animatable<Float, *>,
-    modulation: Animatable<Float, *>,
-    onModulationChange: (Float) -> Unit,
-    sustainActive: Boolean,
-    onSustainToggle: () -> Unit,
-    coroutineScope: kotlinx.coroutines.CoroutineScope
+    channels: List<ChannelStripState>,
+    vuLevels: List<Animatable<Float, *>>,
+    metronomeVolume: Float,
+    onMetronomeVolumeChange: (Float) -> Unit,
+    masterVolume: Float,
+    masterPan: Float,
+    isLimiterActive: Boolean,
+    masterVuLevel: Float,
+    onMasterVolumeChange: (Float) -> Unit,
+    onMasterPanChange: (Float) -> Unit,
+    onVolumeChange: (Int, Float) -> Unit,
+    onMuteToggle: (Int) -> Unit,
+    onSoloToggle: (Int) -> Unit,
+    onChannelGearClick: (ChannelStripState) -> Unit = {},
+    onSettingsClick: () -> Unit = {},
+    onReverbChange: (Int, Float) -> Unit = { _, _ -> },
+    onChorusChange: (Int, Float) -> Unit = { _, _ -> },
+    onCutoffChange: (Int, Float) -> Unit = { _, _ -> },
+    midiMappings: Map<Int, MidiTarget> = emptyMap(),
+    // Pads
+    padEnabled: Boolean,
+    onPadEnabledChange: (Boolean) -> Unit,
+    padVolume: Float,
+    onPadVolumeChange: (Float) -> Unit,
+    padBank: String,
+    onPadBankChange: (String) -> Unit,
+    availablePadBanks: List<String>,
+    activePadNote: Int?,
+    onPadNoteToggle: (Int) -> Unit
 ) {
     val currentPatch = concert.patches.getOrNull(selectedPatchIndex)
     val prevPatch = concert.patches.getOrNull(selectedPatchIndex - 1)
     val nextPatch = concert.patches.getOrNull(selectedPatchIndex + 1)
     val patchColor = concert.channels.firstOrNull { !it.isMuted }?.let { parseColorHex(it.colorHex) } ?: AccentSky
+    val mixerScrollState = rememberScrollState()
 
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.SpaceBetween
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // ── ZONA SUPERIOR: Navegación y Nombre del Patch Activo ─────────────
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center
+        // ── 1. HEADER: PATCH SWITCHER BANNER ─────────────────────────────────
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = DarkPanel.copy(alpha = 0.9f),
+            border = BorderStroke(1.2.dp, patchColor.copy(alpha = 0.4f)),
+            modifier = Modifier.fillMaxWidth().height(40.dp)
         ) {
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = DarkPanel.copy(alpha = 0.9f),
-                border = BorderStroke(1.5.dp, patchColor.copy(alpha = 0.4f)),
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                // Prev button
+                IconButton(
+                    onClick = { if (prevPatch != null) onSelectPatch(selectedPatchIndex - 1) },
+                    enabled = prevPatch != null,
+                    modifier = Modifier.size(32.dp)
                 ) {
-                    // Botón Patch Anterior
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (prevPatch != null) LightPanel else DarkBackground)
-                            .border(1.dp, if (prevPatch != null) OutlineVariant else Color.Transparent, RoundedCornerShape(14.dp))
-                            .clickable(enabled = prevPatch != null) {
-                                onSelectPatch(selectedPatchIndex - 1)
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            TablerIcons.ChevronLeft,
-                            contentDescription = "Patch Anterior",
-                            tint = if (prevPatch != null) TextLight else TextDark.copy(alpha = 0.3f),
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                    Icon(
+                        TablerIcons.ChevronLeft,
+                        contentDescription = "Patch Anterior",
+                        tint = if (prevPatch != null) AccentSky else TextDark.copy(alpha = 0.3f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
 
-                    // Centro: Información del Patch Activo
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                // Patch Info
+                Row(
+                    modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "PATCH ${selectedPatchIndex + 1}/${concert.patches.size}".uppercase(),
+                        color = patchColor,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = currentPatch?.name ?: "SIN PATCH",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    // Sound layer badges
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "PATCH ${selectedPatchIndex + 1} DE ${concert.patches.size}".uppercase(),
-                            color = patchColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = currentPatch?.name ?: "SIN PATCH",
-                            color = Color.White,
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        // Badges de capas de sonido / canales activos
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            concert.channels.filter { !it.isMuted }.forEach { ch ->
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(parseColorHex(ch.colorHex).copy(alpha = 0.2f))
-                                        .border(1.dp, parseColorHex(ch.colorHex).copy(alpha = 0.6f), RoundedCornerShape(6.dp))
-                                        .padding(horizontal = 10.dp, vertical = 3.dp)
-                                ) {
-                                    Text(
-                                        text = ch.sf2Name.substringBefore(".sf2").uppercase(),
-                                        color = parseColorHex(ch.colorHex),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                        concert.channels.filter { !it.isMuted }.forEach { ch ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(parseColorHex(ch.colorHex).copy(alpha = 0.2f))
+                                    .border(1.dp, parseColorHex(ch.colorHex).copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 5.dp, vertical = 1.5.dp)
+                            ) {
+                                Text(
+                                    text = ch.sf2Name.substringBefore(".sf2").uppercase(),
+                                    color = parseColorHex(ch.colorHex),
+                                    fontSize = 8.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }
+                }
 
-                    // Botón Patch Siguiente
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (nextPatch != null) LightPanel else DarkBackground)
-                            .border(1.dp, if (nextPatch != null) OutlineVariant else Color.Transparent, RoundedCornerShape(14.dp))
-                            .clickable(enabled = nextPatch != null) {
-                                onSelectPatch(selectedPatchIndex + 1)
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            TablerIcons.ChevronRight,
-                            contentDescription = "Patch Siguiente",
-                            tint = if (nextPatch != null) TextLight else TextDark.copy(alpha = 0.3f),
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                // Next button
+                IconButton(
+                    onClick = { if (nextPatch != null) onSelectPatch(selectedPatchIndex + 1) },
+                    enabled = nextPatch != null,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        TablerIcons.ChevronRight,
+                        contentDescription = "Patch Siguiente",
+                        tint = if (nextPatch != null) AccentSky else TextDark.copy(alpha = 0.3f),
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
         }
 
-        // ── ZONA INFERIOR: Teclado y Controles de Expresión ──────────────────
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(142.dp)
+        // ── 2. CENTER: VIRTUAL nanoKONTROL MIXING SURFACE ─────────────────────
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = DarkBackground.copy(alpha = 0.72f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.04f)),
+            modifier = Modifier.weight(1f).fillMaxWidth()
         ) {
-            KeyboardPanel(
-                channels = concert.channels,
-                activeNote = activeNote,
-                onNoteDown = onNoteDown,
-                onNoteUp = onNoteUp,
-                pitchBend = pitchBend,
-                modulation = modulation,
-                onModulationChange = onModulationChange,
-                sustainActive = sustainActive,
-                onSustainToggle = onSustainToggle,
-                coroutineScope = coroutineScope
+            Row(
+                modifier = Modifier.fillMaxSize().padding(6.dp).horizontalScroll(mixerScrollState),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                channels.forEach { chState ->
+                    val levelIdx = (chState.id - 1).coerceIn(0, 7)
+                    val animLevel = vuLevels.getOrNull(levelIdx)?.value ?: 0f
+                    val isRevMapped = midiMappings.values.any { it is MidiTarget.ChannelReverb && it.channelIndex == chState.id - 1 }
+                    val isChoMapped = midiMappings.values.any { it is MidiTarget.ChannelChorus && it.channelIndex == chState.id - 1 }
+                    val isCutMapped = midiMappings.values.any { it is MidiTarget.ChannelCutoff && it.channelIndex == chState.id - 1 }
+                    PerformanceChannelStripItem(
+                        state = chState,
+                        level = animLevel,
+                        onVolumeChange = { vol -> onVolumeChange(chState.id, vol) },
+                        onMuteToggle = { onMuteToggle(chState.id) },
+                        onSoloToggle = { onSoloToggle(chState.id) },
+                        onGearClick = { onChannelGearClick(chState) },
+                        onReverbChange = { v -> onReverbChange(chState.id, v) },
+                        onChorusChange = { v -> onChorusChange(chState.id, v) },
+                        onCutoffChange = { v -> onCutoffChange(chState.id, v) },
+                        isReverbMapped = isRevMapped,
+                        isChorusMapped = isChoMapped,
+                        isCutoffMapped = isCutMapped
+                    )
+                }
+
+                Spacer(Modifier.width(4.dp))
+                VerticalDividerLine()
+                Spacer(Modifier.width(4.dp))
+
+                PerformanceMetronomeChannelItem(
+                    volume = metronomeVolume,
+                    onVolumeChange = onMetronomeVolumeChange
+                )
+
+                Spacer(Modifier.width(4.dp))
+
+                PerformanceMasterChannelItem(
+                    volume = masterVolume,
+                    level = masterVuLevel,
+                    pan = masterPan,
+                    isLimiterActive = isLimiterActive,
+                    onVolumeChange = onMasterVolumeChange,
+                    onPanChange = onMasterPanChange
+                )
+            }
+        }
+
+        // ── 3. BOTTOM: LARGE AMBIENT PADS STRIP ───────────────────────────────
+        PerformancePadStrip(
+            enabled = padEnabled,
+            onEnabledChange = onPadEnabledChange,
+            volume = padVolume,
+            onVolumeChange = onPadVolumeChange,
+            bank = padBank,
+            onBankChange = onPadBankChange,
+            availableBanks = availablePadBanks,
+            activePadNote = activePadNote,
+            onPadNoteToggle = onPadNoteToggle
+        )
+    }
+}
+
+@Composable
+private fun PerformanceChannelStripItem(
+    state: ChannelStripState,
+    level: Float,
+    onVolumeChange: (Float) -> Unit,
+    onMuteToggle: () -> Unit,
+    onSoloToggle: () -> Unit,
+    onGearClick: () -> Unit,
+    onReverbChange: (Float) -> Unit,
+    onChorusChange: (Float) -> Unit,
+    onCutoffChange: (Float) -> Unit,
+    isReverbMapped: Boolean,
+    isChorusMapped: Boolean,
+    isCutoffMapped: Boolean
+) {
+    val accentColor = parseColorHex(state.colorHex)
+    var selectedFx by remember { mutableStateOf(FxKnobType.REVERB) }
+
+    Column(
+        modifier = Modifier
+            .width(84.dp)
+            .fillMaxHeight()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(12.dp),
+                ambientColor = accentColor.copy(alpha = 0.3f),
+                spotColor = accentColor.copy(alpha = 0.45f)
             )
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
+            )
+            .border(
+                width = 1.dp,
+                color = accentColor.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        // ── 1. Header: Color + Name + Gear ─────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(11.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accentColor)
+            )
+
+            Text(
+                text = state.name.take(9).uppercase(),
+                color = accentColor,
+                fontSize = 7.5.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).padding(horizontal = 2.dp)
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onGearClick),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    TablerIcons.Settings,
+                    contentDescription = "Configurar",
+                    tint = TextDark.copy(alpha = 0.7f),
+                    modifier = Modifier.size(11.dp)
+                )
+            }
+        }
+
+        // ── 2. FX Knobs Section (TOP, nanoKONTROL hardware layout) ──────────
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(1.dp)
+        ) {
+            // Mini selector tabs [R | C | T]
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(Color(0xFF1B1D28))
+                    .padding(1.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                FxKnobType.entries.forEach { fxType ->
+                    val isSel = selectedFx == fxType
+                    val isMapped = when (fxType) {
+                        FxKnobType.REVERB -> isReverbMapped
+                        FxKnobType.CHORUS -> isChorusMapped
+                        FxKnobType.TONE -> isCutoffMapped
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(if (isSel) fxType.color.copy(alpha = 0.28f) else Color.Transparent)
+                            .clickable { selectedFx = fxType }
+                            .padding(vertical = 1.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = fxType.label.take(1),
+                                color = if (isSel) fxType.color else TextDark,
+                                fontSize = 7.5.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (isMapped) {
+                                Spacer(Modifier.width(1.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(2.5.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFF59E0B))
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Active Rotary Knob
+            when (selectedFx) {
+                FxKnobType.REVERB -> MainstageRotaryKnob(
+                    value = state.reverbSend,
+                    onValueChange = onReverbChange,
+                    type = FxKnobType.REVERB,
+                    isMidiMapped = isReverbMapped,
+                    knobSize = 30.dp,
+                    showLabel = false
+                )
+                FxKnobType.CHORUS -> MainstageRotaryKnob(
+                    value = state.chorusSend,
+                    onValueChange = onChorusChange,
+                    type = FxKnobType.CHORUS,
+                    isMidiMapped = isChorusMapped,
+                    knobSize = 30.dp,
+                    showLabel = false
+                )
+                FxKnobType.TONE -> MainstageRotaryKnob(
+                    value = state.filterCutoff,
+                    onValueChange = onCutoffChange,
+                    type = FxKnobType.TONE,
+                    isMidiMapped = isCutoffMapped,
+                    knobSize = 30.dp,
+                    showLabel = false
+                )
+            }
+        }
+
+        // ── 3. Mute / Solo Buttons ────────────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(16.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(if (state.isMuted) StatusError else SurfaceElevated)
+                    .border(1.dp, if (state.isMuted) StatusError else OutlineVariant.copy(alpha = 0.4f), RoundedCornerShape(3.dp))
+                    .clickable(onClick = onMuteToggle),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "M",
+                    color = if (state.isMuted) Color.White else TextDark,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(16.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(if (state.isSoloed) StatusWarning else SurfaceElevated)
+                    .border(1.dp, if (state.isSoloed) StatusWarning else OutlineVariant.copy(alpha = 0.4f), RoundedCornerShape(3.dp))
+                    .clickable(onClick = onSoloToggle),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "S",
+                    color = if (state.isSoloed) Color.Black else TextDark,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // ── 4. Volume Fader + Level Meter (Full remaining height) ───────────
+        Row(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            VolumeFader(
+                value = state.volume,
+                accentColor = accentColor,
+                onValueChange = onVolumeChange,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            )
+            LevelMeter(
+                level = level,
+                accentColor = accentColor,
+                modifier = Modifier.width(5.dp).fillMaxHeight()
+            )
+        }
+
+        // ── 5. Volume % label ──────────────────────────────────────────────
+        Text(
+            text = "${(state.volume * 100).toInt()}%",
+            color = TextDark,
+            fontSize = 7.5.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun PerformanceMetronomeChannelItem(
+    volume: Float,
+    onVolumeChange: (Float) -> Unit
+) {
+    val accent = AccentNeonGreen
+    Column(
+        modifier = Modifier
+            .width(76.dp)
+            .fillMaxHeight()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(12.dp),
+                ambientColor = accent.copy(alpha = 0.3f),
+                spotColor = accent.copy(alpha = 0.45f)
+            )
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
+            )
+            .border(
+                1.dp,
+                accent.copy(alpha = 0.45f),
+                RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        // Icon + label
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(11.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accent)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                "CLICK",
+                color = Color(0xFF7DFFB0),
+                fontSize = 7.5.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.5.sp
+            )
+        }
+
+        Spacer(Modifier.height(48.dp)) // Aligns fader top with channel strips
+
+        // Fader
+        VolumeFader(
+            value = volume,
+            accentColor = accent,
+            onValueChange = onVolumeChange,
+            modifier = Modifier.weight(1f).fillMaxWidth()
+        )
+
+        Text(
+            "${(volume * 100).toInt()}%",
+            color = TextDark,
+            fontSize = 7.5.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun PerformanceMasterChannelItem(
+    volume: Float,
+    level: Float,
+    pan: Float = 0.5f,
+    isLimiterActive: Boolean = false,
+    onVolumeChange: (Float) -> Unit,
+    onPanChange: (Float) -> Unit = {}
+) {
+    val accent = AccentPurple
+    Column(
+        modifier = Modifier
+            .width(82.dp)
+            .fillMaxHeight()
+            .shadow(
+                elevation = 10.dp,
+                shape = RoundedCornerShape(14.dp),
+                ambientColor = accent.copy(alpha = 0.3f),
+                spotColor = accent.copy(alpha = 0.45f)
+            )
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
+            )
+            .border(
+                1.dp,
+                accent.copy(alpha = 0.45f),
+                RoundedCornerShape(14.dp)
+            )
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(13.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accent)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                "MASTER",
+                color = Color(0xFFC9A3F7),
+                fontSize = 8.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.5.sp
+            )
+            if (isLimiterActive) {
+                Spacer(Modifier.width(3.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color(0xFFF59E0B))
+                        .padding(horizontal = 2.dp, vertical = 0.5.dp)
+                ) {
+                    Text("LIM", color = Color.Black, fontSize = 6.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+        }
+
+        // Master Pan Control
+        val panPercent = ((pan - 0.5f) * 200).toInt()
+        val panText = when {
+            panPercent == 0 -> "C"
+            panPercent < 0 -> "L${-panPercent}"
+            else -> "R${panPercent}"
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("PAN", color = TextDark, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                Text(panText, color = accent, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+            }
+            Slider(
+                value = pan,
+                onValueChange = onPanChange,
+                valueRange = 0f..1f,
+                modifier = Modifier.fillMaxWidth().height(16.dp),
+                colors = SliderDefaults.colors(
+                    thumbColor = accent,
+                    activeTrackColor = accent,
+                    inactiveTrackColor = OutlineVariant
+                )
+            )
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        // Fader + Stereo LevelMeter
+        Row(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            VolumeFader(
+                value = volume,
+                accentColor = accent,
+                onValueChange = onVolumeChange,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            )
+            LevelMeter(
+                level = level,
+                accentColor = accent,
+                modifier = Modifier.width(6.dp).fillMaxHeight()
+            )
+        }
+
+        Text(
+            "${(volume * 100).toInt()}%",
+            color = TextDark,
+            fontSize = 8.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun PerformancePadStrip(
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+    volume: Float,
+    onVolumeChange: (Float) -> Unit,
+    bank: String,
+    onBankChange: (String) -> Unit,
+    availableBanks: List<String>,
+    activePadNote: Int?,
+    onPadNoteToggle: (Int) -> Unit
+) {
+    Surface(
+        color = DarkPanel.copy(alpha = 0.88f),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp)) {
+            // Header: Bank selector + Volume + On/Off
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Bank Selector
+                var expanded by remember { mutableStateOf(false) }
+                Box {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(OutlineVariant)
+                            .clickable { expanded = true }
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = bank.ifEmpty { "Bank A" },
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Icon(TablerIcons.ChevronDown, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(DarkPanel)
+                    ) {
+                        availableBanks.forEach { b ->
+                            DropdownMenuItem(
+                                text = { Text(b, color = Color.White) },
+                                onClick = {
+                                    onBankChange(b)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.width(12.dp))
+
+                // Volume slider
+                Slider(
+                    value = volume,
+                    onValueChange = onVolumeChange,
+                    valueRange = 0f..1f,
+                    modifier = Modifier.weight(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = AccentSky,
+                        activeTrackColor = AccentSky,
+                        inactiveTrackColor = OutlineVariant
+                    )
+                )
+
+                Spacer(Modifier.width(12.dp))
+
+                // PAD ON/OFF Badge
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (enabled) StatusSuccess.copy(alpha = 0.2f) else DarkBackground)
+                        .border(1.dp, if (enabled) StatusSuccess else OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .clickable { onEnabledChange(!enabled) }
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "PADS ${if (enabled) "ON" else "OFF"}",
+                        color = if (enabled) StatusSuccess else TextDark,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(5.dp))
+
+            // 12 Large Note buttons spanning full width with weight(1f)
+            val notes = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                notes.forEachIndexed { index, noteName ->
+                    val isActive = activePadNote == index
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .then(
+                                if (isActive) {
+                                    Modifier.shadow(
+                                        elevation = 14.dp,
+                                        shape = RoundedCornerShape(9.dp),
+                                        ambientColor = StatusSuccess.copy(alpha = 0.6f),
+                                        spotColor = StatusSuccess.copy(alpha = 0.7f)
+                                    )
+                                } else Modifier
+                            )
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(
+                                if (isActive)
+                                    Brush.verticalGradient(listOf(StatusSuccess, Color(0xFF0A8A63)))
+                                else
+                                    Brush.verticalGradient(listOf(LightPanel, DarkPanel))
+                            )
+                            .border(
+                                width = 1.2.dp,
+                                color = if (isActive) StatusSuccess else OutlineVariant.copy(alpha = 0.35f),
+                                shape = RoundedCornerShape(9.dp)
+                            )
+                            .clickable(enabled = enabled) { onPadNoteToggle(index) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = noteName,
+                            color = if (isActive) Color.White else if (enabled) TextLight else TextDark.copy(alpha = 0.4f),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+            }
         }
     }
 }
