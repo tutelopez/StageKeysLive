@@ -348,129 +348,122 @@ private fun PerformanceModeView(
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         // ── ZONA SUPERIOR: Navegación y Nombre del Patch Activo ─────────────
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = DarkPanel.copy(alpha = 0.9f),
-            border = BorderStroke(1.dp, patchColor.copy(alpha = 0.35f)),
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp)
+                .weight(1f)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = DarkPanel.copy(alpha = 0.9f),
+                border = BorderStroke(1.5.dp, patchColor.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                // Botón Patch Anterior
-                Box(
+                Row(
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (prevPatch != null) LightPanel else DarkBackground)
-                        .border(1.dp, if (prevPatch != null) OutlineVariant else Color.Transparent, RoundedCornerShape(12.dp))
-                        .clickable(enabled = prevPatch != null) {
-                            onSelectPatch(selectedPatchIndex - 1)
-                        },
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        TablerIcons.ChevronLeft,
-                        contentDescription = "Patch Anterior",
-                        tint = if (prevPatch != null) TextLight else TextDark.copy(alpha = 0.3f),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                // Centro: Información del Patch Activo
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "PATCH ${selectedPatchIndex + 1} DE ${concert.patches.size}".uppercase(),
-                        color = patchColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = currentPatch?.name ?: "SIN PATCH",
-                        color = Color.White,
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    // Badges de capas de sonido / canales activos
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    // Botón Patch Anterior
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (prevPatch != null) LightPanel else DarkBackground)
+                            .border(1.dp, if (prevPatch != null) OutlineVariant else Color.Transparent, RoundedCornerShape(14.dp))
+                            .clickable(enabled = prevPatch != null) {
+                                onSelectPatch(selectedPatchIndex - 1)
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
-                        concert.channels.filter { !it.isMuted }.forEach { ch ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(parseColorHex(ch.colorHex).copy(alpha = 0.2f))
-                                    .border(1.dp, parseColorHex(ch.colorHex).copy(alpha = 0.6f), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = ch.sf2Name.substringBefore(".sf2").uppercase(),
-                                    color = parseColorHex(ch.colorHex),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                        Icon(
+                            TablerIcons.ChevronLeft,
+                            contentDescription = "Patch Anterior",
+                            tint = if (prevPatch != null) TextLight else TextDark.copy(alpha = 0.3f),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+
+                    // Centro: Información del Patch Activo
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "PATCH ${selectedPatchIndex + 1} DE ${concert.patches.size}".uppercase(),
+                            color = patchColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = currentPatch?.name ?: "SIN PATCH",
+                            color = Color.White,
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        // Badges de capas de sonido / canales activos
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            concert.channels.filter { !it.isMuted }.forEach { ch ->
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(parseColorHex(ch.colorHex).copy(alpha = 0.2f))
+                                        .border(1.dp, parseColorHex(ch.colorHex).copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                                ) {
+                                    Text(
+                                        text = ch.sf2Name.substringBefore(".sf2").uppercase(),
+                                        color = parseColorHex(ch.colorHex),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                // Botón Patch Siguiente
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (nextPatch != null) LightPanel else DarkBackground)
-                        .border(1.dp, if (nextPatch != null) OutlineVariant else Color.Transparent, RoundedCornerShape(12.dp))
-                        .clickable(enabled = nextPatch != null) {
-                            onSelectPatch(selectedPatchIndex + 1)
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        TablerIcons.ChevronRight,
-                        contentDescription = "Patch Siguiente",
-                        tint = if (nextPatch != null) TextLight else TextDark.copy(alpha = 0.3f),
-                        modifier = Modifier.size(24.dp)
-                    )
+                    // Botón Patch Siguiente
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (nextPatch != null) LightPanel else DarkBackground)
+                            .border(1.dp, if (nextPatch != null) OutlineVariant else Color.Transparent, RoundedCornerShape(14.dp))
+                            .clickable(enabled = nextPatch != null) {
+                                onSelectPatch(selectedPatchIndex + 1)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            TablerIcons.ChevronRight,
+                            contentDescription = "Patch Siguiente",
+                            tint = if (nextPatch != null) TextLight else TextDark.copy(alpha = 0.3f),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
             }
-        }
-
-        // ── ZONA CENTRAL: Visualizador de Splits / Capas ─────────────────────
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp)
-        ) {
-            SplitKeyboardVisualizer(
-                channels = concert.channels,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
 
         // ── ZONA INFERIOR: Teclado y Controles de Expresión ──────────────────
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(150.dp)
+                .height(142.dp)
         ) {
             KeyboardPanel(
                 channels = concert.channels,
@@ -644,104 +637,106 @@ private fun TopBar(
                 )
             }
 
-            Spacer(Modifier.width(8.dp))
+            if (!isPerformanceMode) {
+                Spacer(Modifier.width(8.dp))
 
-            // Record button (Pill)
-            Box(
-                modifier = Modifier
-                    .height(32.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkPanel)
-                    .border(1.2.dp, StatusError.copy(alpha = if (isRecording) 0.9f else 0.45f), RoundedCornerShape(16.dp))
-                    .clickable { onRecordToggle() }
-                    .padding(horizontal = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(StatusError)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "REC",
-                        color = StatusError,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
+                // Record button (Pill)
+                Box(
+                    modifier = Modifier
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(DarkPanel)
+                        .border(1.2.dp, StatusError.copy(alpha = if (isRecording) 0.9f else 0.45f), RoundedCornerShape(16.dp))
+                        .clickable { onRecordToggle() }
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(StatusError)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "REC",
+                            color = StatusError,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
                 }
-            }
 
-            Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(8.dp))
 
-            // Play / Stop Recording button (Pill)
-            Box(
-                modifier = Modifier
-                    .height(32.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkPanel)
-                    .border(
-                        1.2.dp,
-                        if (isPlayingRecording) AccentNeonGreen else if (hasRecording) AccentSky.copy(alpha = 0.7f) else OutlineVariant.copy(alpha = 0.35f),
-                        RoundedCornerShape(16.dp)
-                    )
-                    .clickable(enabled = hasRecording || isPlayingRecording, onClick = onPlayRecordingClick)
-                    .padding(horizontal = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (isPlayingRecording) TablerIcons.PlayerStop else TablerIcons.PlayerPlay,
-                        contentDescription = if (isPlayingRecording) "Detener" else "Reproducir Grabación",
-                        tint = if (isPlayingRecording) AccentNeonGreen else if (hasRecording) AccentSky else TextDark.copy(alpha = 0.35f),
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = if (isPlayingRecording) "STOP" else "PLAY",
-                        color = if (isPlayingRecording) AccentNeonGreen else if (hasRecording) AccentSky else TextDark.copy(alpha = 0.35f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
+                // Play / Stop Recording button (Pill)
+                Box(
+                    modifier = Modifier
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(DarkPanel)
+                        .border(
+                            1.2.dp,
+                            if (isPlayingRecording) AccentNeonGreen else if (hasRecording) AccentSky.copy(alpha = 0.7f) else OutlineVariant.copy(alpha = 0.35f),
+                            RoundedCornerShape(16.dp)
+                        )
+                        .clickable(enabled = hasRecording || isPlayingRecording, onClick = onPlayRecordingClick)
+                        .padding(horizontal = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            if (isPlayingRecording) TablerIcons.PlayerStop else TablerIcons.PlayerPlay,
+                            contentDescription = if (isPlayingRecording) "Detener" else "Reproducir Grabación",
+                            tint = if (isPlayingRecording) AccentNeonGreen else if (hasRecording) AccentSky else TextDark.copy(alpha = 0.35f),
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = if (isPlayingRecording) "STOP" else "PLAY",
+                            color = if (isPlayingRecording) AccentNeonGreen else if (hasRecording) AccentSky else TextDark.copy(alpha = 0.35f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
                 }
-            }
 
-            Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(8.dp))
 
-            // Export as MIDI button (Pill)
-            Box(
-                modifier = Modifier
-                    .height(32.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkPanel)
-                    .border(
-                        1.2.dp,
-                        if (hasRecording) AccentPurple.copy(alpha = 0.85f) else OutlineVariant.copy(alpha = 0.35f),
-                        RoundedCornerShape(16.dp)
-                    )
-                    .clickable(enabled = hasRecording, onClick = onExportMidiClick)
-                    .padding(horizontal = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        TablerIcons.Share,
-                        contentDescription = "Exportar como MIDI",
-                        tint = if (hasRecording) AccentPurple else TextDark.copy(alpha = 0.35f),
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = "MIDI",
-                        color = if (hasRecording) AccentPurple else TextDark.copy(alpha = 0.35f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
+                // Export as MIDI button (Pill)
+                Box(
+                    modifier = Modifier
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(DarkPanel)
+                        .border(
+                            1.2.dp,
+                            if (hasRecording) AccentPurple.copy(alpha = 0.85f) else OutlineVariant.copy(alpha = 0.35f),
+                            RoundedCornerShape(16.dp)
+                        )
+                        .clickable(enabled = hasRecording, onClick = onExportMidiClick)
+                        .padding(horizontal = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            TablerIcons.Share,
+                            contentDescription = "Exportar como MIDI",
+                            tint = if (hasRecording) AccentPurple else TextDark.copy(alpha = 0.35f),
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "MIDI",
+                            color = if (hasRecording) AccentPurple else TextDark.copy(alpha = 0.35f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
                 }
             }
 
@@ -798,24 +793,26 @@ private fun TopBar(
                 )
             }
 
-            Spacer(Modifier.width(8.dp))
+            if (!isPerformanceMode) {
+                Spacer(Modifier.width(8.dp))
 
-            // Settings gear
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(DarkPanel)
-                    .border(1.dp, OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-                    .clickable(onClick = onSettingsClick),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    TablerIcons.Settings,
-                    contentDescription = "Settings",
-                    tint = TextDark,
-                    modifier = Modifier.size(16.dp)
-                )
+                // Settings gear
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(DarkPanel)
+                        .border(1.dp, OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                        .clickable(onClick = onSettingsClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        TablerIcons.Settings,
+                        contentDescription = "Settings",
+                        tint = TextDark,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
 
             Spacer(Modifier.width(6.dp))
