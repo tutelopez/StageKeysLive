@@ -118,6 +118,7 @@ fun ConcertViewScreen(
     // Use BoxWithConstraints to detect screen width (KMP-safe, no LocalConfiguration needed)
     // Tablets (>=600dp) start expanded; phones start collapsed to maximize mixer space
     var isKeyboardVisible by rememberSaveable { mutableStateOf(false) }
+    var isPerformanceMode by rememberSaveable { mutableStateOf(false) }
 
     // AppBackground handles the BoxWithConstraints and gradient glows
     AppBackground(
@@ -138,6 +139,8 @@ fun ConcertViewScreen(
             TopBar(
                 concertName = concert.name,
                 nextPatchName = nextPatchName,
+                isPerformanceMode = isPerformanceMode,
+                onPerformanceModeToggle = { isPerformanceMode = !isPerformanceMode },
                 metronomeOn = metronomeOn,
                 onMetronomeToggle = onMetronomeToggle,
                 metronomeTick = metronomeTick,
@@ -161,127 +164,12 @@ fun ConcertViewScreen(
                 audioDiagnostics = audioDiagnostics
             )
 
-            // ─── SCROLLABLE MAIN CONTENT (PATCHES + MIXER + PADS) ─────────────────
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // ─── MAIN ROW: PATCHES + MIXER (HEIGHT 280dp like HTML mockup) ──────
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(280.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // PATCHES PANEL
-                    PatchesPanel(
-                        patches = concert.patches,
-                        selectedIndex = selectedPatchIndex,
-                        onSelect = onSelectPatch,
-                        onAdd = onAddPatchClick,
-                        onEdit = onEditPatchClick,
-                        onDelete = onDeletePatch,
-                        onExport = onExportPatchClick,
-                        onImport = onImportPatchClick,
-                        onToggleFavorite = onToggleFavorite,
-                        onMovePatch = onMovePatch
-                    )
-
-                    // MIXER PANEL
-                    MixerPanel(
-                        modifier = Modifier.weight(1f),
-                        channels = concert.channels,
-                        vuLevels = vuLevels,
-                        metronomeVolume = metronomeVolume,
-                        onMetronomeVolumeChange = onMetronomeVolumeChange,
-                        masterVolume = masterVolume,
-                        masterPan = masterPan,
-                        isLimiterActive = isMasterLimiterActive,
-                        masterVuLevel = masterVuLevel,
-                        onMasterVolumeChange = onMasterVolumeChange,
-                        onMasterPanChange = onMasterPanChange,
-                        onVolumeChange = onVolumeChange,
-                        onMuteToggle = onMuteToggle,
-                        onSoloToggle = onSoloToggle,
-                        onAddChannelClick = onAddChannelClick,
-                        onChannelGearClick = onChannelGearClick,
-                        onSettingsClick = onSettingsClick,
-                        onReverbChange = onReverbChange,
-                        onChorusChange = onChorusChange,
-                        onCutoffChange = onCutoffChange,
-                        midiMappings = midiMappings,
-                        scrollState = rememberScrollState()
-                    )
-                }
-
-                // ─── PAD STRIP (ALWAYS FULLY ACCESSIBLE) ─────────────────────
-                PadStrip(
-                    enabled = padEnabled,
-                    onEnabledChange = onPadEnabledChange,
-                    volume = padVolume,
-                    onVolumeChange = onPadVolumeChange,
-                    bank = padBank,
-                    onBankChange = onPadBankChange,
-                    availableBanks = availablePadBanks,
-                    activePadNote = activePadNote,
-                    onPadNoteToggle = onPadNoteToggle
-                )
-            }
-
-            // ─── KEYBOARD UNIFIED ATTACHED TAB + PANEL ───────────────────────────
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Attached tab toggle
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(
-                            if (isKeyboardVisible) RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
-                            else RoundedCornerShape(12.dp)
-                        )
-                        .background(DarkPanel.copy(alpha = 0.85f))
-                        .clickable { isKeyboardVisible = !isKeyboardVisible }
-                        .padding(vertical = 5.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isKeyboardVisible) TablerIcons.ChevronDown else TablerIcons.ChevronUp,
-                            contentDescription = if (isKeyboardVisible) "Colapsar teclado" else "Expandir teclado",
-                            tint = AccentSky,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "TECLADO",
-                            color = if (isKeyboardVisible) Color.White else TextDark,
-                            fontSize = 9.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.2.sp
-                        )
-                    }
-                }
-
-                // Keyboard panel directly attached underneath
-                val keyboardHeight by androidx.compose.animation.core.animateDpAsState(
-                    targetValue = if (isKeyboardVisible) 142.dp else 0.dp
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(keyboardHeight)
-                        .clipToBounds()
-                ) {
-                    KeyboardPanel(
-                        channels = concert.channels,
+            if (isPerformanceMode) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    PerformanceModeView(
+                        concert = concert,
+                        selectedPatchIndex = selectedPatchIndex,
+                        onSelectPatch = onSelectPatch,
                         activeNote = activeNote,
                         onNoteDown = onNoteDown,
                         onNoteUp = onNoteUp,
@@ -293,9 +181,311 @@ fun ConcertViewScreen(
                         coroutineScope = coroutineScope
                     )
                 }
+            } else {
+                // ─── SCROLLABLE MAIN CONTENT (PATCHES + MIXER + PADS) ─────────────────
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(scrollState),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // ─── MAIN ROW: PATCHES + MIXER (HEIGHT 280dp like HTML mockup) ──────
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(280.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // PATCHES PANEL
+                        PatchesPanel(
+                            patches = concert.patches,
+                            selectedIndex = selectedPatchIndex,
+                            onSelect = onSelectPatch,
+                            onAdd = onAddPatchClick,
+                            onEdit = onEditPatchClick,
+                            onDelete = onDeletePatch,
+                            onExport = onExportPatchClick,
+                            onImport = onImportPatchClick,
+                            onToggleFavorite = onToggleFavorite,
+                            onMovePatch = onMovePatch
+                        )
+
+                        // MIXER PANEL
+                        MixerPanel(
+                            modifier = Modifier.weight(1f),
+                            channels = concert.channels,
+                            vuLevels = vuLevels,
+                            metronomeVolume = metronomeVolume,
+                            onMetronomeVolumeChange = onMetronomeVolumeChange,
+                            masterVolume = masterVolume,
+                            masterPan = masterPan,
+                            isLimiterActive = isMasterLimiterActive,
+                            masterVuLevel = masterVuLevel,
+                            onMasterVolumeChange = onMasterVolumeChange,
+                            onMasterPanChange = onMasterPanChange,
+                            onVolumeChange = onVolumeChange,
+                            onMuteToggle = onMuteToggle,
+                            onSoloToggle = onSoloToggle,
+                            onAddChannelClick = onAddChannelClick,
+                            onChannelGearClick = onChannelGearClick,
+                            onSettingsClick = onSettingsClick,
+                            onReverbChange = onReverbChange,
+                            onChorusChange = onChorusChange,
+                            onCutoffChange = onCutoffChange,
+                            midiMappings = midiMappings,
+                            scrollState = rememberScrollState()
+                        )
+                    }
+
+                    // ─── PAD STRIP (ALWAYS FULLY ACCESSIBLE) ─────────────────────
+                    PadStrip(
+                        enabled = padEnabled,
+                        onEnabledChange = onPadEnabledChange,
+                        volume = padVolume,
+                        onVolumeChange = onPadVolumeChange,
+                        bank = padBank,
+                        onBankChange = onPadBankChange,
+                        availableBanks = availablePadBanks,
+                        activePadNote = activePadNote,
+                        onPadNoteToggle = onPadNoteToggle
+                    )
+                }
+
+                // ─── KEYBOARD UNIFIED ATTACHED TAB + PANEL ───────────────────────────
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Attached tab toggle
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(
+                                if (isKeyboardVisible) RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+                                else RoundedCornerShape(12.dp)
+                            )
+                            .background(DarkPanel.copy(alpha = 0.85f))
+                            .clickable { isKeyboardVisible = !isKeyboardVisible }
+                            .padding(vertical = 5.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isKeyboardVisible) TablerIcons.ChevronDown else TablerIcons.ChevronUp,
+                                contentDescription = if (isKeyboardVisible) "Colapsar teclado" else "Expandir teclado",
+                                tint = AccentSky,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "TECLADO",
+                                color = if (isKeyboardVisible) Color.White else TextDark,
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.2.sp
+                            )
+                        }
+                    }
+
+                    // Keyboard panel directly attached underneath
+                    val keyboardHeight by androidx.compose.animation.core.animateDpAsState(
+                        targetValue = if (isKeyboardVisible) 142.dp else 0.dp
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(keyboardHeight)
+                            .clipToBounds()
+                    ) {
+                        KeyboardPanel(
+                            channels = concert.channels,
+                            activeNote = activeNote,
+                            onNoteDown = onNoteDown,
+                            onNoteUp = onNoteUp,
+                            pitchBend = pitchBend,
+                            modulation = modulation,
+                            onModulationChange = onModulationChange,
+                            sustainActive = sustainActive,
+                            onSustainToggle = onSustainToggle,
+                            coroutineScope = coroutineScope
+                        )
+                    }
+                }
             }
         } // End Column inside BoxWithConstraints
     } // End AppBackground
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PERFORMANCE MODE VIEW
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun PerformanceModeView(
+    concert: Concert,
+    selectedPatchIndex: Int,
+    onSelectPatch: (Int) -> Unit,
+    activeNote: Int?,
+    onNoteDown: (Int) -> Unit,
+    onNoteUp: (Int) -> Unit,
+    pitchBend: Animatable<Float, *>,
+    modulation: Animatable<Float, *>,
+    onModulationChange: (Float) -> Unit,
+    sustainActive: Boolean,
+    onSustainToggle: () -> Unit,
+    coroutineScope: kotlinx.coroutines.CoroutineScope
+) {
+    val currentPatch = concert.patches.getOrNull(selectedPatchIndex)
+    val prevPatch = concert.patches.getOrNull(selectedPatchIndex - 1)
+    val nextPatch = concert.patches.getOrNull(selectedPatchIndex + 1)
+    val patchColor = concert.channels.firstOrNull { !it.isMuted }?.let { parseColorHex(it.colorHex) } ?: AccentSky
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        // ── ZONA SUPERIOR: Navegación y Nombre del Patch Activo ─────────────
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = DarkPanel.copy(alpha = 0.9f),
+            border = BorderStroke(1.dp, patchColor.copy(alpha = 0.35f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Botón Patch Anterior
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (prevPatch != null) LightPanel else DarkBackground)
+                        .border(1.dp, if (prevPatch != null) OutlineVariant else Color.Transparent, RoundedCornerShape(12.dp))
+                        .clickable(enabled = prevPatch != null) {
+                            onSelectPatch(selectedPatchIndex - 1)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        TablerIcons.ChevronLeft,
+                        contentDescription = "Patch Anterior",
+                        tint = if (prevPatch != null) TextLight else TextDark.copy(alpha = 0.3f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                // Centro: Información del Patch Activo
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "PATCH ${selectedPatchIndex + 1} DE ${concert.patches.size}".uppercase(),
+                        color = patchColor,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = currentPatch?.name ?: "SIN PATCH",
+                        color = Color.White,
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    // Badges de capas de sonido / canales activos
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        concert.channels.filter { !it.isMuted }.forEach { ch ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(parseColorHex(ch.colorHex).copy(alpha = 0.2f))
+                                    .border(1.dp, parseColorHex(ch.colorHex).copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = ch.sf2Name.substringBefore(".sf2").uppercase(),
+                                    color = parseColorHex(ch.colorHex),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Botón Patch Siguiente
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (nextPatch != null) LightPanel else DarkBackground)
+                        .border(1.dp, if (nextPatch != null) OutlineVariant else Color.Transparent, RoundedCornerShape(12.dp))
+                        .clickable(enabled = nextPatch != null) {
+                            onSelectPatch(selectedPatchIndex + 1)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        TablerIcons.ChevronRight,
+                        contentDescription = "Patch Siguiente",
+                        tint = if (nextPatch != null) TextLight else TextDark.copy(alpha = 0.3f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
+
+        // ── ZONA CENTRAL: Visualizador de Splits / Capas ─────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp)
+        ) {
+            SplitKeyboardVisualizer(
+                channels = concert.channels,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        // ── ZONA INFERIOR: Teclado y Controles de Expresión ──────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(150.dp)
+        ) {
+            KeyboardPanel(
+                channels = concert.channels,
+                activeNote = activeNote,
+                onNoteDown = onNoteDown,
+                onNoteUp = onNoteUp,
+                pitchBend = pitchBend,
+                modulation = modulation,
+                onModulationChange = onModulationChange,
+                sustainActive = sustainActive,
+                onSustainToggle = onSustainToggle,
+                coroutineScope = coroutineScope
+            )
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -305,6 +495,8 @@ fun ConcertViewScreen(
 private fun TopBar(
     concertName: String,
     nextPatchName: String? = null,
+    isPerformanceMode: Boolean = false,
+    onPerformanceModeToggle: () -> Unit = {},
     metronomeOn: Boolean,
     onMetronomeToggle: () -> Unit,
     metronomeTick: Boolean,
@@ -622,6 +814,33 @@ private fun TopBar(
                     TablerIcons.Settings,
                     contentDescription = "Settings",
                     tint = TextDark,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            Spacer(Modifier.width(6.dp))
+
+            // Performance mode toggle button
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        if (isPerformanceMode) AccentNeonGreen.copy(alpha = 0.18f)
+                        else DarkPanel
+                    )
+                    .border(
+                        1.dp,
+                        if (isPerformanceMode) AccentNeonGreen else OutlineVariant.copy(alpha = 0.5f),
+                        RoundedCornerShape(10.dp)
+                    )
+                    .clickable(onClick = onPerformanceModeToggle),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    TablerIcons.DeviceDesktop,
+                    contentDescription = if (isPerformanceMode) "Salir del modo ejecución" else "Modo ejecución",
+                    tint = if (isPerformanceMode) AccentNeonGreen else TextDark,
                     modifier = Modifier.size(16.dp)
                 )
             }
