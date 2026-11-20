@@ -76,7 +76,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
         ),
         OnboardingSlide(
             icon = TablerIcons.DeviceGamepad,
-            iconTint = AccentNeonGreen,
+            iconTint = StateOk,
             title = "Listo para el escenario",
             subtitle = "Conecta tu teclado MIDI, selecciona tu patch y toca.\nRespaldo automático en Google Drive incluido."
         )
@@ -152,7 +152,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                             Text(
                                 text = slide.subtitle,
                                 fontSize = 14.5.sp,
-                                color = TextDark,
+                                color = TextSecondary,
                                 lineHeight = 21.sp
                             )
                         }
@@ -173,7 +173,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                     TextButton(onClick = onFinish) {
                         Text(
                             text = "Saltar",
-                            color = TextDark,
+                            color = TextSecondary,
                             fontSize = 14.sp
                         )
                     }
@@ -198,7 +198,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                 }
 
                 // Right: Siguiente / ¡Empezar! Button
-                Button(
+                SkButton(
                     onClick = {
                         if (currentPage < totalPages - 1) {
                             currentPage++
@@ -206,16 +206,12 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                             onFinish()
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentSky,
-                        contentColor = Color.Black
-                    ),
-                    shape = RoundedCornerShape(12.dp)
+                    variant = SkButtonVariant.Primary
                 ) {
                     Text(
                         text = if (currentPage < totalPages - 1) "Siguiente" else "¡Empezar!",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.5.sp
+                        fontSize = 14.sp
                     )
                 }
             }

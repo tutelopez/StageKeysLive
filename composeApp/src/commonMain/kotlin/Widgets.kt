@@ -22,99 +22,6 @@ import compose.icons.TablerIcons
 import compose.icons.tablericons.*
 import androidx.compose.ui.Alignment
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// VOLUME FADER (Vertical drag â€” gradient fill + bright handle)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-@Composable
-fun VolumeFader(
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    accentColor: Color = AccentSky,
-    modifier: Modifier = Modifier
-) {
-    BoxWithConstraints(
-        modifier = modifier
-            .clip(RoundedCornerShape(7.dp))
-            .background(DarkPanel)
-            .border(1.dp, LightPanel, RoundedCornerShape(7.dp))
-            .pointerInput(Unit) {
-                detectDragGestures { change, _ ->
-                    val newValue = 1f - (change.position.y / size.height).coerceIn(0f, 1f)
-                    onValueChange(newValue)
-                }
-            },
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        // Gradient fill
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(value.coerceIn(0.01f, 1f))
-                .clip(RoundedCornerShape(6.dp))
-                .background(
-                    Brush.verticalGradient(
-                        listOf(accentColor, accentColor.copy(alpha = 0.45f))
-                    )
-                )
-        )
-
-        // Thumb handle (matching HTML .fader-thumb)
-        val handleHeight = 6.dp
-        val usableHeight = maxHeight - handleHeight
-        val handleOffset = usableHeight * (1f - value)
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.84f)
-                .height(handleHeight)
-                .align(Alignment.TopCenter)
-                .offset(y = handleOffset)
-                .shadow(elevation = 8.dp, shape = RoundedCornerShape(3.dp), ambientColor = accentColor, spotColor = accentColor)
-                .clip(RoundedCornerShape(3.dp))
-                .background(DarkBackground)
-                .border(1.8.dp, accentColor, RoundedCornerShape(3.dp))
-        )
-    }
-}
-
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// LEVEL METER (VU â€” segmented bars from bottom)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-@Composable
-fun LevelMeter(
-    level: Float,
-    accentColor: Color = AccentNeonGreen,
-    modifier: Modifier = Modifier
-) {
-    val segments = 12
-    Canvas(
-        modifier = modifier.clip(RoundedCornerShape(4.dp))
-    ) {
-        val segH = (size.height - (segments - 1) * 2f) / segments
-        val activeSeg = (level * segments).toInt().coerceIn(0, segments)
-
-        for (i in 0 until segments) {
-            val segIdx = segments - 1 - i  // bottom = 0
-            val top = i * (segH + 2f)
-            val isActive = segIdx < activeSeg
-            val segColor = when {
-                segIdx >= segments - 2 -> if (isActive) StatusError else StatusError.copy(alpha = 0.2f)
-                segIdx >= segments - 4 -> if (isActive) StatusWarning else StatusWarning.copy(alpha = 0.2f)
-                else -> if (isActive) accentColor else DarkPanel
-            }
-            drawRoundRect(
-                color = segColor,
-                topLeft = Offset(0f, top),
-                size = androidx.compose.ui.geometry.Size(size.width, segH),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(2f)
-            )
-        }
-    }
-}
-
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ADD CHANNEL BUTTON
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 fun AddChannelButton(onClick: () -> Unit) {
     Box(
@@ -126,7 +33,7 @@ fun AddChannelButton(onClick: () -> Unit) {
             .border(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
-                    listOf(AccentSky.copy(alpha = 0.3f), LightPanel)
+                    listOf(AccentSky.copy(alpha = 0.3f), SurfaceCard)
                 ),
                 shape = RoundedCornerShape(14.dp)
             )
@@ -154,8 +61,8 @@ fun AddChannelButton(onClick: () -> Unit) {
             }
             Text(
                 "ADD",
-                color = AccentSky.copy(alpha = 0.7f),
-                fontSize = 8.sp,
+                color = AccentPrimary.copy(alpha = 0.85f),
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
@@ -185,281 +92,6 @@ fun EmptyChannelPlaceholder() {
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// METRONOME CHANNEL ITEM
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-@Composable
-fun MetronomeChannelItem(
-    volume: Float,
-    onVolumeChange: (Float) -> Unit
-) {
-    val accent = AccentNeonGreen
-    Column(
-        modifier = Modifier
-            .width(74.dp)
-            .fillMaxHeight()
-            .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(14.dp),
-                ambientColor = accent.copy(alpha = 0.35f),
-                spotColor = accent.copy(alpha = 0.45f)
-            )
-            .clip(RoundedCornerShape(14.dp))
-            .background(
-                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
-            )
-            .border(
-                1.dp,
-                accent.copy(alpha = 0.45f),
-                RoundedCornerShape(14.dp)
-            )
-            .padding(horizontal = 5.dp, vertical = 7.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        // Icon + label
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(13.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(accent)
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                "CLICK",
-                color = Color(0xFF7DFFB0),
-                fontSize = 7.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.5.sp
-            )
-        }
-
-        // Fader
-        VolumeFader(
-            value = volume,
-            accentColor = accent,
-            onValueChange = onVolumeChange,
-            modifier = Modifier.weight(1f).fillMaxWidth()
-        )
-
-        Text(
-            "${(volume * 100).toInt()}%",
-            color = TextDark,
-            fontSize = 8.sp,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MASTER OUTPUT CHANNEL ITEM
-// ─────────────────────────────────────────────────────────────────────────────
-@Composable
-fun MasterOutputChannelItem(
-    volume: Float,
-    level: Float,
-    pan: Float = 0.5f,
-    isLimiterActive: Boolean = false,
-    onVolumeChange: (Float) -> Unit,
-    onPanChange: (Float) -> Unit = {},
-    onMidiMapClick: () -> Unit
-) {
-    val accent = AccentPurple
-    Column(
-        modifier = Modifier
-            .width(82.dp)
-            .fillMaxHeight()
-            .shadow(
-                elevation = 14.dp,
-                shape = RoundedCornerShape(14.dp),
-                ambientColor = accent.copy(alpha = 0.35f),
-                spotColor = accent.copy(alpha = 0.45f)
-            )
-            .clip(RoundedCornerShape(14.dp))
-            .background(
-                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
-            )
-            .border(
-                1.dp,
-                accent.copy(alpha = 0.45f),
-                RoundedCornerShape(14.dp)
-            )
-            .padding(horizontal = 5.dp, vertical = 7.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(13.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(accent)
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                "MASTER",
-                color = Color(0xFFC9A3F7),
-                fontSize = 7.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.5.sp
-            )
-            if (isLimiterActive) {
-                Spacer(Modifier.width(3.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(Color(0xFFF59E0B))
-                        .padding(horizontal = 2.dp, vertical = 0.5.dp)
-                ) {
-                    Text("LIM", color = Color.Black, fontSize = 6.sp, fontWeight = FontWeight.ExtraBold)
-                }
-            }
-        }
-        Text(
-            "L/R OUT",
-            color = TextDark,
-            fontSize = 7.sp
-        )
-
-        // Master Pan Control
-        val panPercent = ((pan - 0.5f) * 200).toInt()
-        val panText = when {
-            panPercent == 0 -> "C"
-            panPercent < 0 -> "L${-panPercent}"
-            else -> "R${panPercent}"
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("PAN", color = TextDark, fontSize = 7.sp, fontWeight = FontWeight.Bold)
-            Text(
-                panText,
-                color = if (panPercent == 0) TextDark else accent,
-                fontSize = 7.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clip(RoundedCornerShape(3.dp)).clickable { onPanChange(0.5f) }
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(12.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(DarkBackground)
-                .border(0.5.dp, accent.copy(alpha = 0.3f), RoundedCornerShape(3.dp))
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onDoubleTap = { onPanChange(0.5f) },
-                        onTap = { offset ->
-                            val newPan = (offset.x / size.width).coerceIn(0f, 1f)
-                            onPanChange(newPan)
-                        }
-                    )
-                }
-                .pointerInput(Unit) {
-                    detectDragGestures { change, _ ->
-                        change.consume()
-                        val newPan = (change.position.x / size.width).coerceIn(0f, 1f)
-                        onPanChange(newPan)
-                    }
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val w = size.width
-                val h = size.height
-                val centerX = w / 2f
-                val thumbX = pan * w
-
-                // Center line tick
-                drawLine(
-                    color = Color.White.copy(alpha = 0.3f),
-                    start = Offset(centerX, 1f),
-                    end = Offset(centerX, h - 1f),
-                    strokeWidth = 1.dp.toPx()
-                )
-
-                // Fill from center to thumb
-                if (pan != 0.5f) {
-                    drawRect(
-                        color = accent.copy(alpha = 0.5f),
-                        topLeft = Offset(if (thumbX < centerX) thumbX else centerX, 2f),
-                        size = Size(kotlin.math.abs(thumbX - centerX), h - 4f)
-                    )
-                }
-
-                // Thumb handle
-                drawRoundRect(
-                    color = accent,
-                    topLeft = Offset((thumbX - 3.dp.toPx()).coerceIn(0f, w - 6.dp.toPx()), 1.dp.toPx()),
-                    size = Size(6.dp.toPx(), h - 2.dp.toPx()),
-                    cornerRadius = CornerRadius(2.dp.toPx())
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            VolumeFader(
-                value = volume,
-                accentColor = accent,
-                onValueChange = onVolumeChange,
-                modifier = Modifier.weight(1f).fillMaxHeight()
-            )
-            LevelMeter(
-                level = level,
-                accentColor = accent,
-                modifier = Modifier.width(8.dp).fillMaxHeight()
-            )
-        }
-
-        Text(
-            "${(volume * 100).toInt()}%",
-            color = TextDark,
-            fontSize = 8.sp,
-            textAlign = TextAlign.Center
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(20.dp)
-                .clip(RoundedCornerShape(5.dp))
-                .background(accent.copy(alpha = 0.12f))
-                .border(1.dp, accent.copy(alpha = 0.3f), RoundedCornerShape(5.dp))
-                .clickable(onClick = onMidiMapClick),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "MIDI MAP",
-                color = accent.copy(alpha = 0.6f),
-                fontSize = 7.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// PITCH BEND WHEEL
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
 fun PitchBendWheel(
     value: Float,
@@ -468,14 +100,14 @@ fun PitchBendWheel(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("PB", color = TextDark, fontSize = 7.sp, letterSpacing = 1.sp)
+        Text("PB", color = TextSecondary, fontSize = 11.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .background(DarkPanel)
-                .border(1.dp, LightPanel, RoundedCornerShape(8.dp))
+                .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = { onRelease() },
@@ -490,7 +122,7 @@ fun PitchBendWheel(
             // Center line
             Box(
                 modifier = Modifier.fillMaxWidth().height(1.dp)
-                    .background(LightPanel)
+                    .background(BorderHairline)
             )
             // Filled portion
             val clipped = (value + 1f) / 2f
@@ -500,15 +132,15 @@ fun PitchBendWheel(
                     .fillMaxHeight(clipped.coerceIn(0.01f, 1f))
                     .align(Alignment.BottomCenter)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(AccentSky.copy(alpha = 0.35f))
+                    .background(AccentPrimary.copy(alpha = 0.35f))
             )
         }
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // MODULATION WHEEL
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 fun ModulationWheel(
     value: Float,
@@ -516,14 +148,14 @@ fun ModulationWheel(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("MOD", color = TextDark, fontSize = 7.sp, letterSpacing = 1.sp)
+        Text("MOD", color = TextSecondary, fontSize = 11.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .background(DarkPanel)
-                .border(1.dp, LightPanel, RoundedCornerShape(8.dp))
+                .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
                 .pointerInput(Unit) {
                     detectDragGestures { change, _ ->
                         val newVal = 1f - (change.position.y / size.height).coerceIn(0f, 1f)
@@ -539,7 +171,7 @@ fun ModulationWheel(
                     .clip(RoundedCornerShape(4.dp))
                     .background(
                         Brush.verticalGradient(
-                            listOf(AccentPink.copy(alpha = 0.6f), AccentPurple.copy(alpha = 0.3f))
+                            listOf(AccentLavender.copy(alpha = 0.6f), AccentPrimary.copy(alpha = 0.3f))
                         )
                     )
             )

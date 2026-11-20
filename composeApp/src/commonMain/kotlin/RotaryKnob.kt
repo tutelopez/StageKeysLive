@@ -1,4 +1,4 @@
-﻿package com.tutelopezmusic.stagekeyslive
+package com.tutelopezmusic.stagekeyslive
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -29,9 +29,9 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 enum class FxKnobType(val label: String, val color: Color, val defaultValue: Float) {
-    REVERB("REV", Color(0xFFA855F7), 0.0f),      // Violet / Purple
-    CHORUS("CHO", Color(0xFF2DD4BF), 0.0f),      // Green / Teal
-    TONE("TONE", Color(0xFFFB7185), 1.0f)        // Orange / Coral
+    REVERB("REV", FxReverbColor, 0.0f),      // Violet / Purple
+    CHORUS("CHO", FxChorusColor, 0.0f),      // Green / Teal
+    TONE("TONE", FxToneColor, 1.0f)        // Orange / Coral
 }
 
 /**
@@ -136,7 +136,7 @@ fun MainstageRotaryKnob(
 
                 // Base neutral background ring
                 drawArc(
-                    color = Color(0xFF2A2D3A),
+                    color = BorderHairline,
                     startAngle = startAngle,
                     sweepAngle = maxSweep,
                     useCenter = false,
@@ -162,8 +162,8 @@ fun MainstageRotaryKnob(
             // Numeric display inside knob
             Text(
                 text = "$displayPercent",
-                color = if (displayPercent > 0) TextLight else TextDark,
-                fontSize = if (knobSize < 42.dp) 8.sp else 10.sp,
+                color = if (displayPercent > 0) TextPrimary else TextSecondary,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
@@ -176,7 +176,7 @@ fun MainstageRotaryKnob(
                         .align(Alignment.TopEnd)
                         .offset(x = 1.dp, y = (-1).dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFF59E0B)) // Warm Gold
+                        .background(AccentLavender)
                 )
             }
         }
@@ -186,7 +186,7 @@ fun MainstageRotaryKnob(
             Text(
                 text = type.label,
                 color = type.color.copy(alpha = 0.85f),
-                fontSize = 9.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp,
                 textAlign = TextAlign.Center

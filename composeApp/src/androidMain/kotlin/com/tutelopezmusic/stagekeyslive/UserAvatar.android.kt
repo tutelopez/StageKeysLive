@@ -29,8 +29,8 @@ actual fun UserAvatar(
     Box(
         modifier = modifier
             .clip(CircleShape)
-            .background(Color(0xFF2563EB).copy(alpha = 0.4f))
-            .border(1.5.dp, Color(0xFF38BDF8), CircleShape),
+            .background(AvatarGradientStart.copy(alpha = 0.4f))
+            .border(1.5.dp, AvatarGradientEnd, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         if (!photoUrl.isNullOrBlank()) {
