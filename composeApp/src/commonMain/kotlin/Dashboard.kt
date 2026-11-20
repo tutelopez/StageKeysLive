@@ -345,7 +345,7 @@ fun DashboardScreen(
                         Text(
                             text = "${concerts.size}",
                             color = TextDark,
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -627,7 +627,7 @@ fun DashboardScreen(
             Text(
                 text = "StageKeysLive · listo para tocar",
                 color = TextDark.copy(alpha = 0.5f),
-                fontSize = 10.5.sp,
+                fontSize = 11.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
             )

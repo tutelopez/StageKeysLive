@@ -11,6 +11,7 @@ plugins {
 val hasAndroidSdk = project.providers.environmentVariable("ANDROID_HOME").isPresent ||
         project.providers.environmentVariable("ANDROID_SDK_ROOT").isPresent ||
         File(System.getProperty("user.home"), "AppData/Local/Android/Sdk").exists() ||
+        File(System.getProperty("user.home"), "Library/Android/sdk").exists() ||
         project.file("../local.properties").exists()
 
 val disableAndroid = !hasAndroidSdk
@@ -88,6 +89,7 @@ if (!disableAndroid) {
     configure<com.android.build.api.dsl.ApplicationExtension> {
         namespace = "com.tutelopezmusic.stagekeyslive"
         compileSdk = 34
+        ndkVersion = "26.3.11579264"
 
         buildFeatures {
             buildConfig = true
@@ -173,8 +175,13 @@ if (!disableAndroid) {
 compose.desktop {
     application {
         mainClass = "MainKt"
+        jvmArgs("-Dapple.awt.application.appearance=NSAppearanceNameDarkAqua")
         nativeDistributions {
-            targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi, org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb)
+            targetFormats(
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb,
+                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg
+            )
             packageName = "StageKeysLive"
             packageVersion = "1.0.0"
         }

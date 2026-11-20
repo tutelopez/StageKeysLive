@@ -38,19 +38,13 @@ fun ChannelStripItem(
         modifier = Modifier
             .width(76.dp)
             .fillMaxHeight()
-            .shadow(
-                elevation = 12.dp, 
-                shape = RoundedCornerShape(14.dp), 
-                ambientColor = accentColor.copy(alpha = 0.4f), 
-                spotColor = accentColor.copy(alpha = 0.55f)
-            )
             .clip(RoundedCornerShape(14.dp))
             .background(
-                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
+                Brush.verticalGradient(listOf(StripTop, StripBottom))
             )
             .border(
                 width = 1.dp,
-                color = accentColor.copy(alpha = 0.55f),
+                color = BorderHairline,
                 shape = RoundedCornerShape(14.dp)
             )
             .padding(horizontal = 4.dp, vertical = 6.dp),
@@ -75,7 +69,7 @@ fun ChannelStripItem(
             Text(
                 text = state.name.take(10).uppercase(),
                 color = accentColor,
-                fontSize = 7.5.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp,
                 textAlign = TextAlign.Center,
@@ -94,7 +88,7 @@ fun ChannelStripItem(
                 Icon(
                     TablerIcons.Settings,
                     contentDescription = "Configure",
-                    tint = TextDark.copy(alpha = 0.85f),
+                    tint = TextSecondary.copy(alpha = 0.85f),
                     modifier = Modifier.size(13.dp)
                 )
             }
@@ -123,7 +117,7 @@ fun ChannelStripItem(
         Text(
             text = "${(state.volume * 100).toInt()}%",
             color = TextDark,
-            fontSize = 8.sp,
+            fontSize = 11.sp,
             textAlign = TextAlign.Center
         )
 
@@ -172,7 +166,7 @@ fun ChannelStripItem(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFF1B1D28))
+                            .background(SurfaceCard)
                             .padding(1.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
@@ -198,8 +192,8 @@ fun ChannelStripItem(
                                 ) {
                                     Text(
                                         text = fxType.label.take(1),
-                                        color = if (isSel) fxType.color else TextDark,
-                                        fontSize = 8.sp,
+                                        color = if (isSel) fxType.color else TextSecondary,
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                     if (isMapped) {
@@ -208,7 +202,7 @@ fun ChannelStripItem(
                                             modifier = Modifier
                                                 .size(3.dp)
                                                 .clip(CircleShape)
-                                                .background(Color(0xFFF59E0B))
+                                                .background(AccentLavender)
                                         )
                                     }
                                 }
@@ -277,20 +271,14 @@ private fun MuteSoloButton(
 ) {
     Box(
         modifier = modifier
-            .height(20.dp)
-            .shadow(
-                elevation = if (active) 6.dp else 0.dp,
-                shape = RoundedCornerShape(6.dp),
-                ambientColor = if (active) activeColor else Color.Transparent,
-                spotColor = if (active) activeColor else Color.Transparent
-            )
+            .height(24.dp)
             .clip(RoundedCornerShape(6.dp))
             .background(
-                if (active) activeColor else SurfaceElevated
+                if (active) activeColor else SurfaceCard
             )
             .border(
                 1.dp,
-                if (active) activeColor else OutlineVariant.copy(alpha = 0.5f),
+                if (active) activeColor else BorderHairline,
                 RoundedCornerShape(6.dp)
             )
             .clickable(onClick = onClick),
@@ -298,8 +286,8 @@ private fun MuteSoloButton(
     ) {
         Text(
             label,
-            color = if (active) Color.White else TextDark,
-            fontSize = 9.sp,
+            color = if (active) Color.White else TextSecondary,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
     }

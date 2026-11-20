@@ -69,7 +69,7 @@ fun VolumeFader(
                 .height(handleHeight)
                 .align(Alignment.TopCenter)
                 .offset(y = handleOffset)
-                .shadow(elevation = 8.dp, shape = RoundedCornerShape(3.dp), ambientColor = accentColor, spotColor = accentColor)
+                .shadow(elevation = 3.dp, shape = RoundedCornerShape(3.dp), ambientColor = Color.Black, spotColor = Color.Black)
                 .clip(RoundedCornerShape(3.dp))
                 .background(DarkBackground)
                 .border(1.8.dp, accentColor, RoundedCornerShape(3.dp))
@@ -83,7 +83,7 @@ fun VolumeFader(
 @Composable
 fun LevelMeter(
     level: Float,
-    accentColor: Color = AccentNeonGreen,
+    accentColor: Color = ChannelGreen,
     modifier: Modifier = Modifier
 ) {
     val segments = 12
@@ -154,8 +154,8 @@ fun AddChannelButton(onClick: () -> Unit) {
             }
             Text(
                 "ADD",
-                color = AccentSky.copy(alpha = 0.7f),
-                fontSize = 8.sp,
+                color = AccentPrimary.copy(alpha = 0.85f),
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
@@ -193,24 +193,18 @@ fun MetronomeChannelItem(
     volume: Float,
     onVolumeChange: (Float) -> Unit
 ) {
-    val accent = AccentNeonGreen
+    val accent = ChannelGreen
     Column(
         modifier = Modifier
             .width(74.dp)
             .fillMaxHeight()
-            .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(14.dp),
-                ambientColor = accent.copy(alpha = 0.35f),
-                spotColor = accent.copy(alpha = 0.45f)
-            )
             .clip(RoundedCornerShape(14.dp))
             .background(
-                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
+                Brush.verticalGradient(listOf(StripTop, StripBottom))
             )
             .border(
                 1.dp,
-                accent.copy(alpha = 0.45f),
+                BorderHairline,
                 RoundedCornerShape(14.dp)
             )
             .padding(horizontal = 5.dp, vertical = 7.dp),
@@ -233,8 +227,8 @@ fun MetronomeChannelItem(
             Spacer(Modifier.width(4.dp))
             Text(
                 "CLICK",
-                color = Color(0xFF7DFFB0),
-                fontSize = 7.sp,
+                color = StateOk,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 0.5.sp
             )
@@ -250,8 +244,8 @@ fun MetronomeChannelItem(
 
         Text(
             "${(volume * 100).toInt()}%",
-            color = TextDark,
-            fontSize = 8.sp,
+            color = TextSecondary,
+            fontSize = 11.sp,
             textAlign = TextAlign.Center
         )
     }
@@ -275,19 +269,13 @@ fun MasterOutputChannelItem(
         modifier = Modifier
             .width(82.dp)
             .fillMaxHeight()
-            .shadow(
-                elevation = 14.dp,
-                shape = RoundedCornerShape(14.dp),
-                ambientColor = accent.copy(alpha = 0.35f),
-                spotColor = accent.copy(alpha = 0.45f)
-            )
             .clip(RoundedCornerShape(14.dp))
             .background(
-                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
+                Brush.verticalGradient(listOf(StripTop, StripBottom))
             )
             .border(
                 1.dp,
-                accent.copy(alpha = 0.45f),
+                BorderHairline,
                 RoundedCornerShape(14.dp)
             )
             .padding(horizontal = 5.dp, vertical = 7.dp),
@@ -309,8 +297,8 @@ fun MasterOutputChannelItem(
             Spacer(Modifier.width(4.dp))
             Text(
                 "MASTER",
-                color = Color(0xFFC9A3F7),
-                fontSize = 7.sp,
+                color = AccentLavender,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 0.5.sp
             )
@@ -319,17 +307,17 @@ fun MasterOutputChannelItem(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(2.dp))
-                        .background(Color(0xFFF59E0B))
+                        .background(StateSolo)
                         .padding(horizontal = 2.dp, vertical = 0.5.dp)
                 ) {
-                    Text("LIM", color = Color.Black, fontSize = 6.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("LIM", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
                 }
             }
         }
         Text(
             "L/R OUT",
-            color = TextDark,
-            fontSize = 7.sp
+            color = TextSecondary,
+            fontSize = 11.sp
         )
 
         // Master Pan Control
@@ -345,11 +333,11 @@ fun MasterOutputChannelItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("PAN", color = TextDark, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+            Text("PAN", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Text(
                 panText,
-                color = if (panPercent == 0) TextDark else accent,
-                fontSize = 7.sp,
+                color = if (panPercent == 0) TextSecondary else accent,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clip(RoundedCornerShape(3.dp)).clickable { onPanChange(0.5f) }
             )
@@ -432,25 +420,25 @@ fun MasterOutputChannelItem(
 
         Text(
             "${(volume * 100).toInt()}%",
-            color = TextDark,
-            fontSize = 8.sp,
+            color = TextSecondary,
+            fontSize = 11.sp,
             textAlign = TextAlign.Center
         )
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(20.dp)
+                .height(24.dp)
                 .clip(RoundedCornerShape(5.dp))
                 .background(accent.copy(alpha = 0.12f))
-                .border(1.dp, accent.copy(alpha = 0.3f), RoundedCornerShape(5.dp))
+                .border(1.dp, BorderHairline, RoundedCornerShape(5.dp))
                 .clickable(onClick = onMidiMapClick),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 "MIDI MAP",
-                color = accent.copy(alpha = 0.6f),
-                fontSize = 7.sp,
+                color = accent.copy(alpha = 0.85f),
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -468,14 +456,14 @@ fun PitchBendWheel(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("PB", color = TextDark, fontSize = 7.sp, letterSpacing = 1.sp)
+        Text("PB", color = TextSecondary, fontSize = 11.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .background(DarkPanel)
-                .border(1.dp, LightPanel, RoundedCornerShape(8.dp))
+                .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = { onRelease() },
@@ -490,7 +478,7 @@ fun PitchBendWheel(
             // Center line
             Box(
                 modifier = Modifier.fillMaxWidth().height(1.dp)
-                    .background(LightPanel)
+                    .background(BorderHairline)
             )
             // Filled portion
             val clipped = (value + 1f) / 2f
@@ -500,15 +488,15 @@ fun PitchBendWheel(
                     .fillMaxHeight(clipped.coerceIn(0.01f, 1f))
                     .align(Alignment.BottomCenter)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(AccentSky.copy(alpha = 0.35f))
+                    .background(AccentPrimary.copy(alpha = 0.35f))
             )
         }
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // MODULATION WHEEL
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 fun ModulationWheel(
     value: Float,
@@ -516,14 +504,14 @@ fun ModulationWheel(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("MOD", color = TextDark, fontSize = 7.sp, letterSpacing = 1.sp)
+        Text("MOD", color = TextSecondary, fontSize = 11.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .background(DarkPanel)
-                .border(1.dp, LightPanel, RoundedCornerShape(8.dp))
+                .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
                 .pointerInput(Unit) {
                     detectDragGestures { change, _ ->
                         val newVal = 1f - (change.position.y / size.height).coerceIn(0f, 1f)
@@ -539,7 +527,7 @@ fun ModulationWheel(
                     .clip(RoundedCornerShape(4.dp))
                     .background(
                         Brush.verticalGradient(
-                            listOf(AccentPink.copy(alpha = 0.6f), AccentPurple.copy(alpha = 0.3f))
+                            listOf(AccentLavender.copy(alpha = 0.6f), AccentPrimary.copy(alpha = 0.3f))
                         )
                     )
             )

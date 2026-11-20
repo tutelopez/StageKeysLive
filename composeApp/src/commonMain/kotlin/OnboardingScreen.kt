@@ -76,7 +76,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
         ),
         OnboardingSlide(
             icon = TablerIcons.DeviceGamepad,
-            iconTint = AccentNeonGreen,
+            iconTint = StateOk,
             title = "Listo para el escenario",
             subtitle = "Conecta tu teclado MIDI, selecciona tu patch y toca.\nRespaldo automático en Google Drive incluido."
         )

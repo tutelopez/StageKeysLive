@@ -73,9 +73,11 @@ class MainActivity : ComponentActivity() {
         
         synth.setAssetManager(assets)
         
-        // Hide system bars (Full Screen Immersive Mode)
+        // Hide system bars (Full Screen Immersive Mode with dark icons / edge-to-edge)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowInsetsControllerCompat(window, window.decorView)
+        controller.isAppearanceLightStatusBars = false
+        controller.isAppearanceLightNavigationBars = false
         controller.hide(WindowInsetsCompat.Type.systemBars())
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 

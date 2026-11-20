@@ -2066,8 +2066,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Reverb Send (Ambiente)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA855F7), fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                        Text("${(chState.reverbSend * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA855F7), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("Reverb Send (Ambiente)", style = MaterialTheme.typography.bodySmall, color = FxReverbColor, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("${(chState.reverbSend * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = FxReverbColor, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                     Slider(
                         value = chState.reverbSend,
@@ -2086,8 +2086,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         },
                         valueRange = 0f..1f,
                         colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFFA855F7),
-                            activeTrackColor = Color(0xFFA855F7),
+                            thumbColor = FxReverbColor,
+                            activeTrackColor = FxReverbColor,
                             inactiveTrackColor = DarkBackground
                         ),
                         modifier = Modifier.fillMaxWidth().height(26.dp)
@@ -2099,8 +2099,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Chorus Send (Cuerpo / Modulación)", style = MaterialTheme.typography.bodySmall, color = Color(0xFF2DD4BF), fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                        Text("${(chState.chorusSend * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = Color(0xFF2DD4BF), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("Chorus Send (Cuerpo / Modulación)", style = MaterialTheme.typography.bodySmall, color = FxChorusColor, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("${(chState.chorusSend * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = FxChorusColor, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                     Slider(
                         value = chState.chorusSend,
@@ -2119,8 +2119,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         },
                         valueRange = 0f..1f,
                         colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFF2DD4BF),
-                            activeTrackColor = Color(0xFF2DD4BF),
+                            thumbColor = FxChorusColor,
+                            activeTrackColor = FxChorusColor,
                             inactiveTrackColor = DarkBackground
                         ),
                         modifier = Modifier.fillMaxWidth().height(26.dp)
@@ -2132,8 +2132,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Tone / Cutoff (Brillo)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFB7185), fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                        Text("${(chState.filterCutoff * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFB7185), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("Tone / Cutoff (Brillo)", style = MaterialTheme.typography.bodySmall, color = FxToneColor, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("${(chState.filterCutoff * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = FxToneColor, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                     Slider(
                         value = chState.filterCutoff,
@@ -2152,8 +2152,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         },
                         valueRange = 0f..1f,
                         colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFFFB7185),
-                            activeTrackColor = Color(0xFFFB7185),
+                            thumbColor = FxToneColor,
+                            activeTrackColor = FxToneColor,
                             inactiveTrackColor = DarkBackground
                         ),
                         modifier = Modifier.fillMaxWidth().height(26.dp).padding(bottom = 8.dp)
@@ -2461,11 +2461,11 @@ fun ScrollablePianoKeyboard(
                         .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
                         .background(
                             if (isPressed)
-                                Brush.verticalGradient(listOf(Color.White, AccentSky.copy(alpha = 0.9f)))
+                                Brush.verticalGradient(listOf(Color.White, AccentPrimary.copy(alpha = 0.9f)))
                             else
-                                Brush.verticalGradient(listOf(Color.White, Color(0xFFF0F4F8)))
+                                Brush.verticalGradient(listOf(Color.White, KeyWhiteBottom))
                         )
-                        .border(1.dp, Color(0xFF12141A), RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
+                        .border(1.dp, KeyWhiteBorder, RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
                         .pointerInput(note) {
                             awaitEachGesture {
                                 awaitFirstDown(requireUnconsumed = false)
@@ -2494,11 +2494,11 @@ fun ScrollablePianoKeyboard(
                             .clip(RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
                             .background(
                                 if (isPressed)
-                                    Brush.verticalGradient(listOf(AccentSky, AccentSky.copy(alpha = 0.8f)))
+                                    Brush.verticalGradient(listOf(AccentPrimary, AccentPrimary.copy(alpha = 0.8f)))
                                 else
-                                    Brush.verticalGradient(listOf(Color(0xFF282C37), Color(0xFF151820)))
+                                    Brush.verticalGradient(listOf(KeyBlackTop, KeyBlackBottom))
                             )
-                            .border(1.dp, Color(0xFF0D0F14), RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
+                            .border(1.dp, KeyBlackBorder, RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
                             .pointerInput(blackNote) {
                                 awaitEachGesture {
                                     awaitFirstDown(requireUnconsumed = false)
@@ -2725,8 +2725,8 @@ fun SplitKeyboardDragEditor(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF0F1117))
-            .border(1.dp, Color(0xFF232733), RoundedCornerShape(12.dp))
+            .background(SurfaceCard)
+            .border(1.dp, BorderHairline, RoundedCornerShape(12.dp))
             .padding(10.dp)
     ) {
         val totalWidth = maxWidth
@@ -2787,8 +2787,8 @@ fun SplitKeyboardDragEditor(
                     .fillMaxWidth()
                     .height(44.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF0F1115))
-                    .border(1.dp, Color(0xFF1E222D), RoundedCornerShape(6.dp))
+                    .background(BgDark)
+                    .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
                     .pointerInput(channels) {
                         detectDragGestures(
                             onDragStart = { offset ->
@@ -2842,8 +2842,8 @@ fun SplitKeyboardDragEditor(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .background(Color(0xFFE2E8F0))
-                                .border(0.5.dp, Color(0xFF0F1115))
+                                .background(KeyWhiteBottom)
+                                .border(0.5.dp, KeyWhiteBorder)
                         )
                     }
                 }
@@ -2862,8 +2862,8 @@ fun SplitKeyboardDragEditor(
                                         .width(7.dp)
                                         .fillMaxHeight(0.62f)
                                         .clip(RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
-                                        .background(Color(0xFF1E222D))
-                                        .border(0.5.dp, Color.Black, RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
+                                        .background(KeyBlackTop)
+                                        .border(0.5.dp, KeyBlackBorder, RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
                                 )
                             }
                         }
@@ -2967,9 +2967,9 @@ fun SplitKeyboardDragEditor(
                     val frac = getSplitMidiNoteFractionStart(note)
                     Text(
                         text = label,
-                        fontSize = 7.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black.copy(alpha = 0.55f),
+                        color = TextSecondary.copy(alpha = 0.55f),
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .offset(x = totalWidth * frac + 1.dp, y = (-1).dp)
@@ -2989,13 +2989,13 @@ fun SplitKeyboardDragEditor(
                                 .offset(x = tooltipX, y = (-22).dp)
                                 .zIndex(20f)
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFF1E222D))
+                                .background(SurfacePanel)
                                 .border(1.dp, parseColorHex(activeCh.colorHex), RoundedCornerShape(6.dp))
                                 .padding(horizontal = 6.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = midiNoteToName(currentNote),
-                                fontSize = 9.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
@@ -3016,8 +3016,8 @@ fun SplitKeyboardVisualizer(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF0F1117))
-            .border(1.dp, Color(0xFF232733), RoundedCornerShape(12.dp))
+            .background(SurfaceCard)
+            .border(1.dp, BorderHairline, RoundedCornerShape(12.dp))
             .padding(10.dp)
     ) {
         val totalWidth = maxWidth
@@ -3078,8 +3078,8 @@ fun SplitKeyboardVisualizer(
                     .fillMaxWidth()
                     .height(44.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF0F1115))
-                    .border(1.dp, Color(0xFF1E222D), RoundedCornerShape(6.dp))
+                    .background(BgDark)
+                    .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
             ) {
                 // White Keys
                 Row(modifier = Modifier.fillMaxSize()) {
@@ -3088,8 +3088,8 @@ fun SplitKeyboardVisualizer(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .background(Color(0xFFE2E8F0))
-                                .border(0.5.dp, Color(0xFF0F1115))
+                                .background(KeyWhiteBottom)
+                                .border(0.5.dp, KeyWhiteBorder)
                         )
                     }
                 }
@@ -3108,8 +3108,8 @@ fun SplitKeyboardVisualizer(
                                         .width(7.dp)
                                         .fillMaxHeight(0.62f)
                                         .clip(RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
-                                        .background(Color(0xFF1E222D))
-                                        .border(0.5.dp, Color.Black, RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
+                                        .background(KeyBlackTop)
+                                        .border(0.5.dp, KeyBlackBorder, RoundedCornerShape(bottomStart = 2.dp, bottomEnd = 2.dp))
                                 )
                             }
                         }
@@ -3141,9 +3141,9 @@ fun SplitKeyboardVisualizer(
                     val frac = getSplitMidiNoteFractionStart(note)
                     Text(
                         text = label,
-                        fontSize = 7.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black.copy(alpha = 0.55f),
+                        color = TextSecondary.copy(alpha = 0.55f),
                         modifier = Modifier
                             .align(Alignment.BottomStart)
                             .offset(x = totalWidth * frac + 1.dp, y = (-1).dp)
@@ -3181,8 +3181,8 @@ fun SplitRangeKeyboard(
             .fillMaxWidth()
             .height(80.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF0F1117))
-            .border(1.dp, Color(0xFF232733), RoundedCornerShape(8.dp))
+            .background(SurfaceCard)
+            .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
             .horizontalScroll(scrollState)
     ) {
         // 1. White Keys
@@ -3202,8 +3202,8 @@ fun SplitRangeKeyboard(
                             )
                         )
                     }
-                    inOtherRange -> Brush.verticalGradient(listOf(Color.White, Color(0xFFCDD5E0)))
-                    else -> Brush.verticalGradient(listOf(Color.White, Color(0xFFF0F4F8)))
+                    inOtherRange -> Brush.verticalGradient(listOf(Color.White, KeyWhiteBottom))
+                    else -> Brush.verticalGradient(listOf(Color.White, SurfaceElevated))
                 }
 
                 Box(
@@ -3212,7 +3212,7 @@ fun SplitRangeKeyboard(
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
                         .background(bgBrush)
-                        .border(1.dp, Color(0xFF12141A), RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
+                        .border(1.dp, KeyWhiteBorder, RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp))
                         .pointerInput(note) {
                             awaitEachGesture {
                                 awaitFirstDown(requireUnconsumed = false)
@@ -3226,9 +3226,9 @@ fun SplitRangeKeyboard(
                         val octave = (note / 12) - 1
                         Text(
                             text = "C$octave",
-                            fontSize = 8.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black.copy(alpha = 0.5f),
+                            color = TextSecondary.copy(alpha = 0.6f),
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .padding(bottom = 10.dp)
@@ -3240,12 +3240,12 @@ fun SplitRangeKeyboard(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .width(18.dp)
-                                .height(10.dp)
+                                .height(12.dp)
                                 .background(parseColorHex(selectedCh.colorHex), RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
                         ) {
                             Text(
                                 text = "L",
-                                fontSize = 7.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 modifier = Modifier.align(Alignment.Center)
@@ -3257,12 +3257,12 @@ fun SplitRangeKeyboard(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .width(18.dp)
-                                .height(10.dp)
+                                .height(12.dp)
                                 .background(parseColorHex(selectedCh.colorHex), RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
                         ) {
                             Text(
                                 text = "H",
-                                fontSize = 7.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 modifier = Modifier.align(Alignment.Center)
@@ -3296,8 +3296,8 @@ fun SplitRangeKeyboard(
                                 )
                             )
                         }
-                        inOtherRange -> Brush.verticalGradient(listOf(Color(0xFF3F4555), Color(0xFF282C37)))
-                        else -> Brush.verticalGradient(listOf(Color(0xFF282C37), Color(0xFF151820)))
+                        inOtherRange -> Brush.verticalGradient(listOf(KeyBlackTop, KeyBlackBottom))
+                        else -> Brush.verticalGradient(listOf(KeyBlackTop, BgDark))
                     }
 
                     Box(
@@ -3306,7 +3306,7 @@ fun SplitRangeKeyboard(
                             .fillMaxHeight(0.62f)
                             .clip(RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
                             .background(bgBrush)
-                            .border(1.dp, Color(0xFF0D0F14), RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
+                            .border(1.dp, KeyBlackBorder, RoundedCornerShape(bottomStart = 3.dp, bottomEnd = 3.dp))
                             .pointerInput(blackNote) {
                                 awaitEachGesture {
                                     awaitFirstDown(requireUnconsumed = false)
@@ -3320,12 +3320,12 @@ fun SplitRangeKeyboard(
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .width(14.dp)
-                                    .height(8.dp)
+                                    .height(10.dp)
                                     .background(parseColorHex(selectedCh.colorHex), RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
                             ) {
                                 Text(
                                     text = "L",
-                                    fontSize = 6.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     modifier = Modifier.align(Alignment.Center)
@@ -3337,12 +3337,12 @@ fun SplitRangeKeyboard(
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .width(14.dp)
-                                    .height(8.dp)
+                                    .height(10.dp)
                                     .background(parseColorHex(selectedCh.colorHex), RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
                             ) {
                                 Text(
                                     text = "H",
-                                    fontSize = 6.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     modifier = Modifier.align(Alignment.Center)
@@ -3716,25 +3716,25 @@ fun MasterFxSettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Color(0xFFFF9800)))
+                        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(ServiceDrive))
                         Spacer(Modifier.width(8.dp))
-                        Text("LIMITADOR MASTER (SOFT-CLIP)", style = MaterialTheme.typography.labelLarge, color = Color(0xFFFF9800), fontWeight = FontWeight.Bold)
+                        Text("LIMITADOR MASTER (SOFT-CLIP)", style = MaterialTheme.typography.labelLarge, color = ServiceDrive, fontWeight = FontWeight.Bold)
                     }
                     Switch(
                         checked = masterLimiterEnabled,
                         onCheckedChange = onMasterLimiterToggle,
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFFFF9800),
-                            checkedTrackColor = Color(0xFFFF9800).copy(alpha = 0.3f),
-                            uncheckedThumbColor = Color(0xFF64748B),
-                            uncheckedTrackColor = Color(0xFF1E222D)
+                            checkedThumbColor = ServiceDrive,
+                            checkedTrackColor = ServiceDrive.copy(alpha = 0.3f),
+                            uncheckedThumbColor = TextTertiary,
+                            uncheckedTrackColor = SurfaceCard
                         )
                     )
                 }
                 Text(
                     text = "Aplica saturación suave de codo blando (tanh soft-knee a partir de 0.85) en la mezcla final antes de enviar a los altavoces/auriculares para evitar el desagradable 'clipping' digital cuando suenan múltiples capas a alto volumen.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextLight,
+                    color = TextPrimary,
                     fontSize = 12.sp
                 )
             }
@@ -3748,9 +3748,9 @@ fun MasterFxSettingsScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Color(0xFFA855F7)))
+                    Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(FxReverbColor))
                     Spacer(Modifier.width(8.dp))
-                    Text("REVERB MASTER (FREEVERB)", style = MaterialTheme.typography.labelLarge, color = Color(0xFFA855F7), fontWeight = FontWeight.Bold)
+                    Text("REVERB MASTER (FREEVERB)", style = MaterialTheme.typography.labelLarge, color = FxReverbColor, fontWeight = FontWeight.Bold)
                 }
 
                 // Room Size
@@ -3758,7 +3758,7 @@ fun MasterFxSettingsScreen(
                     label = "Room Size (Tamaño de Sala)",
                     value = settings.reverbRoomSize,
                     valueText = "${(settings.reverbRoomSize * 100).toInt()}%",
-                    accentColor = Color(0xFFA855F7),
+                    accentColor = FxReverbColor,
                     onValueChange = { onSettingsChange(settings.copy(reverbRoomSize = it)) }
                 )
 
@@ -3767,7 +3767,7 @@ fun MasterFxSettingsScreen(
                     label = "Damping (Amortiguación de Agudos)",
                     value = settings.reverbDamping,
                     valueText = "${(settings.reverbDamping * 100).toInt()}%",
-                    accentColor = Color(0xFFA855F7),
+                    accentColor = FxReverbColor,
                     onValueChange = { onSettingsChange(settings.copy(reverbDamping = it)) }
                 )
 
@@ -3776,7 +3776,7 @@ fun MasterFxSettingsScreen(
                     label = "Width (Anchura Estéreo)",
                     value = settings.reverbWidth,
                     valueText = "${(settings.reverbWidth * 100).toInt()}%",
-                    accentColor = Color(0xFFA855F7),
+                    accentColor = FxReverbColor,
                     onValueChange = { onSettingsChange(settings.copy(reverbWidth = it)) }
                 )
 
@@ -3785,7 +3785,7 @@ fun MasterFxSettingsScreen(
                     label = "Master Reverb Level",
                     value = settings.reverbLevel,
                     valueText = "${(settings.reverbLevel * 100).toInt()}%",
-                    accentColor = Color(0xFFA855F7),
+                    accentColor = FxReverbColor,
                     onValueChange = { onSettingsChange(settings.copy(reverbLevel = it)) }
                 )
             }
@@ -3799,9 +3799,9 @@ fun MasterFxSettingsScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Color(0xFF2DD4BF)))
+                    Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(FxChorusColor))
                     Spacer(Modifier.width(8.dp))
-                    Text("CHORUS MASTER", style = MaterialTheme.typography.labelLarge, color = Color(0xFF2DD4BF), fontWeight = FontWeight.Bold)
+                    Text("CHORUS MASTER", style = MaterialTheme.typography.labelLarge, color = FxChorusColor, fontWeight = FontWeight.Bold)
                 }
 
                 // Voices / Nr
@@ -3809,7 +3809,7 @@ fun MasterFxSettingsScreen(
                     label = "Voces de Modulación (Nr)",
                     value = settings.chorusNr / 10f,
                     valueText = "${settings.chorusNr} voces",
-                    accentColor = Color(0xFF2DD4BF),
+                    accentColor = FxChorusColor,
                     onValueChange = { onSettingsChange(settings.copy(chorusNr = (it * 10).toInt().coerceIn(0, 10))) }
                 )
 
@@ -3818,7 +3818,7 @@ fun MasterFxSettingsScreen(
                     label = "Depth (Profundidad)",
                     value = settings.chorusDepth / 30f,
                     valueText = "${settings.chorusDepth.toInt()} ms",
-                    accentColor = Color(0xFF2DD4BF),
+                    accentColor = FxChorusColor,
                     onValueChange = { onSettingsChange(settings.copy(chorusDepth = (it * 30f).coerceIn(0f, 30f))) }
                 )
 
@@ -3827,7 +3827,7 @@ fun MasterFxSettingsScreen(
                     label = "Speed (Velocidad LFO)",
                     value = (settings.chorusSpeed - 0.1f) / 4.9f,
                     valueText = "${((settings.chorusSpeed * 10).toInt() / 10.0)} Hz",
-                    accentColor = Color(0xFF2DD4BF),
+                    accentColor = FxChorusColor,
                     onValueChange = { onSettingsChange(settings.copy(chorusSpeed = (0.1f + it * 4.9f).coerceIn(0.1f, 5.0f))) }
                 )
 
@@ -3836,7 +3836,7 @@ fun MasterFxSettingsScreen(
                     label = "Master Chorus Level",
                     value = settings.chorusLevel / 2f,
                     valueText = "${(settings.chorusLevel * 50).toInt()}%",
-                    accentColor = Color(0xFF2DD4BF),
+                    accentColor = FxChorusColor,
                     onValueChange = { onSettingsChange(settings.copy(chorusLevel = (it * 2f).coerceIn(0f, 2f))) }
                 )
             }
@@ -3867,7 +3867,7 @@ private fun FxSliderRow(
             colors = SliderDefaults.colors(
                 thumbColor = accentColor,
                 activeTrackColor = accentColor,
-                inactiveTrackColor = Color(0xFF2A2D3A)
+                inactiveTrackColor = BorderHairline
             ),
             modifier = Modifier.fillMaxWidth().height(28.dp)
         )
@@ -3918,7 +3918,7 @@ fun WhatsNewDialog(
                 .padding(12.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = DarkBackground),
-            border = BorderStroke(1.dp, Color(0xFF2A2D3A))
+            border = BorderStroke(1.dp, BorderHairline)
         ) {
             Column(
                 modifier = Modifier
@@ -3956,7 +3956,7 @@ fun WhatsNewDialog(
                                 Text(
                                     "v$versionName",
                                     color = Color.Black,
-                                    fontSize = 10.5.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
@@ -3972,7 +3972,7 @@ fun WhatsNewDialog(
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
-                HorizontalDivider(color = Color(0xFF2A2D3A), thickness = 1.dp)
+                HorizontalDivider(color = BorderHairline, thickness = 1.dp)
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Notes List
@@ -3987,7 +3987,7 @@ fun WhatsNewDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(DarkPanel, RoundedCornerShape(10.dp))
-                                .border(1.dp, Color(0xFF252836), RoundedCornerShape(10.dp))
+                                .border(1.dp, BorderHairline, RoundedCornerShape(10.dp))
                                 .padding(12.dp),
                             verticalAlignment = Alignment.Top
                         ) {
@@ -4012,13 +4012,13 @@ fun WhatsNewDialog(
                                         fontSize = 13.sp
                                     )
                                     Surface(
-                                        color = Color(0xFF10B981).copy(alpha = 0.15f),
+                                        color = StateOk.copy(alpha = 0.15f),
                                         shape = RoundedCornerShape(4.dp)
                                     ) {
                                         Text(
                                             item.tag,
-                                            color = Color(0xFF10B981),
-                                            fontSize = 9.sp,
+                                            color = StateOk,
+                                            fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
                                             modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                                         )
@@ -4098,9 +4098,9 @@ fun SupportSettingsScreen(
         // Support Header Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2330)),
+            colors = CardDefaults.cardColors(containerColor = SurfaceCard),
             shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, Color(0xFF2E3446))
+            border = BorderStroke(1.dp, BorderHairline)
         ) {
             Row(
                 modifier = Modifier.padding(16.dp),
@@ -4109,7 +4109,7 @@ fun SupportSettingsScreen(
                 Box(
                     modifier = Modifier
                         .size(46.dp)
-                        .background(Color(0xFF229ED9).copy(alpha = 0.15f), CircleShape),
+                        .background(ServiceTelegram.copy(alpha = 0.15f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("💬", fontSize = 22.sp)
@@ -4127,7 +4127,7 @@ fun SupportSettingsScreen(
                     Text(
                         "¿Tienes dudas, problemas técnicos o sugerencias de mejoras? Contáctame directamente por Telegram.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextDark,
+                        color = TextSecondary,
                         fontSize = 11.5.sp
                     )
                 }
@@ -4139,7 +4139,7 @@ fun SupportSettingsScreen(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = DarkPanel),
             shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, Color(0xFF2A2D3A))
+            border = BorderStroke(1.dp, BorderHairline)
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
@@ -4179,7 +4179,7 @@ fun SupportSettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(44.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF229ED9)),
+                    colors = ButtonDefaults.buttonColors(containerColor = ServiceTelegram),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("🚀 Abrir Telegram (@tutelopez7)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
@@ -4193,7 +4193,7 @@ fun SupportSettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(42.dp),
-                    border = BorderStroke(1.dp, Color(0xFF384055)),
+                    border = BorderStroke(1.dp, BorderHairline),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("📋 Copiar Diagnóstico Técnico", color = TextLight, fontSize = 12.5.sp)
@@ -4206,7 +4206,7 @@ fun SupportSettingsScreen(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = DarkPanel),
             shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, Color(0xFF2A2D3A))
+            border = BorderStroke(1.dp, BorderHairline)
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
@@ -4233,7 +4233,7 @@ fun SupportSettingsScreen(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = DarkPanel),
             shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, Color(0xFF2A2D3A))
+            border = BorderStroke(1.dp, BorderHairline)
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
@@ -4265,7 +4265,7 @@ fun SupportSettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(42.dp),
-                    border = BorderStroke(1.dp, Color(0xFF384055)),
+                    border = BorderStroke(1.dp, BorderHairline),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("📄 Ver Política de Privacidad", color = TextLight, fontSize = 12.5.sp)
@@ -4280,7 +4280,7 @@ private fun DiagnosticRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF13161F), RoundedCornerShape(6.dp))
+            .background(SurfacePanel, RoundedCornerShape(6.dp))
             .padding(horizontal = 10.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

@@ -7,9 +7,10 @@ import com.tutelopezmusic.stagekeyslive.App
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
-        title = "MIDILIVE PRO - Mainstage Mockup",
-        state = rememberWindowState(width = 1024.dp, height = 720.dp)
+        title = "StageKeysLive",
+        state = rememberWindowState(width = 1280.dp, height = 800.dp)
     ) {
+        window.minimumSize = java.awt.Dimension(960, 600)
         App()
     }
 }

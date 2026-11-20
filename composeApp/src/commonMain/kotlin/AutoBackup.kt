@@ -150,7 +150,7 @@ fun AutoBackupSettingsScreen(
                             }
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4285F4),
+                            containerColor = ServiceGoogle,
                             contentColor = Color.White
                         ),
                         shape = RoundedCornerShape(8.dp),
@@ -826,11 +826,11 @@ fun AutoBackupSettingsScreen(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Consulta nuestra ", color = TextDark, fontSize = 10.5.sp)
+                        Text("Consulta nuestra ", color = TextDark, fontSize = 11.sp)
                         Text(
                             "Política de Privacidad",
                             color = AccentSky,
-                            fontSize = 10.5.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
                         )

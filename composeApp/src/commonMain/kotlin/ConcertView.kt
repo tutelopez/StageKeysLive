@@ -117,7 +117,7 @@ fun ConcertViewScreen(
 
     // Use BoxWithConstraints to detect screen width (KMP-safe, no LocalConfiguration needed)
     // Tablets (>=600dp) start expanded; phones start collapsed to maximize mixer space
-    var isKeyboardVisible by rememberSaveable { mutableStateOf(false) }
+    var isKeyboardVisible by rememberSaveable { mutableStateOf(true) }
     var isPerformanceMode by rememberSaveable { mutableStateOf(false) }
 
     // AppBackground handles the BoxWithConstraints and gradient glows
@@ -303,7 +303,7 @@ fun ConcertViewScreen(
                             Text(
                                 text = "TECLADO",
                                 color = if (isKeyboardVisible) Color.White else TextDark,
-                                fontSize = 9.5.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.2.sp
                             )
@@ -422,7 +422,7 @@ private fun PerformanceModeView(
                     Text(
                         text = "PATCH ${selectedPatchIndex + 1}/${concert.patches.size}".uppercase(),
                         color = patchColor,
-                        fontSize = 10.5.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
@@ -568,19 +568,13 @@ private fun PerformanceChannelStripItem(
         modifier = Modifier
             .width(84.dp)
             .fillMaxHeight()
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(12.dp),
-                ambientColor = accentColor.copy(alpha = 0.3f),
-                spotColor = accentColor.copy(alpha = 0.45f)
-            )
             .clip(RoundedCornerShape(12.dp))
             .background(
-                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
+                Brush.verticalGradient(listOf(StripTop, StripBottom))
             )
             .border(
                 width = 1.dp,
-                color = accentColor.copy(alpha = 0.5f),
+                color = BorderHairline,
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(horizontal = 4.dp, vertical = 4.dp),
@@ -604,7 +598,7 @@ private fun PerformanceChannelStripItem(
             Text(
                 text = state.name.take(9).uppercase(),
                 color = accentColor,
-                fontSize = 7.5.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp,
                 textAlign = TextAlign.Center,
@@ -615,7 +609,7 @@ private fun PerformanceChannelStripItem(
 
             Box(
                 modifier = Modifier
-                    .size(16.dp)
+                    .size(18.dp)
                     .clip(CircleShape)
                     .clickable(onClick = onGearClick),
                 contentAlignment = Alignment.Center
@@ -623,7 +617,7 @@ private fun PerformanceChannelStripItem(
                 Icon(
                     TablerIcons.Settings,
                     contentDescription = "Configurar",
-                    tint = TextDark.copy(alpha = 0.7f),
+                    tint = TextSecondary.copy(alpha = 0.7f),
                     modifier = Modifier.size(11.dp)
                 )
             }
@@ -640,7 +634,7 @@ private fun PerformanceChannelStripItem(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(3.dp))
-                    .background(Color(0xFF1B1D28))
+                    .background(SurfaceCard)
                     .padding(1.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
@@ -666,8 +660,8 @@ private fun PerformanceChannelStripItem(
                         ) {
                             Text(
                                 text = fxType.label.take(1),
-                                color = if (isSel) fxType.color else TextDark,
-                                fontSize = 7.5.sp,
+                                color = if (isSel) fxType.color else TextSecondary,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             if (isMapped) {
@@ -676,7 +670,7 @@ private fun PerformanceChannelStripItem(
                                     modifier = Modifier
                                         .size(2.5.dp)
                                         .clip(CircleShape)
-                                        .background(Color(0xFFF59E0B))
+                                        .background(AccentLavender)
                                 )
                             }
                         }
@@ -721,17 +715,17 @@ private fun PerformanceChannelStripItem(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(16.dp)
+                    .height(20.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(if (state.isMuted) StatusError else SurfaceElevated)
-                    .border(1.dp, if (state.isMuted) StatusError else OutlineVariant.copy(alpha = 0.4f), RoundedCornerShape(3.dp))
+                    .background(if (state.isMuted) StateMute else SurfaceCard)
+                    .border(1.dp, if (state.isMuted) StateMute else BorderHairline, RoundedCornerShape(3.dp))
                     .clickable(onClick = onMuteToggle),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     "M",
-                    color = if (state.isMuted) Color.White else TextDark,
-                    fontSize = 8.sp,
+                    color = if (state.isMuted) Color.White else TextSecondary,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -739,17 +733,17 @@ private fun PerformanceChannelStripItem(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .height(16.dp)
+                    .height(20.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(if (state.isSoloed) StatusWarning else SurfaceElevated)
-                    .border(1.dp, if (state.isSoloed) StatusWarning else OutlineVariant.copy(alpha = 0.4f), RoundedCornerShape(3.dp))
+                    .background(if (state.isSoloed) StateSolo else SurfaceCard)
+                    .border(1.dp, if (state.isSoloed) StateSolo else BorderHairline, RoundedCornerShape(3.dp))
                     .clickable(onClick = onSoloToggle),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     "S",
-                    color = if (state.isSoloed) Color.Black else TextDark,
-                    fontSize = 8.sp,
+                    color = if (state.isSoloed) Color.Black else TextSecondary,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -777,8 +771,8 @@ private fun PerformanceChannelStripItem(
         // ── 5. Volume % label ──────────────────────────────────────────────
         Text(
             text = "${(state.volume * 100).toInt()}%",
-            color = TextDark,
-            fontSize = 7.5.sp,
+            color = TextSecondary,
+            fontSize = 11.sp,
             textAlign = TextAlign.Center
         )
     }
@@ -789,24 +783,18 @@ private fun PerformanceMetronomeChannelItem(
     volume: Float,
     onVolumeChange: (Float) -> Unit
 ) {
-    val accent = AccentNeonGreen
+    val accent = ChannelGreen
     Column(
         modifier = Modifier
             .width(76.dp)
             .fillMaxHeight()
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(12.dp),
-                ambientColor = accent.copy(alpha = 0.3f),
-                spotColor = accent.copy(alpha = 0.45f)
-            )
             .clip(RoundedCornerShape(12.dp))
             .background(
-                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
+                Brush.verticalGradient(listOf(StripTop, StripBottom))
             )
             .border(
                 1.dp,
-                accent.copy(alpha = 0.45f),
+                BorderHairline,
                 RoundedCornerShape(12.dp)
             )
             .padding(horizontal = 4.dp, vertical = 4.dp),
@@ -829,8 +817,8 @@ private fun PerformanceMetronomeChannelItem(
             Spacer(Modifier.width(4.dp))
             Text(
                 "CLICK",
-                color = Color(0xFF7DFFB0),
-                fontSize = 7.5.sp,
+                color = StateOk,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 0.5.sp
             )
@@ -848,8 +836,8 @@ private fun PerformanceMetronomeChannelItem(
 
         Text(
             "${(volume * 100).toInt()}%",
-            color = TextDark,
-            fontSize = 7.5.sp,
+            color = TextSecondary,
+            fontSize = 11.sp,
             textAlign = TextAlign.Center
         )
     }
@@ -869,19 +857,13 @@ private fun PerformanceMasterChannelItem(
         modifier = Modifier
             .width(82.dp)
             .fillMaxHeight()
-            .shadow(
-                elevation = 10.dp,
-                shape = RoundedCornerShape(14.dp),
-                ambientColor = accent.copy(alpha = 0.3f),
-                spotColor = accent.copy(alpha = 0.45f)
-            )
             .clip(RoundedCornerShape(14.dp))
             .background(
-                Brush.verticalGradient(listOf(SurfaceElevated, DarkBackground))
+                Brush.verticalGradient(listOf(StripTop, StripBottom))
             )
             .border(
                 1.dp,
-                accent.copy(alpha = 0.45f),
+                BorderHairline,
                 RoundedCornerShape(14.dp)
             )
             .padding(horizontal = 4.dp, vertical = 6.dp),
@@ -904,8 +886,8 @@ private fun PerformanceMasterChannelItem(
             Spacer(Modifier.width(4.dp))
             Text(
                 "MASTER",
-                color = Color(0xFFC9A3F7),
-                fontSize = 8.sp,
+                color = AccentLavender,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 0.5.sp
             )
@@ -914,10 +896,10 @@ private fun PerformanceMasterChannelItem(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(2.dp))
-                        .background(Color(0xFFF59E0B))
+                        .background(StateSolo)
                         .padding(horizontal = 2.dp, vertical = 0.5.dp)
                 ) {
-                    Text("LIM", color = Color.Black, fontSize = 6.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("LIM", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
                 }
             }
         }
@@ -937,8 +919,8 @@ private fun PerformanceMasterChannelItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("PAN", color = TextDark, fontSize = 7.sp, fontWeight = FontWeight.Bold)
-                Text(panText, color = accent, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                Text("PAN", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(panText, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
             Slider(
                 value = pan,
@@ -976,8 +958,8 @@ private fun PerformanceMasterChannelItem(
 
         Text(
             "${(volume * 100).toInt()}%",
-            color = TextDark,
-            fontSize = 8.sp,
+            color = TextSecondary,
+            fontSize = 11.sp,
             textAlign = TextAlign.Center
         )
     }
@@ -1074,7 +1056,7 @@ private fun PerformancePadStrip(
                     Text(
                         "PADS ${if (enabled) "ON" else "OFF"}",
                         color = if (enabled) StatusSuccess else TextDark,
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
@@ -1108,9 +1090,9 @@ private fun PerformancePadStrip(
                             .clip(RoundedCornerShape(9.dp))
                             .background(
                                 if (isActive)
-                                    Brush.verticalGradient(listOf(StatusSuccess, Color(0xFF0A8A63)))
+                                    Brush.verticalGradient(listOf(StateOk, StateOk.copy(alpha = 0.7f)))
                                 else
-                                    Brush.verticalGradient(listOf(LightPanel, DarkPanel))
+                                    Brush.verticalGradient(listOf(SurfaceCard, SurfacePanel))
                             )
                             .border(
                                 width = 1.2.dp,
@@ -1205,7 +1187,7 @@ private fun TopBar(
                     Text(
                         text = "Siguiente: $nextPatchName",
                         color = TextDark,
-                        fontSize = 9.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -1229,14 +1211,14 @@ private fun TopBar(
                         .height(32.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(DarkPanel)
-                        .border(1.2.dp, if (metronomeOn) AccentNeonGreen else AccentSky.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+                        .border(1.2.dp, if (metronomeOn) StateOk else AccentPrimary.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
                         .clickable { onMetronomeToggle() }
                         .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "$metronomeBpm BPM",
-                        color = if (metronomeOn) AccentNeonGreen else AccentSky,
+                        color = if (metronomeOn) StateOk else AccentPrimary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
@@ -1255,8 +1237,8 @@ private fun TopBar(
                         valueRange = 40f..240f,
                         modifier = Modifier.width(150.dp).padding(horizontal = 16.dp),
                         colors = SliderDefaults.colors(
-                            thumbColor = AccentNeonGreen,
-                            activeTrackColor = AccentNeonGreen,
+                            thumbColor = StateOk,
+                            activeTrackColor = StateOk,
                             inactiveTrackColor = OutlineVariant
                         )
                     )
@@ -1337,7 +1319,7 @@ private fun TopBar(
                         .background(DarkPanel)
                         .border(
                             1.2.dp,
-                            if (isPlayingRecording) AccentNeonGreen else if (hasRecording) AccentSky.copy(alpha = 0.7f) else OutlineVariant.copy(alpha = 0.35f),
+                            if (isPlayingRecording) StateOk else if (hasRecording) AccentPrimary.copy(alpha = 0.7f) else OutlineVariant.copy(alpha = 0.35f),
                             RoundedCornerShape(16.dp)
                         )
                         .clickable(enabled = hasRecording || isPlayingRecording, onClick = onPlayRecordingClick)
@@ -1348,13 +1330,13 @@ private fun TopBar(
                         Icon(
                             if (isPlayingRecording) TablerIcons.PlayerStop else TablerIcons.PlayerPlay,
                             contentDescription = if (isPlayingRecording) "Detener" else "Reproducir Grabación",
-                            tint = if (isPlayingRecording) AccentNeonGreen else if (hasRecording) AccentSky else TextDark.copy(alpha = 0.35f),
+                            tint = if (isPlayingRecording) StateOk else if (hasRecording) AccentPrimary else TextSecondary.copy(alpha = 0.35f),
                             modifier = Modifier.size(13.dp)
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
                             text = if (isPlayingRecording) "STOP" else "PLAY",
-                            color = if (isPlayingRecording) AccentNeonGreen else if (hasRecording) AccentSky else TextDark.copy(alpha = 0.35f),
+                            color = if (isPlayingRecording) StateOk else if (hasRecording) AccentPrimary else TextSecondary.copy(alpha = 0.35f),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.5.sp
@@ -1405,8 +1387,8 @@ private fun TopBar(
                 modifier = Modifier
                     .height(32.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(if (midiActive) AccentNeonGreen.copy(alpha = 0.18f) else DarkPanel)
-                    .border(1.2.dp, if (midiActive) AccentNeonGreen else OutlineVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                    .background(if (midiActive) StateOk.copy(alpha = 0.18f) else DarkPanel)
+                    .border(1.2.dp, if (midiActive) StateOk else OutlineVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
                     .padding(horizontal = 10.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -1415,13 +1397,13 @@ private fun TopBar(
                         modifier = Modifier
                             .size(7.dp)
                             .clip(CircleShape)
-                            .background(if (midiActive) AccentNeonGreen else Color(0xFF555566))
+                            .background(if (midiActive) StateOk else TextTertiary)
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = "MIDI",
-                        color = if (midiActive) AccentNeonGreen else TextDark,
-                        fontSize = 10.sp,
+                        color = if (midiActive) StateOk else TextSecondary,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
@@ -1467,7 +1449,7 @@ private fun TopBar(
                     Icon(
                         TablerIcons.Settings,
                         contentDescription = "Settings",
-                        tint = TextDark,
+                        tint = TextSecondary,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -1481,12 +1463,12 @@ private fun TopBar(
                     .size(32.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(
-                        if (isPerformanceMode) AccentNeonGreen.copy(alpha = 0.18f)
+                        if (isPerformanceMode) StateOk.copy(alpha = 0.18f)
                         else DarkPanel
                     )
                     .border(
                         1.dp,
-                        if (isPerformanceMode) AccentNeonGreen else OutlineVariant.copy(alpha = 0.5f),
+                        if (isPerformanceMode) StateOk else OutlineVariant.copy(alpha = 0.5f),
                         RoundedCornerShape(10.dp)
                     )
                     .clickable(onClick = onPerformanceModeToggle),
@@ -1495,7 +1477,7 @@ private fun TopBar(
                 Icon(
                     TablerIcons.DeviceDesktop,
                     contentDescription = if (isPerformanceMode) "Salir del modo ejecución" else "Modo ejecución",
-                    tint = if (isPerformanceMode) AccentNeonGreen else TextDark,
+                    tint = if (isPerformanceMode) StateOk else TextSecondary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -1514,18 +1496,18 @@ private fun ResourceMonitorWidget(
     val cpuColor = when {
         cpu >= 80 -> StatusError
         cpu >= 50 -> StatusWarning
-        else -> AccentNeonGreen
+        else -> StateOk
     }
 
     val ramColor = when {
         ramPercent >= 85 -> StatusError
         ramPercent >= 65 -> StatusWarning
-        else -> AccentSky
+        else -> AccentPrimary
     }
 
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF13151F).copy(alpha = 0.9f),
+        color = SurfacePanel.copy(alpha = 0.9f),
         border = BorderStroke(1.dp, OutlineVariant.copy(alpha = 0.45f)),
         modifier = modifier.height(32.dp)
     ) {
@@ -1549,7 +1531,7 @@ private fun ResourceMonitorWidget(
                 Text(
                     text = "$cpu%",
                     color = cpuColor,
-                    fontSize = 10.5.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
                 // Micro CPU bar
@@ -1558,7 +1540,7 @@ private fun ResourceMonitorWidget(
                         .width(22.dp)
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(Color(0xFF222533))
+                        .background(BorderHairline)
                 ) {
                     Box(
                         modifier = Modifier
@@ -1585,15 +1567,15 @@ private fun ResourceMonitorWidget(
             ) {
                 Text(
                     text = "RAM",
-                    color = TextDark,
-                    fontSize = 8.5.sp,
+                    color = TextSecondary,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
                 )
                 Text(
                     text = "$ramPercent%",
                     color = ramColor,
-                    fontSize = 10.5.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
                 // Micro RAM bar
@@ -1602,7 +1584,7 @@ private fun ResourceMonitorWidget(
                         .width(22.dp)
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(Color(0xFF222533))
+                        .background(BorderHairline)
                 ) {
                     Box(
                         modifier = Modifier
@@ -1646,7 +1628,7 @@ private fun PillButton(
         Text(
             label,
             color = textColor,
-            fontSize = 9.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp
         )
@@ -1687,7 +1669,7 @@ private fun PatchesPanel(
                 Text(
                     "PATCHES",
                     color = TextDark,
-                    fontSize = 9.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.2.sp,
                     modifier = Modifier.weight(1f)
@@ -1699,7 +1681,7 @@ private fun PatchesPanel(
                 ) {
                     Text(
                         if (showFavoritesOnly) "★" else "☆",
-                        color = if (showFavoritesOnly) Color(0xFFFFD700) else TextDark,
+                        color = if (showFavoritesOnly) StarGold else TextSecondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -1717,7 +1699,7 @@ private fun PatchesPanel(
                 Text(
                     text = "Siguiente: ${nextPatch?.name ?: "—"}",
                     color = TextDark.copy(alpha = 0.65f),
-                    fontSize = 8.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1831,7 +1813,7 @@ private fun PatchesPanel(
                     Text(
                         "+ Nuevo",
                         color = TextDark,
-                        fontSize = 10.5.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -1920,7 +1902,7 @@ private fun PatchRow(
         ) {
             Text(
                 if (patch.isFavorite) "★" else "☆",
-                color = if (patch.isFavorite) Color(0xFFFFD700) else TextDark.copy(alpha = 0.4f),
+                color = if (patch.isFavorite) StarGold else TextSecondary.copy(alpha = 0.4f),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -1932,7 +1914,7 @@ private fun PatchRow(
             Text(
                 text = patch.name,
                 color = if (isSelected) Color.White else TextDark,
-                fontSize = 10.5.sp,
+                fontSize = 11.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1941,7 +1923,7 @@ private fun PatchRow(
                 Text(
                     text = patch.category,
                     color = if (isSelected) AccentSky.copy(alpha = 0.8f) else TextDark.copy(alpha = 0.6f),
-                    fontSize = 8.sp,
+                    fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1953,26 +1935,26 @@ private fun PatchRow(
                 if (canMoveUp) {
                     Box(
                         modifier = Modifier
-                            .size(16.dp)
+                            .size(18.dp)
                             .clip(RoundedCornerShape(3.dp))
                             .background(DarkBackground.copy(alpha = 0.6f))
                             .clickable(onClick = onMoveUp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("▲", color = AccentSky, fontSize = 8.sp)
+                        Text("▲", color = AccentSky, fontSize = 11.sp)
                     }
                     Spacer(Modifier.width(2.dp))
                 }
                 if (canMoveDown) {
                     Box(
                         modifier = Modifier
-                            .size(16.dp)
+                            .size(18.dp)
                             .clip(RoundedCornerShape(3.dp))
                             .background(DarkBackground.copy(alpha = 0.6f))
                             .clickable(onClick = onMoveDown),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("▼", color = AccentSky, fontSize = 8.sp)
+                        Text("▼", color = AccentSky, fontSize = 11.sp)
                     }
                     Spacer(Modifier.width(2.dp))
                 }
@@ -2037,7 +2019,7 @@ private fun MixerPanel(
             Text(
                 "MIXER",
                 color = OutlineVariant,
-                fontSize = 9.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp,
                 modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
@@ -2206,7 +2188,7 @@ private fun KeyboardPanel(
                     Text(
                         "SUSTAIN",
                         color = if (sustainActive) Color.Black else TextDark,
-                        fontSize = 8.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
@@ -2358,10 +2340,10 @@ private fun ColumnScope.OctaveButton(label: String, onClick: () -> Unit) {
         Text(
             label,
             color = TextDark,
-            fontSize = 9.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            lineHeight = 11.sp
+            lineHeight = 13.sp
         )
     }
 }
@@ -2382,10 +2364,10 @@ private fun OctaveButton(label: String, onClick: () -> Unit) {
         Text(
             label,
             color = TextDark,
-            fontSize = 9.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            lineHeight = 11.sp
+            lineHeight = 13.sp
         )
     }
 }
@@ -2430,7 +2412,7 @@ fun PadStrip(
                         Text(
                             text = bank.ifEmpty { "Bank A" },
                             color = Color.White,
-                            fontSize = 10.5.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(Modifier.width(4.dp))
@@ -2474,7 +2456,7 @@ fun PadStrip(
                 Text(
                     "PAD",
                     color = if (enabled) TextLight else TextDark,
-                    fontSize = 9.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                     modifier = Modifier.clickable { onEnabledChange(!enabled) }
@@ -2508,9 +2490,9 @@ fun PadStrip(
                             .clip(RoundedCornerShape(9.dp))
                             .background(
                                 if (isActive)
-                                    Brush.verticalGradient(listOf(StatusSuccess, Color(0xFF0A8A63)))
+                                    Brush.verticalGradient(listOf(StateOk, StateOk.copy(alpha = 0.7f)))
                                 else
-                                    Brush.verticalGradient(listOf(LightPanel, DarkPanel))
+                                    Brush.verticalGradient(listOf(SurfaceCard, SurfacePanel))
                             )
                             .border(
                                 width = 1.dp,
@@ -2523,7 +2505,7 @@ fun PadStrip(
                         Text(
                             text = noteName,
                             color = if (isActive) Color.White else TextDark,
-                            fontSize = 10.5.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
