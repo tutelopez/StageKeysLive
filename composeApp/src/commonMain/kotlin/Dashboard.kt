@@ -74,20 +74,13 @@ fun DashboardScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Glowing SK Monogram (36dp)
+                    // SK Monogram (36dp)
                     Box(
                         modifier = Modifier
                             .size(36.dp)
-                            .shadow(
-                                elevation = 18.dp,
-                                shape = RoundedCornerShape(11.dp),
-                                ambientColor = AccentSky.copy(alpha = 0.45f),
-                                spotColor = AccentSky.copy(alpha = 0.55f)
-                            )
                             .clip(RoundedCornerShape(11.dp))
-                            .background(
-                                Brush.linearGradient(listOf(AccentSky, AccentPurple))
-                            ),
+                            .background(AccentPrimary)
+                            .border(1.dp, BorderHairline, RoundedCornerShape(11.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -105,7 +98,7 @@ fun DashboardScreen(
                             withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.ExtraBold)) {
                                 append("STAGE")
                             }
-                            withStyle(SpanStyle(color = AccentSky, fontWeight = FontWeight.ExtraBold)) {
+                            withStyle(SpanStyle(color = AccentPrimary, fontWeight = FontWeight.ExtraBold)) {
                                 append("KEYS")
                             }
                             withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.ExtraBold)) {
@@ -153,7 +146,7 @@ fun DashboardScreen(
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = greetingEyebrow,
-                    color = AccentSky,
+                    color = AccentPrimary,
                     fontSize = 12.5.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -173,46 +166,24 @@ fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // Primary Action: Nuevo Concierto
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(
-                            elevation = 16.dp,
-                            shape = RoundedCornerShape(18.dp),
-                            ambientColor = AccentSky.copy(alpha = 0.25f),
-                            spotColor = AccentSky.copy(alpha = 0.35f)
-                        )
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    AccentSky.copy(alpha = 0.24f),
-                                    AccentPurple.copy(alpha = 0.16f)
-                                )
-                            )
-                        )
-                        .border(1.dp, AccentSky.copy(alpha = 0.4f), RoundedCornerShape(18.dp))
-                        .clickable(onClick = onCreateConcertClick)
-                        .padding(14.dp)
+                SkButton(
+                    onClick = onCreateConcertClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    variant = SkButtonVariant.Primary,
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(14.dp)
                 ) {
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         // Plus Icon
                         Box(
                             modifier = Modifier
-                                .size(42.dp)
-                                .shadow(
-                                    elevation = 12.dp,
-                                    shape = RoundedCornerShape(12.dp),
-                                    ambientColor = AccentSky.copy(alpha = 0.5f),
-                                    spotColor = AccentSky.copy(alpha = 0.6f)
-                                )
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    Brush.linearGradient(listOf(AccentSky, AccentPurple))
-                                ),
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color.White.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -223,18 +194,18 @@ fun DashboardScreen(
                             )
                         }
 
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Nuevo Concierto",
                                 color = Color.White,
-                                fontSize = 14.5.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             Spacer(Modifier.height(2.dp))
                             Text(
                                 text = "Arma un set desde cero",
-                                color = Color.White.copy(alpha = 0.65f),
-                                fontSize = 11.5.sp
+                                color = Color.White.copy(alpha = 0.75f),
+                                fontSize = 12.sp
                             )
                         }
                     }
@@ -355,22 +326,9 @@ fun DashboardScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(
-                                elevation = 14.dp,
-                                shape = RoundedCornerShape(20.dp),
-                                ambientColor = AccentSky.copy(alpha = 0.15f),
-                                spotColor = AccentPurple.copy(alpha = 0.25f)
-                            )
                             .clip(RoundedCornerShape(20.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        SurfaceElevated.copy(alpha = 0.90f),
-                                        DarkPanel.copy(alpha = 0.95f)
-                                    )
-                                )
-                            )
-                            .border(1.dp, AccentSky.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
+                            .background(SurfaceCard)
+                            .border(1.dp, BorderHairline, RoundedCornerShape(20.dp))
                             .padding(horizontal = 20.dp, vertical = 24.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -378,26 +336,19 @@ fun DashboardScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            // Glowing Piano / Music Icon
+                            // Piano / Music Icon
                             Box(
                                 modifier = Modifier
                                     .size(54.dp)
-                                    .shadow(
-                                        elevation = 14.dp,
-                                        shape = RoundedCornerShape(16.dp),
-                                        ambientColor = AccentSky.copy(alpha = 0.45f),
-                                        spotColor = AccentPurple.copy(alpha = 0.55f)
-                                    )
                                     .clip(RoundedCornerShape(16.dp))
-                                    .background(
-                                        Brush.linearGradient(listOf(AccentSky, AccentPurple))
-                                    ),
+                                    .background(SurfaceElevated)
+                                    .border(1.dp, BorderHairline, RoundedCornerShape(16.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = TablerIcons.Music,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = AccentPrimary,
                                     modifier = Modifier.size(26.dp)
                                 )
                             }
@@ -422,36 +373,20 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             // Primary Big CTA: Crear mi primer concierto
-                            Button(
+                            SkButton(
                                 onClick = onCreateConcertClick,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp)
-                                    .shadow(
-                                        elevation = 10.dp,
-                                        shape = RoundedCornerShape(12.dp),
-                                        ambientColor = AccentSky.copy(alpha = 0.35f),
-                                        spotColor = AccentPurple.copy(alpha = 0.45f)
-                                    ),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                                contentPadding = PaddingValues()
+                                modifier = Modifier.fillMaxWidth(),
+                                variant = SkButtonVariant.Primary
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(
-                                            Brush.horizontalGradient(listOf(AccentSky, AccentPurple)),
-                                            shape = RoundedCornerShape(12.dp)
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Icon(TablerIcons.Plus, contentDescription = null, tint = Color.White, modifier = Modifier.size(17.dp))
-                                        Text(
-                                            text = "Crear mi primer concierto",
+                                Icon(TablerIcons.Plus, contentDescription = null, tint = Color.White, modifier = Modifier.size(17.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "Crear mi primer concierto",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            }
                                             color = Color.White,
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold
@@ -469,10 +404,10 @@ fun DashboardScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Icon(TablerIcons.Download, contentDescription = null, tint = AccentSky, modifier = Modifier.size(13.dp))
+                                    Icon(TablerIcons.Download, contentDescription = null, tint = AccentPrimary, modifier = Modifier.size(13.dp))
                                     Text(
                                         text = "O importar un concierto (.skpkg)",
-                                        color = AccentSky,
+                                        color = AccentPrimary,
                                         fontSize = 11.5.sp,
                                         fontWeight = FontWeight.SemiBold
                                     )
@@ -486,18 +421,18 @@ fun DashboardScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         concerts.forEachIndexed { index, concert ->
-                            // Rotating cover accents (Sky, Purple, Coral)
+                            // Rotating cover accents (Primary, Lavender, Coral)
                             val (coverColor, coverBg) = when (index % 3) {
                                 0 -> Pair(
-                                    AccentSky,
+                                    AccentPrimary,
                                     Brush.linearGradient(
-                                        listOf(AccentSky.copy(alpha = 0.3f), AccentSky.copy(alpha = 0.08f))
+                                        listOf(AccentPrimary.copy(alpha = 0.3f), AccentPrimary.copy(alpha = 0.08f))
                                     )
                                 )
                                 1 -> Pair(
-                                    AccentPurple,
+                                    AccentLavender,
                                     Brush.linearGradient(
-                                        listOf(AccentPurple.copy(alpha = 0.3f), AccentPurple.copy(alpha = 0.08f))
+                                        listOf(AccentLavender.copy(alpha = 0.3f), AccentLavender.copy(alpha = 0.08f))
                                     )
                                 )
                                 else -> Pair(
