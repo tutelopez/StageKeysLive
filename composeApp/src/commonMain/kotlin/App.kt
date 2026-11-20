@@ -334,9 +334,18 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     // Continuous Pad Engine State
     var padEnabled by remember { mutableStateOf(false) }
     var padVolume by remember { mutableStateOf(0.7f) }
-    var padBank by remember { mutableStateOf("") }
+    var padBank by remember { mutableStateOf("stage_pad_shimmer") }
     var activePadNote by remember { mutableStateOf<Int?>(null) }
-    val availablePadBanks = listOf("stage_abba_pad", "stage_dark_pad", "stage_pad_reverse", "stage_pad_shimmer", "stage_pad_synth", "stage_shimmer_2", "stage_warm_pad", "stage_worship")
+    val availablePadBanks = listOf(
+        "stage_pad_shimmer",
+        "stage_pad_synth",
+        "stage_worship",
+        "stage_warm_pad",
+        "stage_dark_pad",
+        "stage_pad_reverse",
+        "stage_shimmer_2",
+        "stage_abba_pad"
+    )
 
     // Sync pad state with engine when it changes
     LaunchedEffect(padEnabled) { 

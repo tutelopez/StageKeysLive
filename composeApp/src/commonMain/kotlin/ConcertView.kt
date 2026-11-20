@@ -626,6 +626,32 @@ fun ConcertViewScreen(
     } // End AppBackground
 }
 
+fun formatPadBankName(bank: String): String {
+    if (bank.isBlank()) return "Shimmer Pad"
+    return when (bank.lowercase()) {
+        "stage_pad_shimmer", "stage_shimmer_pad", "shimmer" -> "Shimmer Pad"
+        "stage_shimmer_2", "shimmer_2" -> "Shimmer Pad 2"
+        "stage_pad_synth", "stage_synth_pad", "synth" -> "Synth Pad"
+        "stage_worship", "stage_worship_pad", "worship" -> "Worship Pad"
+        "stage_warm_pad", "warm" -> "Warm Pad"
+        "stage_dark_pad", "dark" -> "Dark Pad"
+        "stage_pad_reverse", "reverse" -> "Reverse Pad"
+        "stage_abba_pad", "abba" -> "Abba Pad"
+        else -> {
+            if (!bank.contains("_") && !bank.startsWith("stage")) {
+                bank
+            } else {
+                val clean = bank.removePrefix("stage_").removePrefix("pad_")
+                val words = clean.split("_").filter { it.isNotBlank() }
+                val title = words.joinToString(" ") { word ->
+                    word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                }
+                if (!title.contains("Pad", ignoreCase = true)) "$title Pad" else title
+            }
+        }
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PERFORMANCE MODE VIEW
 // ─────────────────────────────────────────────────────────────────────────────
@@ -971,7 +997,7 @@ private fun PerformancePadStrip(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = bank.ifEmpty { "Bank A" },
+                            text = formatPadBankName(bank.ifEmpty { availableBanks.firstOrNull() ?: "" }),
                             color = Color.White,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
@@ -986,7 +1012,7 @@ private fun PerformancePadStrip(
                     ) {
                         availableBanks.forEach { b ->
                             DropdownMenuItem(
-                                text = { Text(b, color = Color.White) },
+                                text = { Text(formatPadBankName(b), color = Color.White, fontSize = 12.sp) },
                                 onClick = {
                                     onBankChange(b)
                                     expanded = false
@@ -3095,7 +3121,7 @@ fun PadStrip(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = bank.ifEmpty { "Bank A" },
+                        text = formatPadBankName(bank.ifEmpty { availableBanks.firstOrNull() ?: "" }),
                         color = Color.White,
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.SemiBold
@@ -3110,7 +3136,7 @@ fun PadStrip(
                 ) {
                     availableBanks.forEach { b ->
                         DropdownMenuItem(
-                            text = { Text(b, color = Color.White, fontSize = 12.sp) },
+                            text = { Text(formatPadBankName(b), color = Color.White, fontSize = 12.sp) },
                             onClick = {
                                 onBankChange(b)
                                 expanded = false
