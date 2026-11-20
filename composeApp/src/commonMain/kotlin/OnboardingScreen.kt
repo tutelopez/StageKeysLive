@@ -152,7 +152,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                             Text(
                                 text = slide.subtitle,
                                 fontSize = 14.5.sp,
-                                color = TextDark,
+                                color = TextSecondary,
                                 lineHeight = 21.sp
                             )
                         }
@@ -173,7 +173,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                     TextButton(onClick = onFinish) {
                         Text(
                             text = "Saltar",
-                            color = TextDark,
+                            color = TextSecondary,
                             fontSize = 14.sp
                         )
                     }

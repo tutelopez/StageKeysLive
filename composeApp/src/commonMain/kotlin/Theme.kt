@@ -30,7 +30,6 @@ val SurfacePanel     = Color(0xFF12151F) // Paneles principales
 val DarkPanel        = SurfacePanel      // Alias para compatibilidad
 val SurfaceElevated  = Color(0xFF181B2B) // Superficies elevadas / headers
 val SurfaceCard      = Color(0xFF141724) // Tarjetas, slots y paneles secundarios
-val LightPanel       = SurfaceCard       // Alias para compatibilidad temporal
 val StripTop         = Color(0xFF171B2B) // Fader strip degradado superior
 val StripBottom      = Color(0xFF10131C) // Fader strip degradado inferior
 val BorderHairline   = Color(0xFF222840) // Bordes 1dp hairline
@@ -45,7 +44,6 @@ val DashboardGradientBottom = Color(0xFF121523)
 val TextPrimary      = Color(0xFFF2F4FA) // Texto primario
 val TextLight        = TextPrimary       // Alias para compatibilidad
 val TextSecondary    = Color(0xFF8D93AD) // Texto secundario / leyendas
-val TextDark         = TextSecondary     // Alias para compatibilidad
 val TextTertiary     = Color(0xFF5B6178) // Texto terciario / deshabilitado
 val TextMuted        = TextTertiary
 

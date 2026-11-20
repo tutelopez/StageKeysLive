@@ -144,7 +144,7 @@ fun Sf2ExplorerDialog(
                         Text(
                             text = "Asignando sonido a: $channelName",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextDark,
+                            color = TextSecondary,
                             fontSize = 12.sp
                         )
                     }
@@ -188,7 +188,7 @@ fun Sf2ExplorerDialog(
                                 text = if (state.isFolderConfigured) (state.folderName ?: "Carpeta SAF") else "Ninguna carpeta seleccionada",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = if (state.isFolderConfigured) TextLight else TextDark,
+                                color = if (state.isFolderConfigured) TextLight else TextSecondary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -196,7 +196,7 @@ fun Sf2ExplorerDialog(
                                 Text(
                                     text = "${state.files.size} archivos .sf2 encontrados",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = TextDark,
+                                    color = TextSecondary,
                                     fontSize = 11.sp
                                 )
                             }
@@ -246,12 +246,12 @@ fun Sf2ExplorerDialog(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         modifier = Modifier.fillMaxWidth().height(50.dp),
-                        placeholder = { Text("Buscar por nombre de SoundFont...", fontSize = 13.sp, color = TextDark) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextDark, modifier = Modifier.size(20.dp)) },
+                        placeholder = { Text("Buscar por nombre de SoundFont...", fontSize = 13.sp, color = TextSecondary) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp)) },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Limpiar", tint = TextDark, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.Close, contentDescription = "Limpiar", tint = TextSecondary, modifier = Modifier.size(18.dp))
                                 }
                             }
                         },
@@ -307,7 +307,7 @@ fun Sf2ExplorerDialog(
                                 Text(
                                     text = "Selecciona una carpeta para explorar y previsualizar tus archivos .sf2 en tiempo real (almacenamiento local o Google Drive vía SAF).",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = TextDark,
+                                    color = TextSecondary,
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                     fontSize = 12.sp,
                                     modifier = Modifier.widthIn(max = 440.dp)
@@ -334,7 +334,7 @@ fun Sf2ExplorerDialog(
                             ) {
                                 CircularProgressIndicator(color = AccentSky, modifier = Modifier.size(36.dp))
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Text("Escaneando archivos SoundFont .sf2...", color = TextDark, fontSize = 13.sp)
+                                Text("Escaneando archivos SoundFont .sf2...", color = TextSecondary, fontSize = 13.sp)
                             }
                         }
 
@@ -344,11 +344,11 @@ fun Sf2ExplorerDialog(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                Icon(TablerIcons.Music, contentDescription = null, tint = TextDark, modifier = Modifier.size(48.dp))
+                                Icon(TablerIcons.Music, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(48.dp))
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text("No se encontraron archivos .sf2", style = MaterialTheme.typography.titleSmall, color = TextLight, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Asegúrate de que la carpeta contenga archivos SoundFont con extensión .sf2", style = MaterialTheme.typography.bodySmall, color = TextDark, fontSize = 12.sp)
+                                Text("Asegúrate de que la carpeta contenga archivos SoundFont con extensión .sf2", style = MaterialTheme.typography.bodySmall, color = TextSecondary, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(14.dp))
                                 OutlinedButton(onClick = { controller.requestSelectFolder() }) {
                                     Text("Elegir otra carpeta", color = AccentSky)
@@ -362,9 +362,9 @@ fun Sf2ExplorerDialog(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                Icon(Icons.Default.Search, contentDescription = null, tint = TextDark, modifier = Modifier.size(36.dp))
+                                Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(36.dp))
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("No hay coincidencias con \"$searchQuery\"", color = TextDark, fontSize = 13.sp)
+                                Text("No hay coincidencias con \"$searchQuery\"", color = TextSecondary, fontSize = 13.sp)
                             }
                         }
 
@@ -434,7 +434,7 @@ fun Sf2ExplorerDialog(
                                                         Text(
                                                             text = "📁 ${entry.relativePath} • ",
                                                             style = MaterialTheme.typography.labelSmall,
-                                                            color = TextDark,
+                                                            color = TextSecondary,
                                                             fontSize = 11.sp
                                                         )
                                                     }
@@ -442,7 +442,7 @@ fun Sf2ExplorerDialog(
                                                         Text(
                                                             text = sizeStr,
                                                             style = MaterialTheme.typography.labelSmall,
-                                                            color = TextDark,
+                                                            color = TextSecondary,
                                                             fontSize = 11.sp
                                                         )
                                                     }
@@ -539,7 +539,7 @@ fun Sf2FolderSettingsScreen(
         Text(
             text = "Configura la carpeta principal donde almacenas tus librerías SoundFont (.sf2). El explorador indexará automáticamente los archivos y subcarpetas para previsualizarlos y cargarlos en tus canales.",
             style = MaterialTheme.typography.bodySmall,
-            color = TextDark,
+            color = TextSecondary,
             fontSize = 11.5.sp
         )
 
@@ -586,7 +586,7 @@ fun Sf2FolderSettingsScreen(
                         Text(
                             text = "${state.files.size} archivos encontrados",
                             style = MaterialTheme.typography.labelSmall,
-                            color = TextDark,
+                            color = TextSecondary,
                             fontSize = 11.sp
                         )
                     }
@@ -605,7 +605,7 @@ fun Sf2FolderSettingsScreen(
                     Text(
                         text = "No has seleccionado ninguna carpeta",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextDark
+                        color = TextSecondary
                     )
                 }
 

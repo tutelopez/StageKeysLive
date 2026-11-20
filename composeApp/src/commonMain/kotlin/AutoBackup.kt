@@ -79,7 +79,7 @@ fun AutoBackupSettingsScreen(
         Text(
             text = "Inicia sesión con Google para respaldar automáticamente tus conciertos y soundfonts en tu propia nube (Google Drive).",
             style = MaterialTheme.typography.bodySmall,
-            color = TextDark,
+            color = TextSecondary,
             fontSize = 11.5.sp
         )
 
@@ -110,12 +110,12 @@ fun AutoBackupSettingsScreen(
                                 modifier = Modifier
                                     .size(9.dp)
                                     .clip(CircleShape)
-                                    .background(TextDark)
+                                    .background(TextSecondary)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Sin sesión iniciada",
-                                color = TextDark,
+                                color = TextSecondary,
                                 fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -126,7 +126,7 @@ fun AutoBackupSettingsScreen(
 
                     Text(
                         text = "El respaldo en la nube es 100% opcional. Al iniciar sesión, la app creará una carpeta privada 'StageKeysLive Backups' en tu Drive sin acceder al resto de tus archivos.",
-                        color = TextDark,
+                        color = TextSecondary,
                         fontSize = 11.5.sp
                     )
 
@@ -176,7 +176,7 @@ fun AutoBackupSettingsScreen(
                     ) {
                         Text(
                             text = "Al continuar aceptas nuestra ",
-                            color = TextDark,
+                            color = TextSecondary,
                             fontSize = 11.sp
                         )
                         Text(
@@ -211,7 +211,7 @@ fun AutoBackupSettingsScreen(
                                 )
                                 Text(
                                     text = user?.email ?: "",
-                                    color = TextDark,
+                                    color = TextSecondary,
                                     fontSize = 11.sp
                                 )
                             }
@@ -242,7 +242,7 @@ fun AutoBackupSettingsScreen(
                             modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Último respaldo en la nube: ", color = TextDark, fontSize = 12.sp)
+                        Text("Último respaldo en la nube: ", color = TextSecondary, fontSize = 12.sp)
                         Text(
                             text = driveState.lastCloudBackupTimestamp?.let { formatTimestamp(it) } ?: "Ninguno todavía",
                             color = TextLight,
@@ -359,7 +359,7 @@ fun AutoBackupSettingsScreen(
         Text(
             text = "Guarda copias automáticas en cualquier carpeta del almacenamiento interno de tu dispositivo.",
             style = MaterialTheme.typography.bodySmall,
-            color = TextDark,
+            color = TextSecondary,
             fontSize = 11.5.sp
         )
 
@@ -391,12 +391,12 @@ fun AutoBackupSettingsScreen(
                             modifier = Modifier
                                 .size(9.dp)
                                 .clip(CircleShape)
-                                .background(if (isConfigured) StatusSuccess else TextDark)
+                                .background(if (isConfigured) StatusSuccess else TextSecondary)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (isConfigured) "Respaldo Local Activo" else "No configurado",
-                            color = if (isConfigured) StatusSuccess else TextDark,
+                            color = if (isConfigured) StatusSuccess else TextSecondary,
                             fontSize = 12.5.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -424,7 +424,7 @@ fun AutoBackupSettingsScreen(
                             modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Carpeta: ", color = TextDark, fontSize = 12.sp)
+                        Text("Carpeta: ", color = TextSecondary, fontSize = 12.sp)
                         Text(
                             text = controller.state.folderName ?: "Carpeta SAF",
                             color = TextLight,
@@ -444,7 +444,7 @@ fun AutoBackupSettingsScreen(
                             modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Último respaldo local: ", color = TextDark, fontSize = 12.sp)
+                        Text("Último respaldo local: ", color = TextSecondary, fontSize = 12.sp)
                         Text(
                             text = controller.state.lastBackupTimestamp?.let { formatTimestamp(it) } ?: "Pendiente (se guardará al modificar)",
                             color = TextLight,
@@ -454,7 +454,7 @@ fun AutoBackupSettingsScreen(
                 } else {
                     Text(
                         text = "Elige una carpeta local donde guardar el respaldo. Cada vez que edites un concierto o canal, StageKeys generará un archivo ZIP con todos tus datos en segundo plano.",
-                        color = TextDark,
+                        color = TextSecondary,
                         fontSize = 11.5.sp
                     )
                 }
@@ -607,14 +607,14 @@ fun AutoBackupSettingsScreen(
                     } else if (driveBackupsList.isEmpty()) {
                         Text(
                             text = "No se encontraron respaldos en tu carpeta 'StageKeysLive Backups'.",
-                            color = TextDark,
+                            color = TextSecondary,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(vertical = 12.dp)
                         )
                     } else {
                         Text(
                             text = "Selecciona el respaldo que deseas restaurar:",
-                            color = TextDark,
+                            color = TextSecondary,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
@@ -650,7 +650,7 @@ fun AutoBackupSettingsScreen(
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
                                             text = "Fecha: ${item.createdTimeFormatted} • Tamaño: ${item.sizeFormatted}",
-                                            color = TextDark,
+                                            color = TextSecondary,
                                             fontSize = 11.sp
                                         )
                                     }
@@ -706,7 +706,7 @@ fun AutoBackupSettingsScreen(
                     onClick = { showDriveRestoreDialog = false },
                     enabled = !isRestoringFromDrive
                 ) {
-                    Text("Cancelar", color = TextDark)
+                    Text("Cancelar", color = TextSecondary)
                 }
             },
             containerColor = DarkPanel
@@ -738,7 +738,7 @@ fun AutoBackupSettingsScreen(
                 ) {
                     Text(
                         text = "Elige una cuenta para sincronizar con Google Drive:",
-                        color = TextDark,
+                        color = TextSecondary,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
@@ -826,7 +826,7 @@ fun AutoBackupSettingsScreen(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Consulta nuestra ", color = TextDark, fontSize = 11.sp)
+                        Text("Consulta nuestra ", color = TextSecondary, fontSize = 11.sp)
                         Text(
                             "Política de Privacidad",
                             color = AccentSky,
@@ -840,7 +840,7 @@ fun AutoBackupSettingsScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showAccountChooserDialog = false }) {
-                    Text("Cancelar", color = TextDark)
+                    Text("Cancelar", color = TextSecondary)
                 }
             },
             containerColor = DarkPanel

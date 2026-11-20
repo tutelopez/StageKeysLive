@@ -302,7 +302,7 @@ fun ConcertViewScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "TECLADO",
-                                color = if (isKeyboardVisible) Color.White else TextDark,
+                                color = if (isKeyboardVisible) Color.White else TextSecondary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.2.sp
@@ -408,7 +408,7 @@ private fun PerformanceModeView(
                     Icon(
                         TablerIcons.ChevronLeft,
                         contentDescription = "Patch Anterior",
-                        tint = if (prevPatch != null) AccentSky else TextDark.copy(alpha = 0.3f),
+                        tint = if (prevPatch != null) AccentSky else TextSecondary.copy(alpha = 0.3f),
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -452,7 +452,7 @@ private fun PerformanceModeView(
                                 Text(
                                     text = ch.sf2Name.substringBefore(".sf2").uppercase(),
                                     color = parseColorHex(ch.colorHex),
-                                    fontSize = 8.5.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -469,7 +469,7 @@ private fun PerformanceModeView(
                     Icon(
                         TablerIcons.ChevronRight,
                         contentDescription = "Patch Siguiente",
-                        tint = if (nextPatch != null) AccentSky else TextDark.copy(alpha = 0.3f),
+                        tint = if (nextPatch != null) AccentSky else TextSecondary.copy(alpha = 0.3f),
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -1055,7 +1055,7 @@ private fun PerformancePadStrip(
                 ) {
                     Text(
                         "PADS ${if (enabled) "ON" else "OFF"}",
-                        color = if (enabled) StatusSuccess else TextDark,
+                        color = if (enabled) StatusSuccess else TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
@@ -1104,7 +1104,7 @@ private fun PerformancePadStrip(
                     ) {
                         Text(
                             text = noteName,
-                            color = if (isActive) Color.White else if (enabled) TextLight else TextDark.copy(alpha = 0.4f),
+                            color = if (isActive) Color.White else if (enabled) TextLight else TextSecondary.copy(alpha = 0.4f),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
@@ -1186,7 +1186,7 @@ private fun TopBar(
                 if (nextPatchName != null) {
                     Text(
                         text = "Siguiente: $nextPatchName",
-                        color = TextDark,
+                        color = TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -1365,13 +1365,13 @@ private fun TopBar(
                         Icon(
                             TablerIcons.Share,
                             contentDescription = "Exportar como MIDI",
-                            tint = if (hasRecording) AccentPurple else TextDark.copy(alpha = 0.35f),
+                            tint = if (hasRecording) AccentPurple else TextSecondary.copy(alpha = 0.35f),
                             modifier = Modifier.size(13.dp)
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
                             text = "MIDI",
-                            color = if (hasRecording) AccentPurple else TextDark.copy(alpha = 0.35f),
+                            color = if (hasRecording) AccentPurple else TextSecondary.copy(alpha = 0.35f),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.5.sp
@@ -1523,8 +1523,8 @@ private fun ResourceMonitorWidget(
             ) {
                 Text(
                     text = "CPU",
-                    color = TextDark,
-                    fontSize = 8.5.sp,
+                    color = TextSecondary,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
                 )
@@ -1607,9 +1607,9 @@ private fun PillButton(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
-    val bgColor = if (active) activeColor.copy(alpha = 0.18f) else LightPanel
+    val bgColor = if (active) activeColor.copy(alpha = 0.18f) else SurfaceCard
     val borderColor = if (active) activeColor else OutlineVariant
-    val textColor = if (active) activeColor else TextDark
+    val textColor = if (active) activeColor else TextSecondary
 
     @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
     Box(
@@ -1668,7 +1668,7 @@ private fun PatchesPanel(
             ) {
                 Text(
                     "PATCHES",
-                    color = TextDark,
+                    color = TextSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.2.sp,
@@ -1687,7 +1687,7 @@ private fun PatchesPanel(
                     )
                 }
                 IconButton(onClick = onImport, modifier = Modifier.size(20.dp)) {
-                    Icon(TablerIcons.Download, contentDescription = "Import", tint = TextDark, modifier = Modifier.size(12.dp))
+                    Icon(TablerIcons.Download, contentDescription = "Import", tint = TextSecondary, modifier = Modifier.size(12.dp))
                 }
                 IconButton(onClick = onAdd, modifier = Modifier.size(20.dp)) {
                     Icon(TablerIcons.Plus, contentDescription = "Add patch", tint = AccentSky, modifier = Modifier.size(14.dp))
@@ -1698,7 +1698,7 @@ private fun PatchesPanel(
                 val nextPatch = patches.getOrNull((selectedIndex + 1) % patches.size)
                 Text(
                     text = "Siguiente: ${nextPatch?.name ?: "—"}",
-                    color = TextDark.copy(alpha = 0.65f),
+                    color = TextSecondary.copy(alpha = 0.65f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -1747,9 +1747,9 @@ private fun PatchesPanel(
                         )
                         Text(
                             text = "Agrega tu primer patch",
-                            color = TextDark,
-                            fontSize = 8.5.sp,
-                            lineHeight = 11.sp,
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            lineHeight = 13.sp,
                             textAlign = TextAlign.Center
                         )
                         Spacer(Modifier.height(2.dp))
@@ -1762,7 +1762,7 @@ private fun PatchesPanel(
                             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
                             shape = RoundedCornerShape(6.dp)
                         ) {
-                            Text("+ Agregar", color = Color.Black, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                            Text("+ Agregar", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -1812,7 +1812,7 @@ private fun PatchesPanel(
                 ) {
                     Text(
                         "+ Nuevo",
-                        color = TextDark,
+                        color = TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -1913,7 +1913,7 @@ private fun PatchRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = patch.name,
-                color = if (isSelected) Color.White else TextDark,
+                color = if (isSelected) Color.White else TextSecondary,
                 fontSize = 11.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                 maxLines = 1,
@@ -1922,7 +1922,7 @@ private fun PatchRow(
             if (patch.category.isNotBlank()) {
                 Text(
                     text = patch.category,
-                    color = if (isSelected) AccentSky.copy(alpha = 0.8f) else TextDark.copy(alpha = 0.6f),
+                    color = if (isSelected) AccentSky.copy(alpha = 0.8f) else TextSecondary.copy(alpha = 0.6f),
                     fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -2187,7 +2187,7 @@ private fun KeyboardPanel(
                 ) {
                     Text(
                         "SUSTAIN",
-                        color = if (sustainActive) Color.Black else TextDark,
+                        color = if (sustainActive) Color.Black else TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -2332,14 +2332,14 @@ private fun ColumnScope.OctaveButton(label: String, onClick: () -> Unit) {
             .fillMaxWidth()
             .weight(1f)
             .clip(RoundedCornerShape(8.dp))
-            .background(LightPanel)
+            .background(SurfaceCard)
             .border(1.dp, OutlineVariant, RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
             label,
-            color = TextDark,
+            color = TextSecondary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -2356,14 +2356,14 @@ private fun OctaveButton(label: String, onClick: () -> Unit) {
             .fillMaxWidth()
             .height(44.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(LightPanel)
+            .background(SurfaceCard)
             .border(1.dp, OutlineVariant, RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
             label,
-            color = TextDark,
+            color = TextSecondary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -2455,7 +2455,7 @@ fun PadStrip(
                 // PAD Label
                 Text(
                     "PAD",
-                    color = if (enabled) TextLight else TextDark,
+                    color = if (enabled) TextLight else TextSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
@@ -2504,7 +2504,7 @@ fun PadStrip(
                     ) {
                         Text(
                             text = noteName,
-                            color = if (isActive) Color.White else TextDark,
+                            color = if (isActive) Color.White else TextSecondary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )

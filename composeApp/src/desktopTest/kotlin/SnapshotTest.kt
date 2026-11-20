@@ -248,4 +248,178 @@ class SnapshotTest {
             println("SAVED_DASHBOARD_SNAPSHOT")
         }
     }
+
+    @Test
+    fun testOldConcertBackwardCompatibility() {
+        val oldConcertJson = """
+        [
+          {
+            "id": "old_c1",
+            "name": "Concierto Antiguo Pre-Rediseño",
+            "lastModified": 1700000000000,
+            "patches": [
+              {
+                "id": "patch_old_1",
+                "name": "Patch Vintage",
+                "category": "Classic",
+                "programNumber": 1,
+                "description": "Creado con versión vieja",
+                "transposeSemitones": 0,
+                "isFavorite": true,
+                "channelsSnapshot": [
+                  {
+                    "channelId": 1,
+                    "name": "Piano Acústico",
+                    "sf2Name": "OldPiano.sf2",
+                    "volume": 0.8,
+                    "isMuted": false,
+                    "isSoloed": false,
+                    "keyRangeStart": 21,
+                    "keyRangeEnd": 108,
+                    "colorHex": "#38BDF8",
+                    "velocityCurve": "LINEAR",
+                    "pan": 0.5,
+                    "reverbSend": 0.2,
+                    "chorusSend": 0.0,
+                    "filterCutoff": 1.0
+                  },
+                  {
+                    "channelId": 2,
+                    "name": "Sintetizador Lead",
+                    "sf2Name": "OldLead.sf2",
+                    "volume": 0.7,
+                    "isMuted": false,
+                    "isSoloed": false,
+                    "keyRangeStart": 40,
+                    "keyRangeEnd": 88,
+                    "colorHex": "#4ADE80",
+                    "velocityCurve": "LINEAR",
+                    "pan": 0.5,
+                    "reverbSend": 0.3,
+                    "chorusSend": 0.1,
+                    "filterCutoff": 0.8
+                  }
+                ]
+              }
+            ],
+            "channels": [
+              {
+                "id": 1,
+                "name": "Piano Acústico",
+                "sf2Name": "OldPiano.sf2",
+                "volume": 0.8,
+                "isMuted": false,
+                "isSoloed": false,
+                "keyRangeStart": 21,
+                "keyRangeEnd": 108,
+                "colorHex": "#38BDF8",
+                "velocityCurve": "LINEAR",
+                "pan": 0.5,
+                "reverbSend": 0.2,
+                "chorusSend": 0.0,
+                "filterCutoff": 1.0
+              },
+              {
+                "id": 2,
+                "name": "Sintetizador Lead",
+                "sf2Name": "OldLead.sf2",
+                "volume": 0.7,
+                "isMuted": false,
+                "isSoloed": false,
+                "keyRangeStart": 40,
+                "keyRangeEnd": 88,
+                "colorHex": "#4ADE80",
+                "velocityCurve": "LINEAR",
+                "pan": 0.5,
+                "reverbSend": 0.3,
+                "chorusSend": 0.1,
+                "filterCutoff": 0.8
+              }
+            ]
+          }
+        ]
+        """.trimIndent()
+
+        val concerts = ConcertSerializer.deserialize(oldConcertJson)
+        kotlin.test.assertEquals(1, concerts.size)
+        val loaded = concerts[0]
+        kotlin.test.assertEquals("Concierto Antiguo Pre-Rediseño", loaded.name)
+        kotlin.test.assertEquals(2, loaded.channels.size)
+        // Verify old colorHex are preserved intact
+        kotlin.test.assertEquals("#38BDF8", loaded.channels[0].colorHex)
+        kotlin.test.assertEquals("#4ADE80", loaded.channels[1].colorHex)
+
+        // Verify it renders cleanly in ConcertViewScreen
+        val bytes = renderScene {
+            val vuAnim = remember { loaded.channels.map { Animatable(0.5f) } }
+            ConcertViewScreen(
+                concert = loaded,
+                selectedPatchIndex = 0,
+                onSelectPatch = {},
+                onAddPatchClick = {},
+                onEditPatchClick = {},
+                onDeletePatch = {},
+                onExportPatchClick = {},
+                onImportPatchClick = {},
+                onToggleFavorite = {},
+                onMovePatch = { _, _ -> },
+                onBackClick = {},
+                onSettingsClick = {},
+                onPanicClick = {},
+                performanceStats = PerformanceStats(cpuPercent = 10, ramMb = 200, ramPercent = 20),
+                batteryLevel = 90,
+                batteryCharging = false,
+                audioDiagnostics = "48 kHz",
+                currentConnectedDevices = emptyList(),
+                midiActivityIndicator = false,
+                metronomeOn = false,
+                onMetronomeToggle = {},
+                metronomeBpm = 120,
+                onBpmChange = {},
+                onBpmChangeFinished = {},
+                onTapTempo = {},
+                metronomeVolume = 0.5f,
+                onMetronomeVolumeChange = {},
+                metronomeTick = false,
+                isRecording = false,
+                onRecordToggle = {},
+                isPlayingRecording = false,
+                onPlayRecordingClick = {},
+                hasRecording = false,
+                onExportMidiClick = {},
+                onVolumeChange = { _, _ -> },
+                onMuteToggle = {},
+                onSoloToggle = {},
+                onAddChannelClick = {},
+                onChannelGearClick = {},
+                midiMappings = emptyMap(),
+                masterVolume = 0.8f,
+                masterPan = 0.5f,
+                isMasterLimiterActive = false,
+                onMasterVolumeChange = {},
+                onMasterPanChange = {},
+                masterVuLevel = 0.5f,
+                padEnabled = false,
+                onPadEnabledChange = {},
+                padVolume = 0.5f,
+                onPadVolumeChange = {},
+                padBank = "Bank A",
+                onPadBankChange = {},
+                availablePadBanks = listOf("Bank A"),
+                activePadNote = null,
+                onPadNoteToggle = {},
+                activeNote = null,
+                onNoteDown = {},
+                onNoteUp = {},
+                pitchBend = remember { Animatable(0f) },
+                modulation = remember { Animatable(0f) },
+                onModulationChange = {},
+                sustainActive = false,
+                onSustainToggle = {},
+                vuLevels = vuAnim
+            )
+        }
+        kotlin.test.assertNotNull(bytes)
+        println("OLD_CONCERT_RENDER_SUCCESS: bytes=${bytes.size}")
+    }
 }

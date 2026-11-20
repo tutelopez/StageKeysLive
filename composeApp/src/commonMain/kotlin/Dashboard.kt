@@ -142,7 +142,7 @@ fun DashboardScreen(
                         Icon(
                             imageVector = TablerIcons.Settings,
                             contentDescription = "Ajustes",
-                            tint = TextDark,
+                            tint = TextSecondary,
                             modifier = Modifier.size(17.dp)
                         )
                     }
@@ -329,7 +329,7 @@ fun DashboardScreen(
                 ) {
                     Text(
                         text = "TUS CONCIERTOS",
-                        color = TextDark,
+                        color = TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp
@@ -344,7 +344,7 @@ fun DashboardScreen(
                     ) {
                         Text(
                             text = "${concerts.size}",
-                            color = TextDark,
+                            color = TextSecondary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -412,7 +412,7 @@ fun DashboardScreen(
 
                             Text(
                                 text = "Aún no tienes conciertos creados. Diseña tu primer set con capas de sonido, divisiones de teclado y efectos en tiempo real.",
-                                color = TextDark,
+                                color = TextSecondary,
                                 fontSize = 12.sp,
                                 lineHeight = 17.sp,
                                 textAlign = TextAlign.Center,
@@ -511,15 +511,9 @@ fun DashboardScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .shadow(
-                                        elevation = 6.dp,
-                                        shape = RoundedCornerShape(16.dp),
-                                        ambientColor = coverColor.copy(alpha = 0.15f),
-                                        spotColor = coverColor.copy(alpha = 0.2f)
-                                    )
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(DarkPanel.copy(alpha = 0.72f))
-                                    .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                                    .border(1.dp, BorderHairline, RoundedCornerShape(16.dp))
                                     .padding(horizontal = 14.dp, vertical = 11.dp)
                             ) {
                                 Row(
@@ -539,14 +533,9 @@ fun DashboardScreen(
                                         Box(
                                             modifier = Modifier
                                                 .size(40.dp)
-                                                .shadow(
-                                                    elevation = 8.dp,
-                                                    shape = RoundedCornerShape(11.dp),
-                                                    ambientColor = coverColor.copy(alpha = 0.25f),
-                                                    spotColor = coverColor.copy(alpha = 0.35f)
-                                                )
                                                 .clip(RoundedCornerShape(11.dp))
-                                                .background(coverBg),
+                                                .background(coverBg)
+                                                .border(1.dp, coverColor.copy(alpha = 0.25f), RoundedCornerShape(11.dp)),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
@@ -571,7 +560,7 @@ fun DashboardScreen(
                                             val patchCount = concert.patches.size
                                             Text(
                                                 text = if (patchCount == 1) "1 patch" else "$patchCount patches",
-                                                color = TextDark,
+                                                color = TextSecondary,
                                                 fontSize = 11.sp
                                             )
                                         }
@@ -589,7 +578,7 @@ fun DashboardScreen(
                                             Icon(
                                                 TablerIcons.Edit,
                                                 contentDescription = "Editar",
-                                                tint = TextDark,
+                                                tint = TextSecondary,
                                                 modifier = Modifier.size(16.dp)
                                             )
                                         }
@@ -600,7 +589,7 @@ fun DashboardScreen(
                                             Icon(
                                                 TablerIcons.Share,
                                                 contentDescription = "Exportar",
-                                                tint = TextDark,
+                                                tint = TextSecondary,
                                                 modifier = Modifier.size(16.dp)
                                             )
                                         }
@@ -626,7 +615,7 @@ fun DashboardScreen(
             // ─── FOOTER HINT ─────────────────────────────────────────────────
             Text(
                 text = "StageKeysLive · listo para tocar",
-                color = TextDark.copy(alpha = 0.5f),
+                color = TextSecondary.copy(alpha = 0.5f),
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)

@@ -116,7 +116,7 @@ fun ChannelStripItem(
         // ── Volume % label ──────────────────────────────────────────────
         Text(
             text = "${(state.volume * 100).toInt()}%",
-            color = TextDark,
+            color = TextSecondary,
             fontSize = 11.sp,
             textAlign = TextAlign.Center
         )

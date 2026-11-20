@@ -36,7 +36,7 @@ fun VolumeFader(
         modifier = modifier
             .clip(RoundedCornerShape(7.dp))
             .background(DarkPanel)
-            .border(1.dp, LightPanel, RoundedCornerShape(7.dp))
+            .border(1.dp, SurfaceCard, RoundedCornerShape(7.dp))
             .pointerInput(Unit) {
                 detectDragGestures { change, _ ->
                     val newValue = 1f - (change.position.y / size.height).coerceIn(0f, 1f)
@@ -126,7 +126,7 @@ fun AddChannelButton(onClick: () -> Unit) {
             .border(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
-                    listOf(AccentSky.copy(alpha = 0.3f), LightPanel)
+                    listOf(AccentSky.copy(alpha = 0.3f), SurfaceCard)
                 ),
                 shape = RoundedCornerShape(14.dp)
             )

@@ -1976,7 +1976,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("L", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextDark, modifier = Modifier.padding(end = 4.dp))
+                        Text("L", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextSecondary, modifier = Modifier.padding(end = 4.dp))
                         Slider(
                             value = chState.pan,
                             onValueChange = { newPan ->
@@ -2005,7 +2005,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             ),
                             modifier = Modifier.weight(1f)
                         )
-                        Text("R", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextDark, modifier = Modifier.padding(start = 4.dp))
+                        Text("R", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextSecondary, modifier = Modifier.padding(start = 4.dp))
                     }
 
                     // Velocity Curve Selector (Suave / Normal / Dura)
@@ -2049,7 +2049,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             ) {
                                 Text(
                                     text = label,
-                                    color = if (isSelected) Color.White else TextDark,
+                                    color = if (isSelected) Color.White else TextSecondary,
                                     fontSize = 12.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                 )
@@ -2265,7 +2265,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 ) {
                                     Text(
                                         text = label,
-                                        color = if (isSelected) TextLight else TextDark,
+                                        color = if (isSelected) TextLight else TextSecondary,
                                         fontSize = 12.5.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                     )
@@ -3700,7 +3700,7 @@ fun MasterFxSettingsScreen(
         Text(
             text = "Estos controles definen el comportamiento global de los procesadores de Reverb y Chorus de FluidSynth, y la protección de salida contra distorsión digital.",
             style = MaterialTheme.typography.bodySmall,
-            color = TextDark
+            color = TextSecondary
         )
 
         // 1. Master Bus Limiter (Anti-Clipping)
@@ -3965,7 +3965,7 @@ fun WhatsNewDialog(
                         Text(
                             "Descubre las mejoras agregadas para tus presentaciones en vivo",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextDark,
+                            color = TextSecondary,
                             fontSize = 11.5.sp
                         )
                     }
@@ -4028,7 +4028,7 @@ fun WhatsNewDialog(
                                 Text(
                                     item.description,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = TextDark,
+                                    color = TextSecondary,
                                     fontSize = 11.5.sp,
                                     lineHeight = 15.sp
                                 )
@@ -4250,7 +4250,7 @@ fun SupportSettingsScreen(
                 Text(
                     "Tus datos y bancos de sonido residen 100% de forma local. Consulta nuestra política de tratamiento de datos y respaldos en la nube.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextDark,
+                    color = TextSecondary,
                     fontSize = 11.5.sp
                 )
 
@@ -4285,7 +4285,7 @@ private fun DiagnosticRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = TextDark, fontSize = 11.sp)
+        Text(label, color = TextSecondary, fontSize = 11.sp)
         Text(value, color = TextLight, fontSize = 11.sp, fontWeight = FontWeight.Medium)
     }
 }
