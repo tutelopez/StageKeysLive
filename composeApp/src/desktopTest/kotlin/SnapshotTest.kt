@@ -4,6 +4,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
@@ -1787,5 +1792,203 @@ class SnapshotTest {
         }
 
         println("SKZ_VALIDATION_SUCCESS: El archivo .skz se parseó, reportó y reserializó con 100% de coincidencia exacta.")
+    }
+
+    @Test
+    fun testPhase5SatelliteScreens() {
+        val artifactDir = File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c")
+        
+        // 1. Settings Dialog with Tabs and AudioSettingsTabScreen
+        val settingsBytes = renderScene(width = 1024, height = 720) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DarkBackground)
+                    .padding(20.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Configuración de Concierto y Patches",
+                            color = TextPrimary,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(onClick = {}) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = TextPrimary)
+                        }
+                    }
+
+                    Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier
+                                .width(200.dp)
+                                .fillMaxHeight()
+                                .background(DarkPanel, RoundedCornerShape(10.dp))
+                                .border(1.dp, BorderHairline, RoundedCornerShape(10.dp))
+                                .padding(6.dp)
+                        ) {
+                            listOf(
+                                "Interfaces de Audio" to true,
+                                "Mapear MIDI" to false,
+                                "Keyboard Zones" to false,
+                                "Carpeta SF2" to false,
+                                "Master FX" to false,
+                                "Respaldo Automático" to false,
+                                "Soporte y Ayuda" to false
+                            ).forEach { (label, isSelected) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 2.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) AccentPrimary.copy(alpha = 0.18f) else Color.Transparent)
+                                        .border(1.dp, if (isSelected) AccentPrimary else Color.Transparent, RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = label,
+                                        color = if (isSelected) TextPrimary else TextSecondary,
+                                        fontSize = 12.5.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(DarkPanel, RoundedCornerShape(10.dp))
+                                .border(1.dp, BorderHairline, RoundedCornerShape(10.dp))
+                                .padding(16.dp)
+                        ) {
+                            AudioSettingsTabScreen(
+                                sampleRate = 48000,
+                                onSampleRateChange = {},
+                                bufferOption = 1,
+                                onBufferOptionChange = {},
+                                audioDevices = listOf(
+                                    AudioOutputDeviceInfo(1, "Scarlett 2i2 USB", "USB Audio Interface", true),
+                                    AudioOutputDeviceInfo(2, "MacBook Pro Speakers", "Built-in Speaker", false)
+                                ),
+                                onSelectDevice = {},
+                                onRefreshDevices = {},
+                                audioDiagnostics = "Audio OK | 48000Hz | 128 frames (2.6ms)",
+                                isRestartingAudio = false
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        if (settingsBytes != null) {
+            File(artifactDir, "desktop_phase5_settings_dialog.png").writeBytes(settingsBytes)
+            println("SAVED_DESKTOP_PHASE5_SETTINGS_DIALOG")
+        }
+
+        // 2. Split & Layer Keyboard Zones Editor
+        val channels = listOf(
+            ChannelStripState(1, "Grand Piano", "CFX Grand.sf2", null, 0.85f, false, false, 21, 108, "#F5C542"),
+            ChannelStripState(2, "Warm Pad", "Strings.sf2", null, 0.70f, false, false, 36, 84, "#4AA8B5"),
+            ChannelStripState(3, "Bass Synth", "MoogBass.sf2", null, 0.90f, false, false, 21, 48, "#FB7185")
+        )
+        val concert = Concert(
+            id = "c1",
+            name = "Domingo Live",
+            lastModified = System.currentTimeMillis(),
+            patches = listOf(PatchState("01 Worship Intro", "Keyboards", 0, "Piano + Pad")),
+            channels = channels
+        )
+
+        val splitBytes = renderScene(width = 1024, height = 720) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DarkBackground)
+                    .padding(20.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(DarkPanel, RoundedCornerShape(12.dp))
+                        .border(1.dp, BorderHairline, RoundedCornerShape(12.dp))
+                        .padding(20.dp)
+                ) {
+                    SplitKeyboardSettingsScreen(
+                        concert = concert,
+                        selectedPatchName = "01 Worship Intro",
+                        onUpdateRange = { _, _, _ -> }
+                    )
+                }
+            }
+        }
+        if (splitBytes != null) {
+            File(artifactDir, "desktop_phase5_split_editor.png").writeBytes(splitBytes)
+            println("SAVED_DESKTOP_PHASE5_SPLIT_EDITOR")
+        }
+
+        // 3. SoundFont Explorer Dialog
+        val mockEntries = listOf(
+            Sf2FileEntry("sf2://1", "Yamaha_CFX_Concert_Grand.sf2", 142_000_000L, "Pianos"),
+            Sf2FileEntry("sf2://2", "Nord_Stage3_Worship_Pad.sf2", 48_500_000L, "Pads & Strings"),
+            Sf2FileEntry("sf2://3", "Vintage_Rhodes_Suitcase73.sf2", 92_100_000L, "Keys"),
+            Sf2FileEntry("sf2://4", "Hammond_B3_Drawbars_Leslie.sf2", 64_000_000L, "Organs")
+        )
+        val mockController = object : Sf2ExplorerController {
+            override val state: Sf2ExplorerState = Sf2ExplorerState(
+                folderUri = "content://folder/sf2",
+                folderName = "StageKeys_SoundFonts",
+                isFolderConfigured = true,
+                files = mockEntries,
+                isLoading = false,
+                previewingUri = "sf2://1"
+            )
+            override fun requestSelectFolder() {}
+            override fun clearFolder() {}
+            override fun refreshFiles() {}
+            override suspend fun previewFile(entry: Sf2FileEntry, synth: PlatformAudioSynth) {}
+            override fun stopPreview(synth: PlatformAudioSynth) {}
+            override suspend fun importFileForChannel(entry: Sf2FileEntry): Pair<String, String>? = null
+        }
+
+        val sf2Bytes = renderScene(width = 1024, height = 720) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DarkBackground)
+                    .padding(20.dp)
+            ) {
+                Sf2ExplorerDialog(
+                    show = true,
+                    channelName = "Canal 1 (Grand Piano)",
+                    synth = PlatformAudioSynth(),
+                    controller = mockController,
+                    onDismiss = {},
+                    onSelectSoundFont = { _, _ -> }
+                )
+            }
+        }
+        if (sf2Bytes != null) {
+            File(artifactDir, "desktop_phase5_sf2_explorer.png").writeBytes(sf2Bytes)
+            println("SAVED_DESKTOP_PHASE5_SF2_EXPLORER")
+        }
+
+        // 4. Onboarding Screen
+        val onboardingBytes = renderScene(width = 1024, height = 720) {
+            OnboardingScreen(onFinish = {})
+        }
+        if (onboardingBytes != null) {
+            File(artifactDir, "desktop_phase5_onboarding.png").writeBytes(onboardingBytes)
+            println("SAVED_DESKTOP_PHASE5_ONBOARDING")
+        }
     }
 }

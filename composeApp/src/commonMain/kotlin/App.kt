@@ -1534,39 +1534,47 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         val newRate = pendingSampleRate!!
         AlertDialog(
             onDismissRequest = { pendingSampleRate = null },
-            title = { Text("Cambiar Sample Rate", style = MaterialTheme.typography.titleMedium) },
-            text = { Text("Cambiar la frecuencia de muestreo a $newRate Hz reiniciará brevemente el motor de audio. ¿Deseas continuar?") },
+            title = { Text("Cambiar Sample Rate", style = MaterialTheme.typography.titleMedium, color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = { Text("Cambiar la frecuencia de muestreo a $newRate Hz reiniciará brevemente el motor de audio. ¿Deseas continuar?", color = TextSecondary) },
             confirmButton = {
-                TextButton(onClick = {
-                    pendingSampleRate = null
-                    isRestartingAudio = true
-                    selectedSampleRate = newRate
-                    
-                    // Controlled restart
-                    synth.allNotesOff()
-                    coroutineScope.launch(Dispatchers.Default) {
-                        synth.initializeEngine(newRate, selectedBufferSizeOption)
+                SkButton(
+                    onClick = {
+                        pendingSampleRate = null
+                        isRestartingAudio = true
+                        selectedSampleRate = newRate
                         
-                        // Back to Main to update UI and reload SoundFonts
-                        withContext(Dispatchers.Main) {
-                            activeConcert?.channels?.forEach { ch ->
-                                if (ch.sf2Path != null) {
-                                    synth.loadSoundFont(ch.sf2Path, ch.id)
+                        // Controlled restart
+                        synth.allNotesOff()
+                        coroutineScope.launch(Dispatchers.Default) {
+                            synth.initializeEngine(newRate, selectedBufferSizeOption)
+                            
+                            // Back to Main to update UI and reload SoundFonts
+                            withContext(Dispatchers.Main) {
+                                activeConcert?.channels?.forEach { ch ->
+                                    if (ch.sf2Path != null) {
+                                        synth.loadSoundFont(ch.sf2Path, ch.id)
+                                    }
                                 }
+                                audioDiagnostics = synth.getAudioDiagnostics()
+                                isRestartingAudio = false
                             }
-                            audioDiagnostics = synth.getAudioDiagnostics()
-                            isRestartingAudio = false
                         }
-                    }
-                }) {
-                    Text("REINICIAR MOTOR")
+                    },
+                    variant = SkButtonVariant.Primary
+                ) {
+                    Text("Reiniciar Motor", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingSampleRate = null }) {
-                    Text("CANCELAR")
+                SkButton(
+                    onClick = { pendingSampleRate = null },
+                    variant = SkButtonVariant.Ghost
+                ) {
+                    Text("Cancelar")
                 }
-            }
+            },
+            containerColor = DarkPanel,
+            shape = RoundedCornerShape(16.dp)
         )
     }
 
@@ -1580,62 +1588,75 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
         }
         AlertDialog(
             onDismissRequest = { pendingBufferSizeOption = null },
-            title = { Text("Cambiar Tamaño de Buffer", style = MaterialTheme.typography.titleMedium) },
-            text = { Text("Cambiar el tamaño de buffer a \"$bufLabel\" reiniciará brevemente el motor de audio. ¿Deseas continuar?") },
+            title = { Text("Cambiar Tamaño de Buffer", style = MaterialTheme.typography.titleMedium, color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = { Text("Cambiar el tamaño de buffer a \"$bufLabel\" reiniciará brevemente el motor de audio. ¿Deseas continuar?", color = TextSecondary) },
             confirmButton = {
-                TextButton(onClick = {
-                    pendingBufferSizeOption = null
-                    isRestartingAudio = true
-                    selectedBufferSizeOption = newBufOption
-                    
-                    // Controlled restart
-                    synth.allNotesOff()
-                    coroutineScope.launch(Dispatchers.Default) {
-                        synth.initializeEngine(selectedSampleRate, newBufOption)
+                SkButton(
+                    onClick = {
+                        pendingBufferSizeOption = null
+                        isRestartingAudio = true
+                        selectedBufferSizeOption = newBufOption
                         
-                        // Back to Main to update UI and reload SoundFonts
-                        withContext(Dispatchers.Main) {
-                            activeConcert?.channels?.forEach { ch ->
-                                if (ch.sf2Path != null) {
-                                    synth.loadSoundFont(ch.sf2Path, ch.id)
+                        // Controlled restart
+                        synth.allNotesOff()
+                        coroutineScope.launch(Dispatchers.Default) {
+                            synth.initializeEngine(selectedSampleRate, newBufOption)
+                            
+                            // Back to Main to update UI and reload SoundFonts
+                            withContext(Dispatchers.Main) {
+                                activeConcert?.channels?.forEach { ch ->
+                                    if (ch.sf2Path != null) {
+                                        synth.loadSoundFont(ch.sf2Path, ch.id)
+                                    }
                                 }
+                                audioDiagnostics = synth.getAudioDiagnostics()
+                                isRestartingAudio = false
                             }
-                            audioDiagnostics = synth.getAudioDiagnostics()
-                            isRestartingAudio = false
                         }
-                    }
-                }) {
-                    Text("REINICIAR MOTOR")
+                    },
+                    variant = SkButtonVariant.Primary
+                ) {
+                    Text("Reiniciar Motor", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingBufferSizeOption = null }) {
-                    Text("CANCELAR")
+                SkButton(
+                    onClick = { pendingBufferSizeOption = null },
+                    variant = SkButtonVariant.Ghost
+                ) {
+                    Text("Cancelar")
                 }
-            }
+            },
+            containerColor = DarkPanel,
+            shape = RoundedCornerShape(16.dp)
         )
     }
 
     if (showCreateConcertDialog) {
         AlertDialog(
             onDismissRequest = { showCreateConcertDialog = false },
-            title = { Text(if (concertToEdit != null) "EDITAR CONCIERTO" else "CREAR NUEVO CONCIERTO", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
+            title = { Text(if (concertToEdit != null) "EDITAR CONCIERTO" else "CREAR NUEVO CONCIERTO", style = MaterialTheme.typography.titleMedium, color = AccentPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = newConcertName,
                     onValueChange = { newConcertName = it },
                     label = { Text("Nombre del Concierto") },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = AccentPrimary,
+                        unfocusedBorderColor = BorderHairline,
+                        focusedContainerColor = SurfaceCard,
+                        unfocusedContainerColor = SurfaceCard,
+                        focusedLabelColor = AccentPrimary,
+                        unfocusedLabelColor = TextSecondary
                     ),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
             },
             confirmButton = {
-                Button(
+                SkButton(
                     onClick = {
                         if (newConcertName.isNotBlank()) {
                             if (concertToEdit != null) {
@@ -1665,19 +1686,21 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             showCreateConcertDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
-                    shape = AppShapes.medium
+                    variant = SkButtonVariant.Primary
                 ) {
-                    Text(if (concertToEdit != null) "Guardar" else "Crear", style = MaterialTheme.typography.labelLarge)
+                    Text(if (concertToEdit != null) "Guardar" else "Crear", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showCreateConcertDialog = false }) {
-                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
+                SkButton(
+                    onClick = { showCreateConcertDialog = false },
+                    variant = SkButtonVariant.Ghost
+                ) {
+                    Text("Cancelar")
                 }
             },
-            containerColor = MaterialTheme.colorScheme.surface,
-            shape = AppShapes.large
+            containerColor = DarkPanel,
+            shape = RoundedCornerShape(16.dp)
         )
     }
 
@@ -1696,41 +1719,56 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     if (showAddPatchDialog) {
         AlertDialog(
             onDismissRequest = { showAddPatchDialog = false },
-            title = { Text(if (patchToEdit != null) "EDITAR PATCH" else "AÃƒÆ’Ã¢â‚¬ËœADIR NUEVO PATCH", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
+            title = {
+                Text(
+                    text = if (patchToEdit != null) "EDITAR PATCH" else "AÑADIR NUEVO PATCH",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = AccentPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
                 Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                     val tfColors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = AccentPrimary,
+                        unfocusedBorderColor = BorderHairline,
+                        focusedContainerColor = SurfaceCard,
+                        unfocusedContainerColor = SurfaceCard,
+                        focusedLabelColor = AccentPrimary,
+                        unfocusedLabelColor = TextSecondary
                     )
                     OutlinedTextField(
                         value = newPatchName,
                         onValueChange = { newPatchName = it },
                         label = { Text("Nombre") },
                         colors = tfColors,
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
                         value = newPatchCategory,
                         onValueChange = { newPatchCategory = it },
-                        label = { Text("CategorÃƒÆ’Ã‚Â­a") },
+                        label = { Text("Categoría") },
                         colors = tfColors,
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
                         value = newPatchProgram,
                         onValueChange = { newPatchProgram = it },
-                        label = { Text("NÃƒÆ’Ã‚Âºmero de Programa MIDI (0-127)") },
+                        label = { Text("Número de Programa MIDI (0-127)") },
                         colors = tfColors,
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                     )
                     OutlinedTextField(
                         value = newPatchDescription,
                         onValueChange = { newPatchDescription = it },
-                        label = { Text("DescripciÃƒÆ’Ã‚Â³n") },
+                        label = { Text("Descripción") },
                         colors = tfColors,
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                     )
                     
@@ -1739,21 +1777,26 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Transpose (Semitonos):", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Transpose (Semitonos):", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { if (newPatchTranspose > -12) newPatchTranspose-- }) {
-                                Text("-", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+                                Text("-", style = MaterialTheme.typography.titleLarge, color = AccentPrimary)
                             }
-                            Text("${if (newPatchTranspose > 0) "+" else ""}$newPatchTranspose", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 8.dp))
+                            Text(
+                                text = "${if (newPatchTranspose > 0) "+" else ""}$newPatchTranspose",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = TextPrimary,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
                             IconButton(onClick = { if (newPatchTranspose < 12) newPatchTranspose++ }) {
-                                Text("+", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+                                Text("+", style = MaterialTheme.typography.titleLarge, color = AccentPrimary)
                             }
                         }
                     }
                 }
             },
             confirmButton = {
-                Button(
+                SkButton(
                     onClick = {
                         val active = activeConcert
                         if (active != null && newPatchName.isNotBlank()) {
@@ -1796,19 +1839,21 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             showAddPatchDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary, contentColor = MaterialTheme.colorScheme.onTertiary),
-                    shape = AppShapes.medium
+                    variant = SkButtonVariant.Primary
                 ) {
-                    Text(if (patchToEdit != null) "Guardar" else "AÃƒÆ’Ã‚Â±adir", style = MaterialTheme.typography.labelLarge)
+                    Text(if (patchToEdit != null) "Guardar" else "Añadir", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAddPatchDialog = false }) {
-                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
+                SkButton(
+                    onClick = { showAddPatchDialog = false },
+                    variant = SkButtonVariant.Ghost
+                ) {
+                    Text("Cancelar")
                 }
             },
-            containerColor = MaterialTheme.colorScheme.surface,
-            shape = AppShapes.large
+            containerColor = DarkPanel,
+            shape = RoundedCornerShape(16.dp)
         )
     }
 
@@ -1818,7 +1863,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
     showChannelSettingsDialog?.let { chState ->
         AlertDialog(
             onDismissRequest = { showChannelSettingsDialog = null },
-            title = { Text("CONFIGURAR CANAL ${chState.id}", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
+            title = { Text("CONFIGURAR CANAL ${chState.id}", style = MaterialTheme.typography.titleMedium, color = AccentPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     modifier = Modifier
@@ -1839,14 +1884,25 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             }
                         },
                         label = { Text("Nombre del canal") },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedBorderColor = AccentPrimary,
+                            unfocusedBorderColor = BorderHairline,
+                            focusedContainerColor = SurfaceCard,
+                            unfocusedContainerColor = SurfaceCard,
+                            focusedLabelColor = AccentPrimary,
+                            unfocusedLabelColor = TextSecondary
+                        ),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                     )
 
-                    Text("SoundFont Actual: ${chState.sf2Name}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 12.dp))
+                    Text("SoundFont Actual: ${chState.sf2Name}", style = MaterialTheme.typography.bodyMedium, color = TextSecondary, modifier = Modifier.padding(bottom = 12.dp))
                     
                     if (isLoadingSf2) {
                         CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary,
+                            color = AccentPrimary,
                             modifier = Modifier.padding(bottom = 12.dp).align(Alignment.CenterHorizontally).size(32.dp)
                         )
                     } else {
@@ -1855,37 +1911,38 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Button(
+                            SkButton(
                                 onClick = {
                                     showSf2ExplorerDialog = true
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentSky),
-                                shape = AppShapes.medium,
+                                variant = SkButtonVariant.Primary,
+                                shape = RoundedCornerShape(8.dp),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Icon(TablerIcons.Folders, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                Icon(TablerIcons.Folders, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Explorar SF2", color = Color.Black, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+                                Text("Explorar SF2", color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
                             }
 
-                            OutlinedButton(
+                            SkButton(
                                 onClick = {
                                     showSf2Picker = true
                                 },
-                                shape = AppShapes.medium,
+                                variant = SkButtonVariant.Secondary,
+                                shape = RoundedCornerShape(8.dp),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Icon(TablerIcons.FileImport, contentDescription = null, tint = TextLight, modifier = Modifier.size(16.dp))
+                                Icon(TablerIcons.FileImport, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Importar .sf2", color = TextLight, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                                Text("Importar .sf2", color = TextPrimary, style = MaterialTheme.typography.labelMedium, maxLines = 1)
                             }
                         }
                     }
 
                     // Dynamic Vibrant Color grid
-                    Text("CAMBIAR COLOR DE CANAL:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(bottom = 8.dp))
+                    Text("CAMBIAR COLOR DE CANAL:", style = MaterialTheme.typography.labelMedium, color = TextPrimary, modifier = Modifier.padding(bottom = 8.dp))
                     
                     val vibrantColors = listOf(
                         "#38BDF8", // Sky
@@ -1942,12 +1999,13 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         Text(
                             "PANORAMA (PAN):",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = TextPrimary
                         )
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(DarkBackground)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(SurfaceCard)
+                                .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
                                 .clickable {
                                     // Reset to center 0.5f on click
                                     val effectivePan = ((0.5f - 0.5f) + (masterPan - 0.5f) + 0.5f).coerceIn(0f, 1f)
@@ -1961,7 +2019,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                         showChannelSettingsDialog = activeConcert?.channels?.find { it.id == chState.id }
                                     }
                                 }
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Text(
                                 text = panLabel,
@@ -2001,7 +2059,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             colors = SliderDefaults.colors(
                                 thumbColor = parseColorHex(chState.colorHex),
                                 activeTrackColor = parseColorHex(chState.colorHex),
-                                inactiveTrackColor = DarkBackground
+                                inactiveTrackColor = BorderHairline
                             ),
                             modifier = Modifier.weight(1f)
                         )
@@ -2009,7 +2067,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     }
 
                     // Velocity Curve Selector (Suave / Normal / Dura)
-                    Text("CURVA DE SENSIBILIDAD (VELOCITY):", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(bottom = 8.dp))
+                    Text("CURVA DE SENSIBILIDAD (VELOCITY):", style = MaterialTheme.typography.labelMedium, color = TextPrimary, modifier = Modifier.padding(bottom = 8.dp))
 
                     val curves = listOf(
                         "SOFT" to "Suave",
@@ -2028,10 +2086,10 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) accentColor.copy(alpha = 0.22f) else DarkBackground)
+                                    .background(if (isSelected) accentColor.copy(alpha = 0.22f) else SurfaceCard)
                                     .border(
                                         width = if (isSelected) 1.5.dp else 1.dp,
-                                        color = if (isSelected) accentColor else Color.White.copy(alpha = 0.08f),
+                                        color = if (isSelected) accentColor else BorderHairline,
                                         shape = RoundedCornerShape(8.dp)
                                     )
                                     .clickable {
@@ -2058,7 +2116,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     }
 
                     // FX Sends Section (Reverb Send, Chorus Send, Filter Cutoff)
-                    Text("EFECTOS DE CANAL (FX SENDS):", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(bottom = 6.dp))
+                    Text("EFECTOS DE CANAL (FX SENDS):", style = MaterialTheme.typography.labelMedium, color = TextPrimary, modifier = Modifier.padding(bottom = 6.dp))
 
                     // Reverb Send Slider
                     Row(
@@ -2088,7 +2146,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         colors = SliderDefaults.colors(
                             thumbColor = FxReverbColor,
                             activeTrackColor = FxReverbColor,
-                            inactiveTrackColor = DarkBackground
+                            inactiveTrackColor = BorderHairline
                         ),
                         modifier = Modifier.fillMaxWidth().height(26.dp)
                     )
@@ -2121,7 +2179,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         colors = SliderDefaults.colors(
                             thumbColor = FxChorusColor,
                             activeTrackColor = FxChorusColor,
-                            inactiveTrackColor = DarkBackground
+                            inactiveTrackColor = BorderHairline
                         ),
                         modifier = Modifier.fillMaxWidth().height(26.dp)
                     )
@@ -2154,14 +2212,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                         colors = SliderDefaults.colors(
                             thumbColor = FxToneColor,
                             activeTrackColor = FxToneColor,
-                            inactiveTrackColor = DarkBackground
+                            inactiveTrackColor = BorderHairline
                         ),
                         modifier = Modifier.fillMaxWidth().height(26.dp).padding(bottom = 8.dp)
                     )
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    Button(
+                    SkButton(
                         onClick = {
                             val active = activeConcert
                             if (active != null) {
@@ -2170,19 +2228,23 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 showChannelSettingsDialog = null
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = StatusError.copy(alpha = 0.5f)),
+                        variant = SkButtonVariant.Danger,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Eliminar Canal", color = Color.White)
+                        Text("Eliminar Canal", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showChannelSettingsDialog = null }) {
-                    Text("Cerrar", color = AccentSky)
+                SkButton(
+                    onClick = { showChannelSettingsDialog = null },
+                    variant = SkButtonVariant.Secondary
+                ) {
+                    Text("Cerrar")
                 }
             },
-            containerColor = DarkPanel
+            containerColor = DarkPanel,
+            shape = RoundedCornerShape(16.dp)
         )
     }
 
@@ -2206,12 +2268,12 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                     ) {
                         Text(
                             text = "Configuración de Concierto y Patches",
-                            color = TextLight,
+                            color = TextPrimary,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
                         IconButton(onClick = { showSettingsDialog = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close settings", tint = TextLight)
+                            Icon(Icons.Default.Close, contentDescription = "Close settings", tint = TextPrimary)
                         }
                     }
 
@@ -2220,7 +2282,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             modifier = Modifier
                                 .width(200.dp)
                                 .fillMaxHeight()
-                                .background(DarkPanel, RoundedCornerShape(8.dp))
+                                .background(DarkPanel, RoundedCornerShape(10.dp))
+                                .border(1.dp, BorderHairline, RoundedCornerShape(10.dp))
                                 .verticalScroll(rememberScrollState())
                                 .padding(6.dp)
                         ) {
@@ -2250,14 +2313,14 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 2.dp)
-                                        .clip(RoundedCornerShape(6.dp))
+                                        .clip(RoundedCornerShape(8.dp))
                                         .background(
-                                            if (isSelected) AccentSky.copy(alpha = 0.18f) else Color.Transparent
+                                            if (isSelected) AccentPrimary.copy(alpha = 0.18f) else Color.Transparent
                                         )
                                         .border(
                                             1.dp,
-                                            if (isSelected) AccentSky else Color.Transparent,
-                                            RoundedCornerShape(6.dp)
+                                            if (isSelected) AccentPrimary else Color.Transparent,
+                                            RoundedCornerShape(8.dp)
                                         )
                                         .clickable { activeSettingsTab = tab }
                                         .padding(horizontal = 10.dp, vertical = 9.dp),
@@ -2265,7 +2328,7 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                                 ) {
                                     Text(
                                         text = label,
-                                        color = if (isSelected) TextLight else TextSecondary,
+                                        color = if (isSelected) TextPrimary else TextSecondary,
                                         fontSize = 12.5.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                     )
@@ -2279,7 +2342,8 @@ fun App(synth: PlatformAudioSynth = remember { PlatformAudioSynth() }) {
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .background(DarkPanel, RoundedCornerShape(8.dp))
+                                .background(DarkPanel, RoundedCornerShape(10.dp))
+                                .border(1.dp, BorderHairline, RoundedCornerShape(10.dp))
                                 .padding(16.dp)
                         ) {
                             when (activeSettingsTab) {
@@ -2529,23 +2593,37 @@ fun MidiMappingSettingsScreen(
     onStartMapping: (MidiTarget) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        if (connectedDevices.isNotEmpty()) {
-            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Dispositivos MIDI conectados: ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
-                Text(connectedDevices.joinToString(", "), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary)
-            }
-        } else {
-            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Dispositivos MIDI conectados: ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface)
-                Text("Ninguno", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
-            }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(SurfaceCard)
+                .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(if (connectedDevices.isNotEmpty()) StatusSuccess else StatusWarning)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Dispositivos MIDI: ", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+            Text(
+                if (connectedDevices.isNotEmpty()) connectedDevices.joinToString(", ") else "Ninguno conectado",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (connectedDevices.isNotEmpty()) TextPrimary else TextSecondary
+            )
         }
 
-        Text("ASIGNACION DE CONTROLADORES MIDI CC Y PROGRAM CHANGE", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text("ASIGNACIÓN DE CONTROLADORES MIDI CC Y PROGRAM CHANGE", style = MaterialTheme.typography.titleMedium, color = AccentPrimary, fontWeight = FontWeight.Bold)
         Text(
             "Haz clic en \"Mapear\" al lado del control correspondiente y mueve el potenciómetro/fader o presiona un footswitch/pad de tu controlador MIDI para enlazarlo.",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = TextSecondary,
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
@@ -2609,14 +2687,20 @@ fun MidiMappingSettingsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 6.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, AppShapes.small)
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(SurfaceCard)
+                    .border(
+                        1.dp,
+                        if (mappingTarget == target) AccentPrimary else BorderHairline,
+                        RoundedCornerShape(10.dp)
+                    )
                     .padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(targetName.uppercase(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                    Text(targetName.uppercase(), style = MaterialTheme.typography.labelLarge, color = TextPrimary, fontWeight = FontWeight.SemiBold)
                     Text(
                         text = if (mappedCc != null) {
                             if (target is MidiTarget.SelectPatch) "Mapeado a PC/CC $mappedCc" else "Mapeado a MIDI CC $mappedCc"
@@ -2624,22 +2708,21 @@ fun MidiMappingSettingsScreen(
                             if (target is MidiTarget.SelectPatch) "Por defecto: Program Change ${target.patchIndex}" else "Sin mapear"
                         },
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (mappedCc != null) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (mappedCc != null) AccentLavender else TextSecondary
                     )
                 }
                 
-                Button(
+                SkButton(
                     onClick = { onStartMapping(target) },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (mappingTarget == target) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
-                        contentColor = if (mappingTarget == target) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary
-                    ),
-                    shape = AppShapes.small,
-                    modifier = Modifier.height(32.dp)
+                    variant = if (mappingTarget == target) SkButtonVariant.Primary else SkButtonVariant.Secondary,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.height(36.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = if (mappingTarget == target) "ESCUCHANDO..." else "MAPEAR",
-                        style = MaterialTheme.typography.labelSmall
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -3371,19 +3454,19 @@ fun SplitKeyboardSettingsScreen(
     val keyboardScrollState = rememberScrollState()
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text("RANGOS DE TECLADO Y SPLITS (OCTAVAS A0 - C8)", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        Text("RANGOS DE TECLADO Y SPLITS (OCTAVAS A0 - C8)", style = MaterialTheme.typography.titleMedium, color = AccentPrimary, fontWeight = FontWeight.Bold)
         if (selectedPatchName != null) {
             Text(
                 "Editando zonas del patch: $selectedPatchName",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.tertiary,
+                color = AccentLavender,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
         }
         Text(
             "Visualiza y modifica las zonas de las teclas activas para cada archivo SF2 cargado.",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = TextSecondary,
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
@@ -3400,21 +3483,21 @@ fun SplitKeyboardSettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (isSelected) parseColorHex(ch.colorHex).copy(alpha = 0.15f)
-                        else MaterialTheme.colorScheme.surfaceVariant,
-                        AppShapes.small
+                        else SurfaceCard
                     )
                     .border(
-                        width = if (isSelected) 1.5.dp else 0.dp,
-                        color = if (isSelected) parseColorHex(ch.colorHex) else Color.Transparent,
-                        shape = AppShapes.small
+                        width = if (isSelected) 1.5.dp else 1.dp,
+                        color = if (isSelected) parseColorHex(ch.colorHex) else BorderHairline,
+                        shape = RoundedCornerShape(8.dp)
                     )
                     .clickable {
                         selectedChannelId = if (selectedChannelId == ch.id) null else ch.id
                         editingLow = true   // siempre empieza en modo "nota baja"
                     }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -3433,13 +3516,13 @@ fun SplitKeyboardSettingsScreen(
                     text = ch.sf2Name.substringBefore(".sf2").uppercase(),
                     color = parseColorHex(ch.colorHex),
                     style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = "${midiNoteToName(ch.keyRangeStart)} → ${midiNoteToName(ch.keyRangeEnd)}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (isSelected) MaterialTheme.colorScheme.onSurface
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isSelected) TextPrimary else TextSecondary
                 )
             }
         }
@@ -3465,21 +3548,23 @@ fun SplitKeyboardSettingsScreen(
                         Text(
                             "Toca una tecla para fijar el límite",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = TextSecondary
                         )
                         // Toggle Nota Baja / Nota Alta
                         Row(
                             modifier = Modifier
-                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp))
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(SurfaceCard)
+                                .border(1.dp, BorderHairline, RoundedCornerShape(20.dp))
                                 .padding(2.dp)
                         ) {
                             listOf(true to "Nota baja", false to "Nota alta").forEach { (isLow, label) ->
                                 val accent = parseColorHex(ch.colorHex)
                                 Box(
                                     modifier = Modifier
+                                        .clip(RoundedCornerShape(18.dp))
                                         .background(
-                                            if (editingLow == isLow) accent else Color.Transparent,
-                                            RoundedCornerShape(18.dp)
+                                            if (editingLow == isLow) accent else Color.Transparent
                                         )
                                         .clickable { editingLow = isLow }
                                         .padding(horizontal = 12.dp, vertical = 4.dp)
@@ -3488,8 +3573,7 @@ fun SplitKeyboardSettingsScreen(
                                         label,
                                         fontSize = 11.sp,
                                         fontWeight = if (editingLow == isLow) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (editingLow == isLow) Color.White 
-                                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (editingLow == isLow) Color.White else TextSecondary
                                     )
                                 }
                             }
@@ -3535,26 +3619,26 @@ fun AudioSettingsTabScreen(
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("INTERFACES DE AUDIO Y LATENCIA", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-            Button(
+            Text("INTERFACES DE AUDIO Y LATENCIA", style = MaterialTheme.typography.titleMedium, color = AccentPrimary, fontWeight = FontWeight.Bold)
+            SkButton(
                 onClick = onRefreshDevices,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                shape = AppShapes.small,
-                modifier = Modifier.height(32.dp)
+                variant = SkButtonVariant.Secondary,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.height(36.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
             ) {
-                Text("Actualizar dispositivos", style = MaterialTheme.typography.labelSmall)
+                Icon(TablerIcons.Refresh, contentDescription = null, tint = AccentPrimary, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Actualizar", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("DISPOSITIVO DE SALIDA:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("DISPOSITIVO DE SALIDA:", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
         
         if (audioDevices.isEmpty()) {
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
-                Text("Buscando dispositivos...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Buscando dispositivos...", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
             }
         } else {
             Column(modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
@@ -3563,19 +3647,31 @@ fun AudioSettingsTabScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
-                            .background(if (device.isCurrentlySelected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant, AppShapes.small)
-                            .border(1.dp, if (device.isCurrentlySelected) MaterialTheme.colorScheme.secondary else Color.Transparent, AppShapes.small)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (device.isCurrentlySelected) AccentPrimary.copy(alpha = 0.15f) else SurfaceCard)
+                            .border(1.dp, if (device.isCurrentlySelected) AccentPrimary else BorderHairline, RoundedCornerShape(10.dp))
                             .clickable { onSelectDevice(device.id) }
                             .padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text(device.name, style = MaterialTheme.typography.bodyMedium, color = if (device.isCurrentlySelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(device.type, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(device.name, style = MaterialTheme.typography.bodyMedium, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                            Text(device.type, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
                         }
                         if (device.isCurrentlySelected) {
-                            Text("Activo", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                            Surface(
+                                color = AccentPrimary,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    "Activo",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -3584,7 +3680,7 @@ fun AudioSettingsTabScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Text("VELOCIDAD DE MUESTREO (SAMPLE RATE):", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("VELOCIDAD DE MUESTREO (SAMPLE RATE):", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -3595,20 +3691,25 @@ fun AudioSettingsTabScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(40.dp)
-                        .clip(AppShapes.small)
-                        .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant)
-                        .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, AppShapes.small)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isSelected) AccentPrimary.copy(alpha = 0.2f) else SurfaceCard)
+                        .border(1.dp, if (isSelected) AccentPrimary else BorderHairline, RoundedCornerShape(8.dp))
                         .clickable { onSampleRateChange(rate) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("$rate Hz", style = MaterialTheme.typography.labelMedium, color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = "$rate Hz",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) TextPrimary else TextSecondary
+                    )
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Text("TAMAÑO DE BUFFER (LATENCIA):", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("TAMAÑO DE BUFFER (LATENCIA):", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -3623,9 +3724,9 @@ fun AudioSettingsTabScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp)
-                        .clip(AppShapes.small)
-                        .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant)
-                        .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, AppShapes.small)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isSelected) AccentPrimary.copy(alpha = 0.2f) else SurfaceCard)
+                        .border(1.dp, if (isSelected) AccentPrimary else BorderHairline, RoundedCornerShape(8.dp))
                         .clickable { onBufferOptionChange(opt) },
                     contentAlignment = Alignment.Center
                 ) {
@@ -3633,7 +3734,8 @@ fun AudioSettingsTabScreen(
                         label,
                         style = MaterialTheme.typography.labelSmall,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) TextPrimary else TextSecondary
                     )
                 }
             }
@@ -3642,15 +3744,21 @@ fun AudioSettingsTabScreen(
         Spacer(modifier = Modifier.height(20.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, AppShapes.small).padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(SurfaceCard)
+                .border(1.dp, BorderHairline, RoundedCornerShape(10.dp))
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("ESTADO DEL DRIVER:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("ESTADO DEL DRIVER:", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
                 Text(
                     if (isRestartingAudio) "REINICIANDO..." else audioDiagnostics,
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (isRestartingAudio) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
+                    fontWeight = FontWeight.Bold,
+                    color = if (isRestartingAudio) StatusError else StatusSuccess
                 )
             }
         }
@@ -3695,7 +3803,7 @@ fun MasterFxSettingsScreen(
             text = "CONFIGURACIÓN DE EFECTOS GLOBALES (MASTER FX)",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = AccentSky
+            color = AccentPrimary
         )
         Text(
             text = "Estos controles definen el comportamiento global de los procesadores de Reverb y Chorus de FluidSynth, y la protección de salida contra distorsión digital.",
@@ -3705,8 +3813,9 @@ fun MasterFxSettingsScreen(
 
         // 1. Master Bus Limiter (Anti-Clipping)
         Card(
-            colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
-            shape = AppShapes.medium,
+            colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+            border = BorderStroke(1.dp, BorderHairline),
+            shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -3720,15 +3829,10 @@ fun MasterFxSettingsScreen(
                         Spacer(Modifier.width(8.dp))
                         Text("LIMITADOR MASTER (SOFT-CLIP)", style = MaterialTheme.typography.labelLarge, color = ServiceDrive, fontWeight = FontWeight.Bold)
                     }
-                    Switch(
+                    SkSwitch(
                         checked = masterLimiterEnabled,
                         onCheckedChange = onMasterLimiterToggle,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = ServiceDrive,
-                            checkedTrackColor = ServiceDrive.copy(alpha = 0.3f),
-                            uncheckedThumbColor = TextTertiary,
-                            uncheckedTrackColor = SurfaceCard
-                        )
+                        activeColor = ServiceDrive
                     )
                 }
                 Text(
@@ -3742,8 +3846,9 @@ fun MasterFxSettingsScreen(
 
         // 2. Reverb Section (Freeverb)
         Card(
-            colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
-            shape = AppShapes.medium,
+            colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+            border = BorderStroke(1.dp, BorderHairline),
+            shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -3793,8 +3898,9 @@ fun MasterFxSettingsScreen(
 
         // 3. Chorus Section
         Card(
-            colors = CardDefaults.cardColors(containerColor = SurfaceElevated),
-            shape = AppShapes.medium,
+            colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+            border = BorderStroke(1.dp, BorderHairline),
+            shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -3858,7 +3964,7 @@ private fun FxSliderRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(label, style = MaterialTheme.typography.bodySmall, color = TextLight, fontSize = 12.sp)
+            Text(label, style = MaterialTheme.typography.bodySmall, color = TextPrimary, fontSize = 12.sp)
             Text(valueText, style = MaterialTheme.typography.bodySmall, color = accentColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
         }
         Slider(
@@ -3917,7 +4023,7 @@ fun WhatsNewDialog(
                 .fillMaxHeight(0.88f)
                 .padding(12.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = DarkBackground),
+            colors = CardDefaults.cardColors(containerColor = DarkPanel),
             border = BorderStroke(1.dp, BorderHairline)
         ) {
             Column(
@@ -3933,7 +4039,7 @@ fun WhatsNewDialog(
                     Box(
                         modifier = Modifier
                             .size(42.dp)
-                            .background(AccentSky.copy(alpha = 0.15f), CircleShape),
+                            .background(AccentPrimary.copy(alpha = 0.15f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text("🚀", fontSize = 20.sp)
@@ -3944,18 +4050,18 @@ fun WhatsNewDialog(
                             Text(
                                 "Novedades en StageKeysLive",
                                 style = MaterialTheme.typography.titleMedium,
-                                color = TextLight,
+                                color = TextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 17.sp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Surface(
-                                color = AccentSky,
+                                color = AccentPrimary,
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
                                     "v$versionName",
-                                    color = Color.Black,
+                                    color = Color.White,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -3986,7 +4092,7 @@ fun WhatsNewDialog(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(DarkPanel, RoundedCornerShape(10.dp))
+                                .background(SurfaceElevated, RoundedCornerShape(10.dp))
                                 .border(1.dp, BorderHairline, RoundedCornerShape(10.dp))
                                 .padding(12.dp),
                             verticalAlignment = Alignment.Top
@@ -3995,7 +4101,7 @@ fun WhatsNewDialog(
                                 modifier = Modifier
                                     .padding(top = 4.dp)
                                     .size(8.dp)
-                                    .background(AccentSky, CircleShape)
+                                    .background(AccentPrimary, CircleShape)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
@@ -4007,7 +4113,7 @@ fun WhatsNewDialog(
                                     Text(
                                         item.title,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = TextLight,
+                                        color = TextPrimary,
                                         fontWeight = FontWeight.SemiBold,
                                         fontSize = 13.sp
                                     )
@@ -4116,7 +4222,7 @@ fun SupportSettingsScreen(
                     Text(
                         "Soporte Directo y Contacto",
                         style = MaterialTheme.typography.titleMedium,
-                        color = TextLight,
+                        color = TextPrimary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
@@ -4134,7 +4240,7 @@ fun SupportSettingsScreen(
         // Action Buttons Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = DarkPanel),
+            colors = CardDefaults.cardColors(containerColor = SurfaceCard),
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(1.dp, BorderHairline)
         ) {
@@ -4145,17 +4251,14 @@ fun SupportSettingsScreen(
                 Text(
                     "Canal Oficial de Atención",
                     style = MaterialTheme.typography.titleSmall,
-                    color = AccentSky,
+                    color = AccentPrimary,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp
                 )
 
-                Button(
+                SkButton(
                     onClick = {
-                        // Copy report to clipboard first so it's guaranteed safe
                         clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(diagnosticReport))
-                        
-                        // Open Telegram URL with encoded text
                         val encodedText = diagnosticReport
                             .replace(" ", "%20")
                             .replace("\n", "%0A")
@@ -4176,13 +4279,13 @@ fun SupportSettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(44.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ServiceTelegram),
+                    variant = SkButtonVariant.Primary,
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("🚀 Abrir Telegram (@tutelopez7)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
                 }
 
-                OutlinedButton(
+                SkButton(
                     onClick = {
                         clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(diagnosticReport))
                         onShowSnackbar("¡Datos de diagnóstico copiados al portapapeles!")
@@ -4190,10 +4293,10 @@ fun SupportSettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(42.dp),
-                    border = BorderStroke(1.dp, BorderHairline),
+                    variant = SkButtonVariant.Secondary,
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("📋 Copiar Diagnóstico Técnico", color = TextLight, fontSize = 12.5.sp)
+                    Text("📋 Copiar Diagnóstico Técnico", color = TextPrimary, fontSize = 12.5.sp)
                 }
             }
         }
@@ -4201,7 +4304,7 @@ fun SupportSettingsScreen(
         // Diagnostics Details Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = DarkPanel),
+            colors = CardDefaults.cardColors(containerColor = SurfaceCard),
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(1.dp, BorderHairline)
         ) {
@@ -4212,7 +4315,7 @@ fun SupportSettingsScreen(
                 Text(
                     "Información del Sistema & Dispositivo",
                     style = MaterialTheme.typography.titleSmall,
-                    color = AccentSky,
+                    color = AccentPrimary,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp
                 )
@@ -4228,7 +4331,7 @@ fun SupportSettingsScreen(
         // Legal & Privacy Policy Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = DarkPanel),
+            colors = CardDefaults.cardColors(containerColor = SurfaceCard),
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(1.dp, BorderHairline)
         ) {
@@ -4239,7 +4342,7 @@ fun SupportSettingsScreen(
                 Text(
                     "Legal & Privacidad",
                     style = MaterialTheme.typography.titleSmall,
-                    color = AccentSky,
+                    color = AccentPrimary,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp
                 )
@@ -4251,7 +4354,7 @@ fun SupportSettingsScreen(
                     fontSize = 11.5.sp
                 )
 
-                OutlinedButton(
+                SkButton(
                     onClick = {
                         try {
                             uriHandler.openUri("https://tutelopezmusic.com/stagekeyslive/privacidad")
@@ -4262,10 +4365,10 @@ fun SupportSettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(42.dp),
-                    border = BorderStroke(1.dp, BorderHairline),
+                    variant = SkButtonVariant.Outline,
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("📄 Ver Política de Privacidad", color = TextLight, fontSize = 12.5.sp)
+                    Text("📄 Ver Política de Privacidad", color = TextSecondary, fontSize = 12.5.sp)
                 }
             }
         }
@@ -4277,13 +4380,13 @@ private fun DiagnosticRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(SurfacePanel, RoundedCornerShape(6.dp))
+            .background(SurfaceElevated, RoundedCornerShape(6.dp))
             .padding(horizontal = 10.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, color = TextSecondary, fontSize = 11.sp)
-        Text(value, color = TextLight, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        Text(value, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
     }
 }
 

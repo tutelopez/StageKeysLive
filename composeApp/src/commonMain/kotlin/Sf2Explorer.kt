@@ -116,7 +116,7 @@ fun Sf2ExplorerDialog(
                     .fillMaxSize()
                     .clip(RoundedCornerShape(16.dp))
                     .background(DarkPanel)
-                    .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+                    .border(1.dp, BorderHairline, RoundedCornerShape(16.dp))
                     .padding(20.dp)
             ) {
                 // Header
@@ -130,7 +130,7 @@ fun Sf2ExplorerDialog(
                             Icon(
                                 imageVector = TablerIcons.Folder,
                                 contentDescription = null,
-                                tint = AccentSky,
+                                tint = AccentPrimary,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -138,7 +138,7 @@ fun Sf2ExplorerDialog(
                                 text = "EXPLORADOR DE SOUNDFONTS",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = AccentSky
+                                color = AccentPrimary
                             )
                         }
                         Text(
@@ -155,7 +155,7 @@ fun Sf2ExplorerDialog(
                             onDismiss()
                         }
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = TextLight)
+                        Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = TextPrimary)
                     }
                 }
 
@@ -167,7 +167,7 @@ fun Sf2ExplorerDialog(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
                         .background(SurfaceElevated)
-                        .border(1.dp, if (state.isFolderConfigured) StatusSuccess.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.08f), RoundedCornerShape(10.dp))
+                        .border(1.dp, if (state.isFolderConfigured) StatusSuccess.copy(alpha = 0.4f) else BorderHairline, RoundedCornerShape(10.dp))
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -188,7 +188,7 @@ fun Sf2ExplorerDialog(
                                 text = if (state.isFolderConfigured) (state.folderName ?: "Carpeta SAF") else "Ninguna carpeta seleccionada",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = if (state.isFolderConfigured) TextLight else TextSecondary,
+                                color = if (state.isFolderConfigured) TextPrimary else TextSecondary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -209,30 +209,27 @@ fun Sf2ExplorerDialog(
                                 onClick = { controller.refreshFiles() },
                                 modifier = Modifier.size(36.dp)
                             ) {
-                                Icon(Icons.Default.Refresh, contentDescription = "Refrescar", tint = AccentSky, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.Refresh, contentDescription = "Refrescar", tint = AccentPrimary, modifier = Modifier.size(20.dp))
                             }
                         }
 
-                        Button(
+                        SkButton(
                             onClick = { controller.requestSelectFolder() },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (state.isFolderConfigured) MaterialTheme.colorScheme.surfaceVariant else AccentSky
-                            ),
+                            variant = if (state.isFolderConfigured) SkButtonVariant.Secondary else SkButtonVariant.Primary,
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                         ) {
                             Icon(
                                 imageVector = TablerIcons.FolderPlus,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
-                                tint = if (state.isFolderConfigured) TextLight else Color.Black
+                                tint = if (state.isFolderConfigured) TextPrimary else Color.White
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = if (state.isFolderConfigured) "Cambiar Carpeta" else "Elegir Carpeta",
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (state.isFolderConfigured) TextLight else Color.Black
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -260,10 +257,10 @@ fun Sf2ExplorerDialog(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = SurfaceElevated,
                             unfocusedContainerColor = SurfaceElevated,
-                            focusedBorderColor = AccentSky.copy(alpha = 0.6f),
-                            unfocusedBorderColor = Color.White.copy(alpha = 0.08f),
-                            focusedTextColor = TextLight,
-                            unfocusedTextColor = TextLight
+                            focusedBorderColor = AccentPrimary,
+                            unfocusedBorderColor = BorderHairline,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
                         )
                     )
                     Spacer(modifier = Modifier.height(10.dp))
@@ -286,13 +283,13 @@ fun Sf2ExplorerDialog(
                                     modifier = Modifier
                                         .size(48.dp)
                                         .clip(CircleShape)
-                                        .background(AccentSky.copy(alpha = 0.12f)),
+                                        .background(AccentPrimary.copy(alpha = 0.12f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = TablerIcons.Folders,
                                         contentDescription = null,
-                                        tint = AccentSky,
+                                        tint = AccentPrimary,
                                         modifier = Modifier.size(28.dp)
                                     )
                                 }
@@ -301,7 +298,7 @@ fun Sf2ExplorerDialog(
                                     text = "Explorador de SoundFonts",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = TextLight
+                                    color = TextPrimary
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
@@ -313,15 +310,15 @@ fun Sf2ExplorerDialog(
                                     modifier = Modifier.widthIn(max = 440.dp)
                                 )
                                 Spacer(modifier = Modifier.height(14.dp))
-                                Button(
+                                SkButton(
                                     onClick = { controller.requestSelectFolder() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = AccentSky),
+                                    variant = SkButtonVariant.Primary,
                                     shape = RoundedCornerShape(10.dp),
-                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
                                 ) {
-                                    Icon(TablerIcons.FolderPlus, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                                    Icon(TablerIcons.FolderPlus, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Elegir Carpeta de SF2", color = Color.Black, fontWeight = FontWeight.Bold)
+                                    Text("Elegir Carpeta de SF2", color = Color.White, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -332,7 +329,7 @@ fun Sf2ExplorerDialog(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                CircularProgressIndicator(color = AccentSky, modifier = Modifier.size(36.dp))
+                                CircularProgressIndicator(color = AccentPrimary, modifier = Modifier.size(36.dp))
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text("Escaneando archivos SoundFont .sf2...", color = TextSecondary, fontSize = 13.sp)
                             }
@@ -346,12 +343,15 @@ fun Sf2ExplorerDialog(
                             ) {
                                 Icon(TablerIcons.Music, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(48.dp))
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Text("No se encontraron archivos .sf2", style = MaterialTheme.typography.titleSmall, color = TextLight, fontWeight = FontWeight.Bold)
+                                Text("No se encontraron archivos .sf2", style = MaterialTheme.typography.titleSmall, color = TextPrimary, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text("Asegúrate de que la carpeta contenga archivos SoundFont con extensión .sf2", style = MaterialTheme.typography.bodySmall, color = TextSecondary, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.height(14.dp))
-                                OutlinedButton(onClick = { controller.requestSelectFolder() }) {
-                                    Text("Elegir otra carpeta", color = AccentSky)
+                                SkButton(
+                                    onClick = { controller.requestSelectFolder() },
+                                    variant = SkButtonVariant.Secondary
+                                ) {
+                                    Text("Elegir otra carpeta")
                                 }
                             }
                         }
@@ -381,10 +381,10 @@ fun Sf2ExplorerDialog(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clip(RoundedCornerShape(10.dp))
-                                            .background(if (isPreviewing) AccentSky.copy(alpha = 0.12f) else SurfaceElevated)
+                                            .background(if (isPreviewing) AccentPrimary.copy(alpha = 0.15f) else SurfaceElevated)
                                             .border(
                                                 1.dp,
-                                                if (isPreviewing) AccentSky.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.05f),
+                                                if (isPreviewing) AccentPrimary else BorderHairline,
                                                 RoundedCornerShape(10.dp)
                                             )
                                             .clickable {
@@ -406,13 +406,14 @@ fun Sf2ExplorerDialog(
                                                 modifier = Modifier
                                                     .size(38.dp)
                                                     .clip(CircleShape)
-                                                    .background(if (isPreviewing) AccentSky else Color.White.copy(alpha = 0.08f)),
+                                                    .background(if (isPreviewing) AccentPrimary else SurfaceCard)
+                                                    .border(1.dp, if (isPreviewing) AccentPrimary else BorderHairline, CircleShape),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 Icon(
                                                     imageVector = if (isPreviewing) TablerIcons.Volume else TablerIcons.PlayerPlay,
                                                     contentDescription = "Previsualizar",
-                                                    tint = if (isPreviewing) Color.Black else TextLight,
+                                                    tint = if (isPreviewing) Color.White else TextPrimary,
                                                     modifier = Modifier.size(18.dp)
                                                 )
                                             }
@@ -424,7 +425,7 @@ fun Sf2ExplorerDialog(
                                                     text = entry.displayName,
                                                     style = MaterialTheme.typography.bodyMedium,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = if (isPreviewing) AccentSky else TextLight,
+                                                    color = if (isPreviewing) AccentLavender else TextPrimary,
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis
                                                 )
@@ -450,7 +451,7 @@ fun Sf2ExplorerDialog(
                                                         Text(
                                                             text = " • 🎵 Previsualizando...",
                                                             style = MaterialTheme.typography.labelSmall,
-                                                            color = AccentSky,
+                                                            color = AccentLavender,
                                                             fontWeight = FontWeight.SemiBold,
                                                             fontSize = 11.sp
                                                         )
@@ -462,7 +463,7 @@ fun Sf2ExplorerDialog(
                                         Spacer(modifier = Modifier.width(12.dp))
 
                                         // Action Button: "Usar este SF2"
-                                        Button(
+                                        SkButton(
                                             onClick = {
                                                 if (!isImporting) {
                                                     isImporting = true
@@ -477,16 +478,14 @@ fun Sf2ExplorerDialog(
                                                     }
                                                 }
                                             },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = AccentSky
-                                            ),
+                                            variant = SkButtonVariant.Primary,
                                             shape = RoundedCornerShape(8.dp),
                                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                                         ) {
                                             Icon(
                                                 imageVector = TablerIcons.Check,
                                                 contentDescription = null,
-                                                tint = Color.Black,
+                                                tint = Color.White,
                                                 modifier = Modifier.size(16.dp)
                                             )
                                             Spacer(modifier = Modifier.width(6.dp))
@@ -494,7 +493,7 @@ fun Sf2ExplorerDialog(
                                                 text = "Usar este SF2",
                                                 style = MaterialTheme.typography.labelMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color.Black
+                                                color = Color.White
                                             )
                                         }
                                     }
@@ -529,7 +528,7 @@ fun Sf2FolderSettingsScreen(
             Text(
                 text = "CARPETA DE SOUNDFONTS (EXPLORADOR SF2)",
                 style = MaterialTheme.typography.titleMedium,
-                color = AccentSky,
+                color = AccentPrimary,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -554,7 +553,7 @@ fun Sf2FolderSettingsScreen(
                 .background(SurfaceElevated.copy(alpha = 0.85f))
                 .border(
                     1.dp,
-                    if (isConfigured) StatusSuccess.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f),
+                    if (isConfigured) StatusSuccess.copy(alpha = 0.5f) else BorderHairline,
                     RoundedCornerShape(10.dp)
                 )
                 .padding(14.dp)
@@ -599,7 +598,7 @@ fun Sf2FolderSettingsScreen(
                         text = state.folderName ?: "Carpeta SAF",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = TextLight
+                        color = TextPrimary
                     )
                 } else {
                     Text(
@@ -613,13 +612,12 @@ fun Sf2FolderSettingsScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
+                    SkButton(
                         onClick = { controller.requestSelectFolder() },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isConfigured) MaterialTheme.colorScheme.surfaceVariant else AccentSky
-                        ),
+                        variant = if (isConfigured) SkButtonVariant.Secondary else SkButtonVariant.Primary,
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.weight(1f)
                     ) {
@@ -627,35 +625,35 @@ fun Sf2FolderSettingsScreen(
                             imageVector = TablerIcons.FolderPlus,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = if (isConfigured) TextLight else Color.Black
+                            tint = if (isConfigured) TextPrimary else Color.White
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = if (isConfigured) "Cambiar Carpeta" else "Elegir Carpeta",
                             style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isConfigured) TextLight else Color.Black
+                            fontWeight = FontWeight.Bold
                         )
                     }
 
                     if (isConfigured) {
-                        OutlinedButton(
+                        SkButton(
                             onClick = { controller.refreshFiles() },
+                            variant = SkButtonVariant.Secondary,
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refrescar", tint = AccentSky, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Refresh, contentDescription = "Refrescar", tint = AccentPrimary, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Refrescar", color = AccentSky, style = MaterialTheme.typography.labelMedium)
+                            Text("Refrescar", color = TextPrimary, style = MaterialTheme.typography.labelMedium)
                         }
 
-                        OutlinedButton(
+                        SkButton(
                             onClick = { controller.clearFolder() },
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = StatusError)
+                            variant = SkButtonVariant.Danger,
+                            shape = RoundedCornerShape(8.dp)
                         ) {
-                            Icon(TablerIcons.Trash, contentDescription = "Desvincular", tint = StatusError, modifier = Modifier.size(16.dp))
+                            Icon(TablerIcons.Trash, contentDescription = "Desvincular", tint = Color.White, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Desvincular", color = StatusError, style = MaterialTheme.typography.labelMedium)
+                            Text("Desvincular", color = Color.White, style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }

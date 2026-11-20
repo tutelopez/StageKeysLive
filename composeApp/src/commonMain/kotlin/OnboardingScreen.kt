@@ -58,7 +58,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
     val slides = listOf(
         OnboardingSlide(
             icon = TablerIcons.Keyboard,
-            iconTint = AccentSky,
+            iconTint = AccentPrimary,
             title = "Bienvenido a StageKeysLive",
             subtitle = "Tu estación de trabajo para piano en vivo.\nConciertos, patches y samplers SF2 en tu bolsillo."
         ),
@@ -70,7 +70,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
         ),
         OnboardingSlide(
             icon = TablerIcons.Adjustments,
-            iconTint = AccentPurple,
+            iconTint = AccentLavender,
             title = "Hasta 8 canales simultáneos",
             subtitle = "Asigna un archivo SF2 a cada canal, ajusta volumen, reverb, chorus y rango de teclado.\nCambia de patch en escena sin interrupciones."
         ),
@@ -144,7 +144,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                                 text = slide.title,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = TextLight
+                                color = TextPrimary
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -192,7 +192,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                             modifier = Modifier
                                 .size(if (isSelected) 10.dp else 8.dp)
                                 .clip(CircleShape)
-                                .background(if (isSelected) AccentSky else OutlineVariant)
+                                .background(if (isSelected) AccentPrimary else BorderHairline)
                         )
                     }
                 }
