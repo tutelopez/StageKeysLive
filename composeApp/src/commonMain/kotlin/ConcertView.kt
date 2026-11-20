@@ -573,13 +573,14 @@ private fun PerformanceModeView(
             ) {
                 // Canales con scroll horizontal y barra violeta fina abajo
                 Box(
-                    modifier = Modifier.weight(1f).fillMaxHeight()
+                    modifier = Modifier.weight(1f).fillMaxHeight().clipToBounds()
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(bottom = 6.dp)
-                            .horizontalScroll(mixerScrollState),
+                            .horizontalScroll(mixerScrollState)
+                            .padding(start = 16.dp, end = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         channels.forEach { chState ->
@@ -603,6 +604,36 @@ private fun PerformanceModeView(
                                 isMidiMapped = isMapped
                             )
                         }
+                    }
+
+                    // Fade izquierdo de 16dp solo si hay scroll hacia la izquierda
+                    if (mixerScrollState.value > 0) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .fillMaxHeight()
+                                .width(16.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(DarkPanel, Color.Transparent)
+                                    )
+                                )
+                        )
+                    }
+
+                    // Fade derecho de 16dp solo si queda contenido para scrollear
+                    if (mixerScrollState.value < mixerScrollState.maxValue) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .fillMaxHeight()
+                                .width(16.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(Color.Transparent, DarkPanel)
+                                    )
+                                )
+                        )
                     }
 
                     // Barra de scroll fina violeta abajo
@@ -845,6 +876,13 @@ private fun TopBar(
     audioDiagnostics: String
 ) {
     var panicBlink by remember { mutableStateOf(false) }
+    LaunchedEffect(panicBlink) {
+        if (panicBlink) {
+            delay(300)
+            panicBlink = false
+        }
+    }
+    var showCompactMenu by remember { mutableStateOf(false) }
 
     Surface(
         shape = RoundedCornerShape(14.dp),
@@ -1005,7 +1043,7 @@ private fun TopBar(
                 )
             }
 
-            if (!isPerformanceMode) {
+            if (!isPerformanceMode && !isCompact) {
                 Spacer(Modifier.width(8.dp))
 
                 // Record button (Pill)
@@ -1108,16 +1146,16 @@ private fun TopBar(
                 }
             }
 
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(6.dp))
 
             // MIDI Activity Indicator LED
             Box(
                 modifier = Modifier
-                    .height(32.dp)
+                    .height(if (isCompact) 28.dp else 32.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(if (midiActive) StateOk.copy(alpha = 0.18f) else DarkPanel)
                     .border(1.2.dp, if (midiActive) StateOk else OutlineVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 10.dp),
+                    .padding(horizontal = if (isCompact) 6.dp else 10.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1127,59 +1165,142 @@ private fun TopBar(
                             .clip(CircleShape)
                             .background(if (midiActive) StateOk else TextTertiary)
                     )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "MIDI",
-                        color = if (midiActive) StateOk else TextSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
+                    if (!isCompact) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "MIDI",
+                            color = if (midiActive) StateOk else TextSecondary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
                 }
             }
 
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(6.dp))
 
-            // Panic Button
+            // Panic Button - SIEMPRE VISIBLE EN TODOS LOS TAMAÑOS
             Box(
                 modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(StatusError.copy(alpha = 0.15f))
-                    .border(1.dp, StatusError.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                    .height(if (isCompact) 28.dp else 32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(StatusError.copy(alpha = if (panicBlink) 0.6f else 0.18f))
+                    .border(1.5.dp, StatusError, RoundedCornerShape(8.dp))
                     .clickable { 
                         onPanicClick()
                         panicBlink = true
-                    },
+                    }
+                    .padding(horizontal = if (isCompact) 6.dp else 10.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    TablerIcons.AlertTriangle,
-                    contentDescription = "Panic",
-                    tint = StatusError,
-                    modifier = Modifier.size(16.dp)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        TablerIcons.AlertTriangle,
+                        contentDescription = "Panic",
+                        tint = StatusError,
+                        modifier = Modifier.size(if (isCompact) 15.dp else 17.dp)
+                    )
+                    if (!isCompact) {
+                        Text(
+                            text = "PANIC",
+                            color = StatusError,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                }
             }
 
             if (!isPerformanceMode) {
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(6.dp))
 
-                // Settings gear
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(DarkPanel)
-                        .border(1.dp, OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-                        .clickable(onClick = onSettingsClick),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        TablerIcons.Settings,
-                        contentDescription = "Settings",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
+                if (!isCompact) {
+                    // Settings gear en desktop
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(DarkPanel)
+                            .border(1.dp, OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                            .clickable(onClick = onSettingsClick),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            TablerIcons.Settings,
+                            contentDescription = "Settings",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                } else {
+                    // Menú overflow "⋮" en compacto para no saturar la barra superior
+                    Box {
+                        IconButton(
+                            onClick = { showCompactMenu = true },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                TablerIcons.DotsVertical,
+                                contentDescription = "Más opciones",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showCompactMenu,
+                            onDismissRequest = { showCompactMenu = false },
+                            modifier = Modifier.background(DarkPanel)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(if (isRecording) "Detener Grabación" else "Grabar (REC)", color = StatusError, fontSize = 11.sp) },
+                                onClick = {
+                                    showCompactMenu = false
+                                    onRecordToggle()
+                                },
+                                leadingIcon = {
+                                    Box(Modifier.size(8.dp).clip(CircleShape).background(StatusError))
+                                }
+                            )
+                            if (hasRecording || isPlayingRecording) {
+                                DropdownMenuItem(
+                                    text = { Text(if (isPlayingRecording) "Detener Reproducción" else "Reproducir Grabación", color = StateOk, fontSize = 11.sp) },
+                                    onClick = {
+                                        showCompactMenu = false
+                                        onPlayRecordingClick()
+                                    },
+                                    leadingIcon = {
+                                        Icon(if (isPlayingRecording) TablerIcons.PlayerStop else TablerIcons.PlayerPlay, contentDescription = null, tint = StateOk, modifier = Modifier.size(14.dp))
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Exportar como MIDI", color = AccentPurple, fontSize = 11.sp) },
+                                    onClick = {
+                                        showCompactMenu = false
+                                        onExportMidiClick()
+                                    },
+                                    leadingIcon = {
+                                        Icon(TablerIcons.Share, contentDescription = null, tint = AccentPurple, modifier = Modifier.size(14.dp))
+                                    }
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text("Ajustes", color = TextPrimary, fontSize = 11.sp) },
+                                onClick = {
+                                    showCompactMenu = false
+                                    onSettingsClick()
+                                },
+                                leadingIcon = {
+                                    Icon(TablerIcons.Settings, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(14.dp))
+                                }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -1766,7 +1887,8 @@ private fun MixerPanel(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(bottom = 6.dp)
-                            .horizontalScroll(scrollState),
+                            .horizontalScroll(scrollState)
+                            .padding(start = 16.dp, end = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         channels.forEach { chState ->
@@ -1797,31 +1919,35 @@ private fun MixerPanel(
                         }
                     }
 
-                    // Fade izquierdo de 16dp
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .fillMaxHeight()
-                            .width(16.dp)
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(DarkPanel, Color.Transparent)
+                    // Fade izquierdo de 16dp solo si hay scroll hacia la izquierda
+                    if (scrollState.value > 0) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .fillMaxHeight()
+                                .width(16.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(DarkPanel, Color.Transparent)
+                                    )
                                 )
-                            )
-                    )
+                        )
+                    }
 
-                    // Fade derecho de 16dp
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .fillMaxHeight()
-                            .width(16.dp)
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(Color.Transparent, DarkPanel)
+                    // Fade derecho de 16dp solo si queda contenido para scrollear
+                    if (scrollState.value < scrollState.maxValue) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .fillMaxHeight()
+                                .width(16.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(Color.Transparent, DarkPanel)
+                                    )
                                 )
-                            )
-                    )
+                        )
+                    }
 
                     FineVioletScrollbar(
                         scrollState = scrollState,
@@ -1842,7 +1968,8 @@ private fun MixerPanel(
                     bpm = metronomeBpm,
                     onTapTempo = onTapTempo,
                     levelProvider = { if (metronomeTick) 0.8f else 0f },
-                    modifier = Modifier.width(if (isCondensed) 92.dp else 104.dp)
+                    isCondensed = isCondensed,
+                    modifier = Modifier.width(if (isCondensed) 96.dp else 104.dp)
                 )
 
                 // Master anclado a la derecha fuera del scroll
@@ -1852,8 +1979,9 @@ private fun MixerPanel(
                     levelProvider = { masterVuLevel },
                     isLimiterActive = isLimiterActive,
                     onLimiterToggle = {},
+                    isCondensed = isCondensed,
                     onMidiMapClick = onSettingsClick,
-                    modifier = Modifier.width(if (isCondensed) 102.dp else 114.dp)
+                    modifier = Modifier.width(if (isCondensed) 106.dp else 114.dp)
                 )
             }
         }
