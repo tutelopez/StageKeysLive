@@ -23,9 +23,13 @@ import compose.icons.tablericons.*
 import androidx.compose.ui.Alignment
 
 @Composable
-fun AddChannelButton(onClick: () -> Unit) {
+fun AddChannelButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .width(72.dp)
             .fillMaxHeight()
             .clip(RoundedCornerShape(14.dp))
@@ -37,7 +41,7 @@ fun AddChannelButton(onClick: () -> Unit) {
                 ),
                 shape = RoundedCornerShape(14.dp)
             )
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Column(
