@@ -9,6 +9,7 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.*
@@ -18,6 +19,10 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.*
 import compose.icons.TablerIcons
 import compose.icons.tablericons.*
+import mainstageandroid.composeapp.generated.resources.Res
+import mainstageandroid.composeapp.generated.resources.dashboard_bg
+import mainstageandroid.composeapp.generated.resources.sk_logo_emblem
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun DashboardScreen(
@@ -53,10 +58,48 @@ fun DashboardScreen(
 
     val scrollState = rememberScrollState()
 
-    AppBackground(
-        modifier = Modifier.fillMaxSize(),
-        glowOpacityFactor = 0.65f
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BgDark)
     ) {
+        // Stage pianist background image (aligned to right edge)
+        Image(
+            painter = painterResource(Res.drawable.dashboard_bg),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.CenterEnd
+        )
+
+        // Dark Studio horizontal gradient for contrast & readability of left controls
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        0.0f to BgDark.copy(alpha = 0.95f),
+                        0.38f to BgDark.copy(alpha = 0.85f),
+                        0.68f to BgDark.copy(alpha = 0.45f),
+                        1.0f to BgDark.copy(alpha = 0.25f)
+                    )
+                )
+        )
+
+        // Top & bottom subtle vignette
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0.0f to BgDark.copy(alpha = 0.60f),
+                        0.25f to Color.Transparent,
+                        0.75f to Color.Transparent,
+                        1.0f to BgDark.copy(alpha = 0.70f)
+                    )
+                )
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -74,23 +117,15 @@ fun DashboardScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // SK Monogram (36dp)
-                    Box(
+                    // Transparent SK Emblem Logo (Sin Eslogan)
+                    Image(
+                        painter = painterResource(Res.drawable.sk_logo_emblem),
+                        contentDescription = "StageKeys Live",
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(11.dp))
-                            .background(AccentPrimary)
-                            .border(1.dp, BorderHairline, RoundedCornerShape(11.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "SK",
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
+                            .height(34.dp)
+                            .wrapContentWidth(),
+                        contentScale = ContentScale.Fit
+                    )
 
                     // Wordmark
                     Text(

@@ -39,6 +39,8 @@ import compose.icons.tablericons.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+enum class BottomTab { KEYBOARD, PADS }
+
 @Composable
 fun ConcertViewScreen(
     concert: Concert,
@@ -128,6 +130,7 @@ fun ConcertViewScreen(
     // Use BoxWithConstraints to detect screen width (KMP-safe, no LocalConfiguration needed)
     // Tablets (>=600dp) start expanded; phones start collapsed to maximize mixer space
     var userKeyboardPreference by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    var selectedBottomTab by rememberSaveable { mutableStateOf(BottomTab.KEYBOARD) }
     var showPatchesDrawer by rememberSaveable { mutableStateOf(false) }
     var isPerformanceMode by rememberSaveable { mutableStateOf(false) }
 
@@ -143,8 +146,9 @@ fun ConcertViewScreen(
             // ─── PRESUPUESTO DE ALTURA Y LAYOUT BUDGET (Puntos 1, 2, 3, 5) ─────────────
             val isCompactScreen = screenHeight < 500.dp || screenWidth < 900.dp
             val canExpandKeyboard = screenHeight >= 760.dp
-            val isKeyboardVisible = userKeyboardPreference ?: (if (isCompactScreen) false else canExpandKeyboard)
-            val areStripsCondensed = if (isCompactScreen) true else if (isKeyboardVisible) screenHeight < 760.dp else screenHeight < 640.dp
+            val isBottomPanelExpanded = userKeyboardPreference ?: (if (isCompactScreen) false else canExpandKeyboard)
+            val isKeyboardVisible = isBottomPanelExpanded && (selectedBottomTab == BottomTab.KEYBOARD || !isCompactScreen)
+            val areStripsCondensed = if (isCompactScreen) true else if (isBottomPanelExpanded) screenHeight < 760.dp else screenHeight < 640.dp
             val arePadsCollapsed = isCompactScreen
 
             // Stage Lock (Bloqueo de escenario en vivo - NO persistido)
@@ -365,64 +369,171 @@ fun ConcertViewScreen(
                         )
                     }
 
-                    // ─── SECCIÓN TECLADO: CABECERA ADJUNTA + PANEL ────────────────────────
+                    // ─── SECCIÓN INFERIOR: PESTAÑA COMPARTIDA (TECLADO / PADS CONTINUOS) ─────────────
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(
-                                    if (isKeyboardVisible) RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)
-                                    else RoundedCornerShape(10.dp)
-                                )
-                                .background(DarkPanel.copy(alpha = 0.85f))
-                                .clickable { userKeyboardPreference = !isKeyboardVisible }
-                                .padding(vertical = 4.dp),
-                            contentAlignment = Alignment.Center
+                        Surface(
+                            shape = if (isBottomPanelExpanded) RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp) else RoundedCornerShape(10.dp),
+                            color = DarkPanel.copy(alpha = 0.92f),
+                            border = BorderStroke(1.dp, BorderHairline),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = if (isKeyboardVisible) TablerIcons.ChevronDown else TablerIcons.ChevronUp,
-                                    contentDescription = if (isKeyboardVisible) "Colapsar teclado" else "Expandir teclado",
-                                    tint = AccentSky,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "TECLADO",
-                                    color = if (isKeyboardVisible) Color.White else TextSecondary,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.2.sp
-                                )
+                                // Pestañas inferiores
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Pestaña Teclado
+                                    val isKeyActive = isBottomPanelExpanded && selectedBottomTab == BottomTab.KEYBOARD
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isKeyActive) AccentPrimary.copy(alpha = 0.22f) else SurfaceCard)
+                                            .border(1.dp, if (isKeyActive) AccentPrimary else BorderHairline, RoundedCornerShape(8.dp))
+                                            .clickable {
+                                                if (isBottomPanelExpanded && selectedBottomTab == BottomTab.KEYBOARD) {
+                                                    userKeyboardPreference = false
+                                                } else {
+                                                    selectedBottomTab = BottomTab.KEYBOARD
+                                                    userKeyboardPreference = true
+                                                }
+                                            }
+                                            .padding(horizontal = 12.dp, vertical = 5.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                        ) {
+                                            Icon(
+                                                TablerIcons.Music,
+                                                contentDescription = null,
+                                                tint = if (isKeyActive) AccentPrimary else TextSecondary,
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                            Text(
+                                                text = "TECLADO",
+                                                color = if (isKeyActive) Color.White else TextSecondary,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                letterSpacing = 0.5.sp
+                                            )
+                                        }
+                                    }
+
+                                    // Pestaña Pads Continuos
+                                    val isPadsActive = isBottomPanelExpanded && selectedBottomTab == BottomTab.PADS
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isPadsActive) AccentPrimary.copy(alpha = 0.22f) else SurfaceCard)
+                                            .border(1.dp, if (isPadsActive) AccentPrimary else BorderHairline, RoundedCornerShape(8.dp))
+                                            .clickable {
+                                                if (isBottomPanelExpanded && selectedBottomTab == BottomTab.PADS) {
+                                                    userKeyboardPreference = false
+                                                } else {
+                                                    selectedBottomTab = BottomTab.PADS
+                                                    userKeyboardPreference = true
+                                                }
+                                            }
+                                            .padding(horizontal = 12.dp, vertical = 5.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                        ) {
+                                            Icon(
+                                                TablerIcons.WaveSquare,
+                                                contentDescription = null,
+                                                tint = if (isPadsActive) AccentPrimary else TextSecondary,
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                            Text(
+                                                text = "PADS CONTINUOS",
+                                                color = if (isPadsActive) Color.White else TextSecondary,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                letterSpacing = 0.5.sp
+                                            )
+                                            if (padEnabled && activePadNote != null) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(6.dp)
+                                                        .clip(CircleShape)
+                                                        .background(StateOk)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Indicador Chevron para colapsar/expandir
+                                IconButton(
+                                    onClick = {
+                                        userKeyboardPreference = !isBottomPanelExpanded
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isBottomPanelExpanded) TablerIcons.ChevronDown else TablerIcons.ChevronUp,
+                                        contentDescription = if (isBottomPanelExpanded) "Colapsar panel" else "Expandir panel",
+                                        tint = AccentSky,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
                             }
                         }
 
-                        if (isKeyboardVisible) {
-                            val keyboardHeight = if (screenHeight < 600.dp) 110.dp else 140.dp
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(keyboardHeight)
-                                    .clipToBounds()
-                            ) {
-                                KeyboardPanel(
-                                    channels = concert.channels,
-                                    activeNote = activeNote,
-                                    onNoteDown = onNoteDown,
-                                    onNoteUp = onNoteUp,
-                                    pitchBend = pitchBend,
-                                    modulation = modulation,
-                                    onModulationChange = onModulationChange,
-                                    sustainActive = sustainActive,
-                                    onSustainToggle = onSustainToggle,
-                                    coroutineScope = coroutineScope
-                                )
+                        if (isBottomPanelExpanded) {
+                            if (selectedBottomTab == BottomTab.KEYBOARD) {
+                                val keyboardHeight = if (screenHeight < 600.dp) 110.dp else 140.dp
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(keyboardHeight)
+                                        .clipToBounds()
+                                ) {
+                                    KeyboardPanel(
+                                        channels = concert.channels,
+                                        activeNote = activeNote,
+                                        onNoteDown = onNoteDown,
+                                        onNoteUp = onNoteUp,
+                                        pitchBend = pitchBend,
+                                        modulation = modulation,
+                                        onModulationChange = onModulationChange,
+                                        sustainActive = sustainActive,
+                                        onSustainToggle = onSustainToggle,
+                                        coroutineScope = coroutineScope
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 4.dp)
+                                ) {
+                                    PadStrip(
+                                        enabled = padEnabled,
+                                        onEnabledChange = onPadEnabledChange,
+                                        volume = padVolume,
+                                        onVolumeChange = onPadVolumeChange,
+                                        bank = padBank,
+                                        onBankChange = onPadBankChange,
+                                        availableBanks = availablePadBanks,
+                                        activePadNote = activePadNote,
+                                        onPadNoteToggle = onPadNoteToggle
+                                    )
+                                }
                             }
                         }
                     }
@@ -475,10 +586,14 @@ fun ConcertViewScreen(
                         tonalElevation = 8.dp,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(top = if (isCompactScreen) 44.dp else 52.dp, end = 56.dp)
-                            .width(220.dp)
+                            .padding(top = if (isCompactScreen) 44.dp else 52.dp, end = if (isCompactScreen) 48.dp else 56.dp)
+                            .width(240.dp)
                     ) {
-                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .padding(vertical = 4.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
                             TopBarOverflowMenuItems(
                                 currentStage = topBarStage,
                                 performanceStats = performanceStats,
@@ -490,6 +605,11 @@ fun ConcertViewScreen(
                                 isPlayingRecording = isPlayingRecording,
                                 metronomeBpm = metronomeBpm,
                                 metronomeOn = metronomeOn,
+                                isPerformanceMode = isPerformanceMode,
+                                onPerformanceModeToggle = {
+                                    showCompactMenu = false
+                                    isPerformanceMode = !isPerformanceMode
+                                },
                                 onExportMidiClick = onExportMidiClick,
                                 onRecordToggle = onRecordToggle,
                                 onPlayRecordingClick = onPlayRecordingClick,
@@ -504,6 +624,32 @@ fun ConcertViewScreen(
             }
         } // End BoxWithConstraints
     } // End AppBackground
+}
+
+fun formatPadBankName(bank: String): String {
+    if (bank.isBlank()) return "Shimmer Pad"
+    return when (bank.lowercase()) {
+        "stage_pad_shimmer", "stage_shimmer_pad", "shimmer" -> "Shimmer Pad"
+        "stage_shimmer_2", "shimmer_2" -> "Shimmer Pad 2"
+        "stage_pad_synth", "stage_synth_pad", "synth" -> "Synth Pad"
+        "stage_worship", "stage_worship_pad", "worship" -> "Worship Pad"
+        "stage_warm_pad", "warm" -> "Warm Pad"
+        "stage_dark_pad", "dark" -> "Dark Pad"
+        "stage_pad_reverse", "reverse" -> "Reverse Pad"
+        "stage_abba_pad", "abba" -> "Abba Pad"
+        else -> {
+            if (!bank.contains("_") && !bank.startsWith("stage")) {
+                bank
+            } else {
+                val clean = bank.removePrefix("stage_").removePrefix("pad_")
+                val words = clean.split("_").filter { it.isNotBlank() }
+                val title = words.joinToString(" ") { word ->
+                    word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                }
+                if (!title.contains("Pad", ignoreCase = true)) "$title Pad" else title
+            }
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -851,7 +997,7 @@ private fun PerformancePadStrip(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = bank.ifEmpty { "Bank A" },
+                            text = formatPadBankName(bank.ifEmpty { availableBanks.firstOrNull() ?: "" }),
                             color = Color.White,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
@@ -866,7 +1012,7 @@ private fun PerformancePadStrip(
                     ) {
                         availableBanks.forEach { b ->
                             DropdownMenuItem(
-                                text = { Text(b, color = Color.White) },
+                                text = { Text(formatPadBankName(b), color = Color.White, fontSize = 12.sp) },
                                 onClick = {
                                     onBankChange(b)
                                     expanded = false
@@ -1325,40 +1471,14 @@ internal fun TopBar(
                         contentAlignment = Alignment.Center
                     ) {
                         IconButton(
-                            onClick = { setShowCompactMenu(true) },
+                            onClick = { setShowCompactMenu(!showCompactMenu) },
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
                                 TablerIcons.DotsVertical,
                                 contentDescription = "Más opciones",
-                                tint = TextSecondary,
+                                tint = if (showCompactMenu) AccentPrimary else TextSecondary,
                                 modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        DropdownMenu(
-                            expanded = showCompactMenu,
-                            onDismissRequest = { setShowCompactMenu(false) },
-                            modifier = Modifier.background(DarkPanel)
-                        ) {
-                            TopBarOverflowMenuItems(
-                                currentStage = currentStage,
-                                performanceStats = performanceStats,
-                                tonalityText = tonalityText,
-                                layerCountText = layerCountText,
-                                hasRecording = hasRecording,
-                                isStageLocked = isStageLocked,
-                                isRecording = isRecording,
-                                isPlayingRecording = isPlayingRecording,
-                                metronomeBpm = metronomeBpm,
-                                metronomeOn = metronomeOn,
-                                onExportMidiClick = onExportMidiClick,
-                                onRecordToggle = onRecordToggle,
-                                onPlayRecordingClick = onPlayRecordingClick,
-                                onSettingsClick = onSettingsClick,
-                                onMetronomeToggle = onMetronomeToggle,
-                                onTapTempo = onTapTempo,
-                                onDismiss = { setShowCompactMenu(false) }
                             )
                         }
                     }
@@ -1968,6 +2088,8 @@ internal fun TopBarOverflowMenuItems(
     isPlayingRecording: Boolean,
     metronomeBpm: Int,
     metronomeOn: Boolean,
+    isPerformanceMode: Boolean = false,
+    onPerformanceModeToggle: () -> Unit = {},
     onExportMidiClick: () -> Unit,
     onRecordToggle: () -> Unit,
     onPlayRecordingClick: () -> Unit,
@@ -1976,25 +2098,68 @@ internal fun TopBarOverflowMenuItems(
     onTapTempo: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    // Monitor CPU/RAM (siempre presente en menú si no está la versión completa en la barra)
-    if (currentStage < 7 && performanceStats != null) {
-        val cpu = performanceStats.cpuPercent
-        val ram = performanceStats.ramPercent ?: ((performanceStats.ramMb) * 100 / 512).coerceIn(0, 100)
-        DropdownMenuItem(
-            text = { Text("CPU: $cpu% | RAM: $ram%", color = AccentLavender, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-            onClick = {},
-            enabled = false
-        )
+    // 1. STATUS HEADER: CPU / RAM / KEY / CAPAS (Diseño compacto y no intrusivo)
+    if ((currentStage < 7 && performanceStats != null) || (currentStage < 5 && (tonalityText.isNotEmpty() || layerCountText.isNotEmpty()))) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+                .background(SurfaceElevated, RoundedCornerShape(8.dp))
+                .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            if (currentStage < 7 && performanceStats != null) {
+                val cpu = performanceStats.cpuPercent
+                val ram = performanceStats.ramPercent ?: ((performanceStats.ramMb) * 100 / 512).coerceIn(0, 100)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("SISTEMA", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("CPU $cpu% • RAM $ram%", color = AccentLavender, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            if (currentStage < 5 && (tonalityText.isNotEmpty() || layerCountText.isNotEmpty())) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("CONCIERTO", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("$tonalityText • $layerCountText", color = AccentPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        HorizontalDivider(color = BorderHairline, thickness = 1.dp, modifier = Modifier.padding(vertical = 4.dp))
     }
-    // KEY / CAPAS
-    if (currentStage < 5 && (tonalityText.isNotEmpty() || layerCountText.isNotEmpty())) {
-        DropdownMenuItem(
-            text = { Text("$tonalityText  •  $layerCountText", color = AccentPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-            onClick = {},
-            enabled = false
-        )
-    }
-    // Segundo MIDI / Export
+
+    // 2. MODO INTERPRETACIÓN (Acción destacada siempre accesible)
+    DropdownMenuItem(
+        text = {
+            Text(
+                if (isPerformanceMode) "Salir de Modo Interpretación" else "Modo Interpretación",
+                color = if (isPerformanceMode) StateOk else AccentPrimary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        onClick = {
+            onDismiss()
+            onPerformanceModeToggle()
+        },
+        leadingIcon = {
+            Icon(
+                TablerIcons.DeviceDesktop,
+                contentDescription = null,
+                tint = if (isPerformanceMode) StateOk else AccentPrimary,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    )
+
+    // 3. SEGUNDO MIDI / EXPORT
     if (currentStage < 4) {
         DropdownMenuItem(
             text = { Text("Exportar como MIDI", color = if (isStageLocked || !hasRecording) TextSecondary.copy(alpha = 0.4f) else AccentPurple, fontSize = 11.sp) },
@@ -2010,7 +2175,8 @@ internal fun TopBarOverflowMenuItems(
             }
         )
     }
-    // REC / PLAY
+
+    // 4. REC / PLAY
     if (currentStage < 3) {
         DropdownMenuItem(
             text = { Text(if (isRecording) "Detener Grabación" else "Grabar (REC)", color = StatusError, fontSize = 11.sp) },
@@ -2035,7 +2201,8 @@ internal fun TopBarOverflowMenuItems(
             )
         }
     }
-    // Ajustes (Settings)
+
+    // 5. AJUSTES
     if (currentStage < 2) {
         DropdownMenuItem(
             text = { Text("Ajustes", color = if (isStageLocked) TextSecondary.copy(alpha = 0.4f) else TextPrimary, fontSize = 11.sp) },
@@ -2051,7 +2218,8 @@ internal fun TopBarOverflowMenuItems(
             }
         )
     }
-    // BPM / TAP
+
+    // 6. BPM / TAP
     if (currentStage < 1) {
         DropdownMenuItem(
             text = { Text("Metrónomo: $metronomeBpm BPM (${if (metronomeOn) "ON" else "OFF"})", color = if (metronomeOn) StateOk else TextPrimary, fontSize = 11.sp) },
@@ -2953,7 +3121,7 @@ fun PadStrip(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = bank.ifEmpty { "Bank A" },
+                        text = formatPadBankName(bank.ifEmpty { availableBanks.firstOrNull() ?: "" }),
                         color = Color.White,
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.SemiBold
@@ -2968,7 +3136,7 @@ fun PadStrip(
                 ) {
                     availableBanks.forEach { b ->
                         DropdownMenuItem(
-                            text = { Text(b, color = Color.White, fontSize = 12.sp) },
+                            text = { Text(formatPadBankName(b), color = Color.White, fontSize = 12.sp) },
                             onClick = {
                                 onBankChange(b)
                                 expanded = false
