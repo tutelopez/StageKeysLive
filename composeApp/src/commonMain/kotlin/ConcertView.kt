@@ -24,10 +24,12 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -116,7 +118,9 @@ fun ConcertViewScreen(
     sustainActive: Boolean,
     onSustainToggle: () -> Unit,
     vuLevels: List<Animatable<Float, *>>,
-    initialStageLocked: Boolean = false
+    initialStageLocked: Boolean = false,
+    initialUnlockProgress: Float = 0f,
+    initialShowCompactMenu: Boolean = false
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
@@ -204,7 +208,9 @@ fun ConcertViewScreen(
                     tonalityText = tonalityText,
                     layerCountText = layerCountText,
                     onPrevPatch = if (prevPatchIndex != null) { { onSelectPatch(prevPatchIndex) } } else null,
-                    onNextPatch = if (nextPatchIndex != null) { { onSelectPatch(nextPatchIndex) } } else null
+                    onNextPatch = if (nextPatchIndex != null) { { onSelectPatch(nextPatchIndex) } } else null,
+                    initialUnlockProgress = initialUnlockProgress,
+                    initialShowCompactMenu = initialShowCompactMenu
                 )
 
                 if (isPerformanceMode) {
@@ -691,16 +697,16 @@ private fun PerformanceModeView(
                         )
                     }
 
-                    // Fade derecho de 16dp solo si queda contenido para scrollear
+                    // Fade derecho de 24dp solo si queda contenido para scrollear
                     if (mixerScrollState.value < mixerScrollState.maxValue) {
                         Box(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .fillMaxHeight()
-                                .width(16.dp)
+                                .width(24.dp)
                                 .background(
                                     Brush.horizontalGradient(
-                                        listOf(Color.Transparent, DarkPanel)
+                                        listOf(Color.Transparent, DarkPanel.copy(alpha = 0.85f), DarkPanel)
                                     )
                                 )
                         )
@@ -873,26 +879,16 @@ private fun PerformancePadStrip(
                         modifier = Modifier
                             .weight(1f)
                             .height(42.dp)
-                            .then(
-                                if (isActive) {
-                                    Modifier.shadow(
-                                        elevation = 14.dp,
-                                        shape = RoundedCornerShape(9.dp),
-                                        ambientColor = StatusSuccess.copy(alpha = 0.6f),
-                                        spotColor = StatusSuccess.copy(alpha = 0.7f)
-                                    )
-                                } else Modifier
-                            )
                             .clip(RoundedCornerShape(9.dp))
                             .background(
                                 if (isActive)
-                                    Brush.verticalGradient(listOf(StateOk, StateOk.copy(alpha = 0.7f)))
+                                    Brush.verticalGradient(listOf(AccentPrimary, AccentPurple))
                                 else
                                     Brush.verticalGradient(listOf(SurfaceCard, SurfacePanel))
                             )
                             .border(
                                 width = 1.2.dp,
-                                color = if (isActive) StatusSuccess else OutlineVariant.copy(alpha = 0.35f),
+                                color = if (isActive) AccentLavender else OutlineVariant.copy(alpha = 0.35f),
                                 shape = RoundedCornerShape(9.dp)
                             )
                             .clickable(enabled = enabled) { onPadNoteToggle(index) },
@@ -952,9 +948,11 @@ internal fun TopBar(
     onNextPatch: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     initialUnlockProgress: Float = 0f,
+    initialShowCompactMenu: Boolean = false,
     onPanicPositioned: ((LayoutCoordinates) -> Unit)? = null,
     onLockPositioned: ((LayoutCoordinates) -> Unit)? = null,
-    onOtherPositioned: ((String, LayoutCoordinates) -> Unit)? = null
+    onOtherPositioned: ((String, LayoutCoordinates) -> Unit)? = null,
+    onStageComputed: ((Int, Boolean) -> Unit)? = null
 ) {
     var panicBlink by remember { mutableStateOf(false) }
     LaunchedEffect(panicBlink) {
@@ -964,6 +962,7 @@ internal fun TopBar(
         }
     }
 
+    val haptic = LocalHapticFeedback.current
     var isHoldingUnlock by remember { mutableStateOf(false) }
     var unlockProgress by remember(initialUnlockProgress) { mutableStateOf(initialUnlockProgress) }
 
@@ -978,6 +977,7 @@ internal fun TopBar(
                 unlockProgress = (elapsed.toFloat() / totalMs).coerceIn(0f, 1f)
             }
             if (isHoldingUnlock && elapsed >= totalMs) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onStageLockChange(false)
                 isHoldingUnlock = false
                 unlockProgress = 0f
@@ -987,8 +987,7 @@ internal fun TopBar(
         }
     }
 
-    var showCompactMenu by remember { mutableStateOf(false) }
-    var showMetroPopup by remember { mutableStateOf(false) }
+    var showCompactMenu by remember(initialShowCompactMenu) { mutableStateOf(initialShowCompactMenu) }
     var tapPulse by remember { mutableStateOf(false) }
     LaunchedEffect(tapPulse) {
         if (tapPulse) {
@@ -997,13 +996,8 @@ internal fun TopBar(
         }
     }
 
-    // Estado medido de colapso de cada sección (calculado dinámicamente)
-    var collapsedCpuRam by remember { mutableStateOf(false) }
-    var collapsedKeyCapas by remember { mutableStateOf(false) }
-    var collapsedExportMidi by remember { mutableStateOf(false) }
-    var collapsedRecPlay by remember { mutableStateOf(false) }
-    var collapsedSettings by remember { mutableStateOf(false) }
-    var collapsedBpmTap by remember { mutableStateOf(false) }
+    // Estados colapsados para el menú "⋮"
+    var currentStage by remember { mutableStateOf(7) }
 
     Surface(
         shape = RoundedCornerShape(14.dp),
@@ -1015,378 +1009,388 @@ internal fun TopBar(
         tonalElevation = 4.dp,
         modifier = modifier.fillMaxWidth().height(if (isCompact) 48.dp else 52.dp)
     ) {
-        SubcomposeLayout(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)
-        ) { constraints ->
-            val totalWidth = constraints.maxWidth
-            val totalHeight = constraints.maxHeight
-            val spacingPx = 6.dp.roundToPx()
-            val childConstraints = Constraints(minWidth = 0, maxWidth = totalWidth, minHeight = 0, maxHeight = totalHeight)
+        Box(modifier = Modifier.fillMaxSize()) {
+            SubcomposeLayout(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)
+            ) { constraints ->
+                val totalWidth = constraints.maxWidth
+                val totalHeight = constraints.maxHeight
+                val spacingPx = 6.dp.roundToPx()
+                val childConstraints = Constraints(minWidth = 0, maxWidth = totalWidth, minHeight = 0, maxHeight = totalHeight)
 
-            // ── 1. MEDIR ANCLA DERECHA: PANIC Y CANDADO PRIMERO (NUNCA SE RECORTAN NI SE DESPLAZAN) ──
-            val panicPlaceables = subcompose("PANIC") {
-                Box(
-                    modifier = Modifier
-                        .height(48.dp)
-                        .defaultMinSize(minWidth = 48.dp)
-                        .onGloballyPositioned { onPanicPositioned?.invoke(it) },
-                    contentAlignment = Alignment.Center
-                ) {
+                // ── 1. MEDIR ANCLA DERECHA: PANIC Y CANDADO PRIMERO (NUNCA SE RECORTAN NI SE DESPLAZAN) ──
+                val panicPlaceables = subcompose("PANIC") {
                     Box(
                         modifier = Modifier
-                            .height(if (isCompact) 28.dp else 32.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(StatusError.copy(alpha = if (panicBlink) 0.6f else 0.18f))
-                            .border(1.5.dp, StatusError, RoundedCornerShape(8.dp))
-                            .clickable {
-                                onPanicClick()
-                                panicBlink = true
-                            }
-                            .padding(horizontal = if (isCompact) 8.dp else 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                TablerIcons.AlertTriangle,
-                                contentDescription = "Panic",
-                                tint = StatusError,
-                                modifier = Modifier.size(if (isCompact) 15.dp else 17.dp)
-                            )
-                            if (!isCompact) {
-                                Text(
-                                    text = "PANIC",
-                                    color = StatusError,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    letterSpacing = 0.5.sp
-                                )
-                            }
-                        }
-                    }
-                }
-            }.map { it.measure(childConstraints) }
-
-            val lockPlaceables = subcompose("LOCK") {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .onGloballyPositioned { onLockPositioned?.invoke(it) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(if (isCompact) 28.dp else 32.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isStageLocked) AccentPrimary.copy(alpha = 0.25f) else DarkPanel)
-                            .border(
-                                1.2.dp,
-                                if (isStageLocked) AccentPrimary else OutlineVariant.copy(alpha = 0.5f),
-                                RoundedCornerShape(8.dp)
-                            )
-                            .pointerInput(isStageLocked) {
-                                if (!isStageLocked) {
-                                    detectTapGestures(
-                                        onTap = { onStageLockChange(true) }
-                                    )
-                                } else {
-                                    detectTapGestures(
-                                        onPress = {
-                                            isHoldingUnlock = true
-                                            tryAwaitRelease()
-                                            isHoldingUnlock = false
-                                        }
-                                    )
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isStageLocked && unlockProgress > 0f) {
-                            CircularProgressIndicator(
-                                progress = { unlockProgress },
-                                modifier = Modifier.size(if (isCompact) 24.dp else 28.dp),
-                                color = AccentLavender,
-                                strokeWidth = 2.dp
-                            )
-                        }
-                        Icon(
-                            if (isStageLocked) TablerIcons.Lock else TablerIcons.LockOpen,
-                            contentDescription = if (isStageLocked) "Bloqueo de escenario activo (mantén 1s para desbloquear)" else "Bloquear escenario",
-                            tint = if (isStageLocked) AccentPrimary else TextSecondary,
-                            modifier = Modifier.size(if (isCompact) 15.dp else 17.dp)
-                        )
-                    }
-                }
-            }.map { it.measure(childConstraints) }
-
-            val perfPlaceables = if (!isCompact) {
-                subcompose("PERF_MODE") {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .onGloballyPositioned { onOtherPositioned?.invoke("PERF_MODE", it) },
+                            .height(48.dp)
+                            .defaultMinSize(minWidth = 48.dp)
+                            .onGloballyPositioned { onPanicPositioned?.invoke(it) },
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (isPerformanceMode) StateOk.copy(alpha = 0.18f) else DarkPanel)
-                                .border(1.dp, if (isPerformanceMode) StateOk else OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-                            .clickable(onClick = onPerformanceModeToggle),
+                                .height(if (isCompact) 28.dp else 32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(StatusError.copy(alpha = if (panicBlink) 0.6f else 0.18f))
+                                .border(1.5.dp, StatusError, RoundedCornerShape(8.dp))
+                                .clickable {
+                                    onPanicClick()
+                                    panicBlink = true
+                                }
+                                .padding(horizontal = if (isCompact) 8.dp else 12.dp),
                             contentAlignment = Alignment.Center
                         ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    TablerIcons.AlertTriangle,
+                                    contentDescription = "Panic",
+                                    tint = StatusError,
+                                    modifier = Modifier.size(if (isCompact) 15.dp else 17.dp)
+                                )
+                                if (!isCompact) {
+                                    Text(
+                                        text = "PANIC",
+                                        color = StatusError,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }.map { it.measure(childConstraints) }
+
+                val lockPlaceables = subcompose("LOCK") {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .onGloballyPositioned { onLockPositioned?.invoke(it) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(if (isCompact) 28.dp else 32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isStageLocked) AccentPrimary.copy(alpha = 0.25f) else DarkPanel)
+                                .border(
+                                    1.2.dp,
+                                    if (isStageLocked) AccentPrimary else OutlineVariant.copy(alpha = 0.5f),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .pointerInput(isStageLocked) {
+                                    if (!isStageLocked) {
+                                        detectTapGestures(
+                                            onTap = { onStageLockChange(true) }
+                                        )
+                                    } else {
+                                        detectTapGestures(
+                                            onPress = {
+                                                isHoldingUnlock = true
+                                                tryAwaitRelease()
+                                                isHoldingUnlock = false
+                                            }
+                                        )
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isStageLocked && unlockProgress > 0f) {
+                                CircularProgressIndicator(
+                                    progress = { unlockProgress },
+                                    modifier = Modifier.size(if (isCompact) 24.dp else 28.dp),
+                                    color = AccentLavender,
+                                    strokeWidth = 2.dp
+                                )
+                            }
                             Icon(
-                                TablerIcons.DeviceDesktop,
-                                contentDescription = if (isPerformanceMode) "Salir del modo ejecución" else "Modo ejecución",
-                                tint = if (isPerformanceMode) StateOk else TextSecondary,
-                                modifier = Modifier.size(16.dp)
+                                if (isStageLocked) TablerIcons.Lock else TablerIcons.LockOpen,
+                                contentDescription = if (isStageLocked) "Bloqueo de escenario activo (mantén 1s para desbloquear)" else "Bloquear escenario",
+                                tint = if (isStageLocked) AccentPrimary else TextSecondary,
+                                modifier = Modifier.size(if (isCompact) 15.dp else 17.dp)
                             )
                         }
                     }
                 }.map { it.measure(childConstraints) }
-            } else emptyList()
 
-            val rightWidth = panicPlaceables.sumOf { it.width } + spacingPx +
-                    lockPlaceables.sumOf { it.width } +
-                    (if (perfPlaceables.isNotEmpty()) spacingPx + perfPlaceables.sumOf { it.width } else 0)
+                val perfPlaceables = if (!isCompact) {
+                    subcompose("PERF_MODE") {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .onGloballyPositioned { onOtherPositioned?.invoke("PERF_MODE", it) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isPerformanceMode) StateOk.copy(alpha = 0.18f) else DarkPanel)
+                                    .border(1.dp, if (isPerformanceMode) StateOk else OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                                    .clickable(onClick = onPerformanceModeToggle),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    TablerIcons.DeviceDesktop,
+                                    contentDescription = if (isPerformanceMode) "Salir del modo ejecución" else "Modo ejecución",
+                                    tint = if (isPerformanceMode) StateOk else TextSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }.map { it.measure(childConstraints) }
+                } else emptyList()
 
-            // ── 2. MEDIR ANCLA IZQUIERDA: VOLVER, PREV/NEXT PATCH, TÍTULO ──
-            val leftPlaceables = subcompose("LEFT") {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    // Back button (con guardia de stage lock: atenuado y deshabilitado si está bloqueado)
-                    IconButton(
-                        onClick = { if (!isStageLocked) onBackClick() },
-                        enabled = !isStageLocked,
+                val rightBaseWidth = panicPlaceables.sumOf { it.width } + spacingPx +
+                        lockPlaceables.sumOf { it.width } +
+                        (if (perfPlaceables.isNotEmpty()) spacingPx + perfPlaceables.sumOf { it.width } else 0)
+
+                // ── 2. MEDIR ANCLA IZQUIERDA: VOLVER, PREV/NEXT PATCH, TÍTULO ──
+                val leftPlaceables = subcompose("LEFT") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        // Back button (con guardia de stage lock: atenuado y deshabilitado si está bloqueado)
+                        IconButton(
+                            onClick = { if (!isStageLocked) onBackClick() },
+                            enabled = !isStageLocked,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .alpha(if (isStageLocked) 0.4f else 1f)
+                                .onGloballyPositioned { onOtherPositioned?.invoke("BACK_BTN", it) }
+                        ) {
+                            Icon(
+                                TablerIcons.ArrowLeft,
+                                contentDescription = "Back",
+                                tint = if (isStageLocked) TextTertiary else TextLight,
+                                modifier = Modifier.size(if (isCompact) 17.dp else 20.dp)
+                            )
+                        }
+
+                        if (!isCompact) {
+                            IconButton(
+                                onClick = { onPrevPatch?.invoke() },
+                                enabled = onPrevPatch != null,
+                                modifier = Modifier.size(36.dp).onGloballyPositioned { onOtherPositioned?.invoke("PREV_PATCH", it) }
+                            ) {
+                                Icon(
+                                    TablerIcons.ChevronLeft,
+                                    contentDescription = "Patch Anterior",
+                                    tint = if (onPrevPatch != null) AccentPrimary else TextTertiary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = { onNextPatch?.invoke() },
+                                enabled = onNextPatch != null,
+                                modifier = Modifier.size(36.dp).onGloballyPositioned { onOtherPositioned?.invoke("NEXT_PATCH", it) }
+                            ) {
+                                Icon(
+                                    TablerIcons.ChevronRight,
+                                    contentDescription = "Patch Siguiente",
+                                    tint = if (onNextPatch != null) AccentPrimary else TextTertiary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .widthIn(max = if (isCompact) 130.dp else 180.dp)
+                                .onGloballyPositioned { onOtherPositioned?.invoke("TITLE", it) }
+                        ) {
+                            Text(
+                                text = concertName.uppercase(),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = if (isCompact) 0.5.sp else 1.sp,
+                                    fontSize = if (isCompact) 11.sp else 12.sp
+                                ),
+                                color = TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (currentPatchName != null) {
+                                Text(
+                                    text = currentPatchName,
+                                    color = Color.White,
+                                    fontSize = if (isCompact) 12.sp else 14.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        if (isCompact && currentPatchName != null && onOpenPatchesDrawer != null) {
+                            Row(
+                                modifier = Modifier
+                                    .height(28.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(AccentPrimary.copy(alpha = 0.25f))
+                                    .border(1.dp, AccentPrimary.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                                    .clickable { onOpenPatchesDrawer() }
+                                    .padding(horizontal = 8.dp)
+                                    .onGloballyPositioned { onOtherPositioned?.invoke("PATCH_DRAWER_BTN", it) },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = currentPatchName,
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Icon(
+                                    TablerIcons.ChevronDown,
+                                    contentDescription = "Ver Patches",
+                                    tint = AccentLavender,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                    }
+                }.map { it.measure(childConstraints) }
+
+                val leftWidth = leftPlaceables.sumOf { it.width }
+
+                // ── 3. BOTÓN OVERFLOW "⋮" (MEDIDO) ──
+                val overflowPlaceables = subcompose("OVERFLOW_BTN") {
+                    Box(
                         modifier = Modifier
                             .size(48.dp)
-                            .alpha(if (isStageLocked) 0.4f else 1f)
-                            .onGloballyPositioned { onOtherPositioned?.invoke("BACK_BTN", it) }
+                            .onGloballyPositioned { onOtherPositioned?.invoke("OVERFLOW_BTN", it) },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            TablerIcons.ArrowLeft,
-                            contentDescription = "Back",
-                            tint = if (isStageLocked) TextTertiary else TextLight,
-                            modifier = Modifier.size(if (isCompact) 17.dp else 20.dp)
-                        )
-                    }
-
-                    if (!isCompact) {
                         IconButton(
-                            onClick = { onPrevPatch?.invoke() },
-                            enabled = onPrevPatch != null,
-                            modifier = Modifier.size(36.dp).onGloballyPositioned { onOtherPositioned?.invoke("PREV_PATCH", it) }
+                            onClick = { showCompactMenu = true },
+                            modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
-                                TablerIcons.ChevronLeft,
-                                contentDescription = "Patch Anterior",
-                                tint = if (onPrevPatch != null) AccentPrimary else TextTertiary,
-                                modifier = Modifier.size(20.dp)
+                                TablerIcons.DotsVertical,
+                                contentDescription = "Más opciones",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
-                        IconButton(
-                            onClick = { onNextPatch?.invoke() },
-                            enabled = onNextPatch != null,
-                            modifier = Modifier.size(36.dp).onGloballyPositioned { onOtherPositioned?.invoke("NEXT_PATCH", it) }
+
+                        DropdownMenu(
+                            expanded = showCompactMenu,
+                            onDismissRequest = { showCompactMenu = false },
+                            modifier = Modifier.background(DarkPanel)
                         ) {
-                            Icon(
-                                TablerIcons.ChevronRight,
-                                contentDescription = "Patch Siguiente",
-                                tint = if (onNextPatch != null) AccentPrimary else TextTertiary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-
-                    Column(
-                        modifier = Modifier
-                            .widthIn(max = if (isCompact) 130.dp else 180.dp)
-                            .onGloballyPositioned { onOtherPositioned?.invoke("TITLE", it) }
-                    ) {
-                        Text(
-                            text = concertName.uppercase(),
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = if (isCompact) 0.5.sp else 1.sp,
-                                fontSize = if (isCompact) 11.sp else 12.sp
-                            ),
-                            color = TextSecondary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (currentPatchName != null) {
-                            Text(
-                                text = currentPatchName,
-                                color = Color.White,
-                                fontSize = if (isCompact) 12.sp else 14.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    if (isCompact && currentPatchName != null && onOpenPatchesDrawer != null) {
-                        Row(
-                            modifier = Modifier
-                                .height(28.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(AccentPrimary.copy(alpha = 0.25f))
-                                .border(1.dp, AccentPrimary.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-                                .clickable { onOpenPatchesDrawer() }
-                                .padding(horizontal = 8.dp)
-                                .onGloballyPositioned { onOtherPositioned?.invoke("PATCH_DRAWER_BTN", it) },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = currentPatchName,
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Icon(
-                                TablerIcons.ChevronDown,
-                                contentDescription = "Ver Patches",
-                                tint = AccentLavender,
-                                modifier = Modifier.size(12.dp)
-                            )
-                        }
-                    }
-                }
-            }.map { it.measure(childConstraints) }
-
-            val leftWidth = leftPlaceables.sumOf { it.width }
-
-            // ── 3. BOTÓN OVERFLOW "⋮" (MEDIDO) ──
-            val overflowPlaceables = subcompose("OVERFLOW_BTN") {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .onGloballyPositioned { onOtherPositioned?.invoke("OVERFLOW_BTN", it) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    IconButton(
-                        onClick = { showCompactMenu = true },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            TablerIcons.DotsVertical,
-                            contentDescription = "Más opciones",
-                            tint = TextSecondary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = showCompactMenu,
-                        onDismissRequest = { showCompactMenu = false },
-                        modifier = Modifier.background(DarkPanel)
-                    ) {
-                        if (collapsedCpuRam && performanceStats != null) {
-                            val cpu = performanceStats.cpuPercent
-                            val ram = performanceStats.ramPercent ?: ((performanceStats.ramMb) * 100 / 512).coerceIn(0, 100)
-                            DropdownMenuItem(
-                                text = { Text("CPU: $cpu% | RAM: $ram%", color = AccentLavender, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                                onClick = {},
-                                enabled = false
-                            )
-                        }
-                        if (collapsedKeyCapas && (tonalityText.isNotEmpty() || layerCountText.isNotEmpty())) {
-                            DropdownMenuItem(
-                                text = { Text("$tonalityText  •  $layerCountText", color = AccentPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                                onClick = {},
-                                enabled = false
-                            )
-                        }
-                        if (collapsedExportMidi && hasRecording) {
-                            DropdownMenuItem(
-                                text = { Text("Exportar como MIDI", color = AccentPurple, fontSize = 11.sp) },
-                                onClick = {
-                                    showCompactMenu = false
-                                    onExportMidiClick()
-                                },
-                                leadingIcon = {
-                                    Icon(TablerIcons.Share, contentDescription = null, tint = AccentPurple, modifier = Modifier.size(14.dp))
-                                }
-                            )
-                        }
-                        if (collapsedRecPlay) {
-                            DropdownMenuItem(
-                                text = { Text(if (isRecording) "Detener Grabación" else "Grabar (REC)", color = StatusError, fontSize = 11.sp) },
-                                onClick = {
-                                    showCompactMenu = false
-                                    onRecordToggle()
-                                },
-                                leadingIcon = {
-                                    Box(Modifier.size(8.dp).clip(CircleShape).background(StatusError))
-                                }
-                            )
-                            if (hasRecording || isPlayingRecording) {
+                            // Monitor CPU/RAM (siempre presente en menú si no está la versión completa en la barra)
+                            if (currentStage < 7 && performanceStats != null) {
+                                val cpu = performanceStats.cpuPercent
+                                val ram = performanceStats.ramPercent ?: ((performanceStats.ramMb) * 100 / 512).coerceIn(0, 100)
                                 DropdownMenuItem(
-                                    text = { Text(if (isPlayingRecording) "Detener Reproducción" else "Reproducir Grabación", color = StateOk, fontSize = 11.sp) },
+                                    text = { Text("CPU: $cpu% | RAM: $ram%", color = AccentLavender, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                    onClick = {},
+                                    enabled = false
+                                )
+                            }
+                            // KEY / CAPAS
+                            if (currentStage < 5 && (tonalityText.isNotEmpty() || layerCountText.isNotEmpty())) {
+                                DropdownMenuItem(
+                                    text = { Text("$tonalityText  •  $layerCountText", color = AccentPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                    onClick = {},
+                                    enabled = false
+                                )
+                            }
+                            // Segundo MIDI / Export
+                            if (currentStage < 4) {
+                                DropdownMenuItem(
+                                    text = { Text("Exportar como MIDI", color = if (isStageLocked || !hasRecording) TextSecondary.copy(alpha = 0.4f) else AccentPurple, fontSize = 11.sp) },
+                                    enabled = !isStageLocked && hasRecording,
                                     onClick = {
-                                        showCompactMenu = false
-                                        onPlayRecordingClick()
+                                        if (!isStageLocked) {
+                                            showCompactMenu = false
+                                            onExportMidiClick()
+                                        }
                                     },
                                     leadingIcon = {
-                                        Icon(if (isPlayingRecording) TablerIcons.PlayerStop else TablerIcons.PlayerPlay, contentDescription = null, tint = StateOk, modifier = Modifier.size(14.dp))
+                                        Icon(TablerIcons.Share, contentDescription = null, tint = if (isStageLocked || !hasRecording) TextSecondary.copy(alpha = 0.4f) else AccentPurple, modifier = Modifier.size(14.dp))
+                                    }
+                                )
+                            }
+                            // REC / PLAY
+                            if (currentStage < 3) {
+                                DropdownMenuItem(
+                                    text = { Text(if (isRecording) "Detener Grabación" else "Grabar (REC)", color = StatusError, fontSize = 11.sp) },
+                                    onClick = {
+                                        showCompactMenu = false
+                                        onRecordToggle()
+                                    },
+                                    leadingIcon = {
+                                        Box(Modifier.size(8.dp).clip(CircleShape).background(StatusError))
+                                    }
+                                )
+                                if (hasRecording || isPlayingRecording) {
+                                    DropdownMenuItem(
+                                        text = { Text(if (isPlayingRecording) "Detener Reproducción" else "Reproducir Grabación", color = StateOk, fontSize = 11.sp) },
+                                        onClick = {
+                                            showCompactMenu = false
+                                            onPlayRecordingClick()
+                                        },
+                                        leadingIcon = {
+                                            Icon(if (isPlayingRecording) TablerIcons.PlayerStop else TablerIcons.PlayerPlay, contentDescription = null, tint = StateOk, modifier = Modifier.size(14.dp))
+                                        }
+                                    )
+                                }
+                            }
+                            // Ajustes (Settings)
+                            if (currentStage < 2) {
+                                DropdownMenuItem(
+                                    text = { Text("Ajustes", color = if (isStageLocked) TextSecondary.copy(alpha = 0.4f) else TextPrimary, fontSize = 11.sp) },
+                                    enabled = !isStageLocked,
+                                    onClick = {
+                                        if (!isStageLocked) {
+                                            showCompactMenu = false
+                                            onSettingsClick()
+                                        }
+                                    },
+                                    leadingIcon = {
+                                        Icon(TablerIcons.Settings, contentDescription = null, tint = if (isStageLocked) TextSecondary.copy(alpha = 0.4f) else TextSecondary, modifier = Modifier.size(14.dp))
+                                    }
+                                )
+                            }
+                            // BPM / TAP
+                            if (currentStage < 1) {
+                                DropdownMenuItem(
+                                    text = { Text("Metrónomo: $metronomeBpm BPM (${if (metronomeOn) "ON" else "OFF"})", color = if (metronomeOn) StateOk else TextPrimary, fontSize = 11.sp) },
+                                    onClick = {
+                                        onMetronomeToggle()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("TAP Tempo", color = AccentSky, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                    onClick = {
+                                        onTapTempo()
                                     }
                                 )
                             }
                         }
-                        if (collapsedSettings) {
-                            DropdownMenuItem(
-                                text = { Text("Ajustes", color = if (isStageLocked) TextSecondary.copy(alpha = 0.4f) else TextPrimary, fontSize = 11.sp) },
-                                enabled = !isStageLocked,
-                                onClick = {
-                                    showCompactMenu = false
-                                    onSettingsClick()
-                                },
-                                leadingIcon = {
-                                    Icon(TablerIcons.Settings, contentDescription = null, tint = if (isStageLocked) TextSecondary.copy(alpha = 0.4f) else TextSecondary, modifier = Modifier.size(14.dp))
-                                }
-                            )
-                        }
-                        if (collapsedBpmTap) {
-                            DropdownMenuItem(
-                                text = { Text("Metrónomo: $metronomeBpm BPM (${if (metronomeOn) "ON" else "OFF"})", color = if (metronomeOn) StateOk else TextPrimary, fontSize = 11.sp) },
-                                onClick = {
-                                    onMetronomeToggle()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("TAP Tempo", color = AccentSky, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                                onClick = {
-                                    onTapTempo()
-                                }
-                            )
-                        }
                     }
-                }
-            }.map { it.measure(childConstraints) }
+                }.map { it.measure(childConstraints) }
 
-            val overflowWidth = overflowPlaceables.sumOf { it.width } + spacingPx
+                val overflowWidth = overflowPlaceables.sumOf { it.width } + spacingPx
 
-            // ── 4. MEDIR COMPONENTES COLAPSABLES EN ORDEN ESTRICTO DE PRIORIDAD ──
-            val unconstrained = Constraints(minWidth = 0, maxWidth = Constraints.Infinity, minHeight = 0, maxHeight = totalHeight)
-            val availableCenter = (totalWidth - leftWidth - rightWidth - spacingPx * 2).coerceAtLeast(0)
+                // ── 4. MEDIR COMPONENTES CANDIDATOS (UNCONSTRAINED) ──
+                val unconstrained = Constraints(minWidth = 0, maxWidth = Constraints.Infinity, minHeight = 0, maxHeight = totalHeight)
 
-            // BPM / TAP / MIDI LED
-            val bpmPlaceables = subcompose("BPM_TAP") {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.onGloballyPositioned { onOtherPositioned?.invoke("BPM_TAP", it) }
-                ) {
-                    Box {
+                // BPM / TAP / MIDI Activity LED
+                val bpmPlaceables = subcompose("BPM_TAP") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.onGloballyPositioned { onOtherPositioned?.invoke("BPM_TAP", it) }
+                    ) {
                         Box(
                             modifier = Modifier
                                 .height(32.dp)
@@ -1405,66 +1409,64 @@ internal fun TopBar(
                                 letterSpacing = 0.5.sp
                             )
                         }
-                    }
 
-                    Box(
-                        modifier = Modifier
-                            .height(32.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (tapPulse) AccentSky.copy(alpha = 0.35f) else DarkPanel)
-                            .border(1.2.dp, if (tapPulse) AccentSky else OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                            .clickable {
-                                tapPulse = true
-                                onTapTempo()
-                            }
-                            .padding(horizontal = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "TAP",
-                            color = if (tapPulse) Color.White else AccentSky,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
-
-                    // MIDI Indicator LED
-                    Box(
-                        modifier = Modifier
-                            .height(32.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (midiActive) StateOk.copy(alpha = 0.18f) else DarkPanel)
-                            .border(1.2.dp, if (midiActive) StateOk else OutlineVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-                            .padding(horizontal = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .clip(CircleShape)
-                                    .background(if (midiActive) StateOk else TextTertiary)
+                        Box(
+                            modifier = Modifier
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (tapPulse) AccentSky.copy(alpha = 0.35f) else DarkPanel)
+                                .border(1.2.dp, if (tapPulse) AccentSky else OutlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                                .clickable {
+                                    tapPulse = true
+                                    onTapTempo()
+                                }
+                                .padding(horizontal = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "TAP",
+                                color = if (tapPulse) Color.White else AccentSky,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp
                             )
-                            if (!isCompact) {
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text = "MIDI",
-                                    color = if (midiActive) StateOk else TextSecondary,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.5.sp
+                        }
+
+                        // MIDI Activity Indicator LED
+                        Box(
+                            modifier = Modifier
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (midiActive) StateOk.copy(alpha = 0.18f) else DarkPanel)
+                                .border(1.2.dp, if (midiActive) StateOk else OutlineVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                                .padding(horizontal = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(if (midiActive) StateOk else TextTertiary)
                                 )
+                                if (!isCompact) {
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = "MIDI",
+                                        color = if (midiActive) StateOk else TextSecondary,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
                             }
                         }
                     }
-                }
-            }.map { it.measure(unconstrained) }
-            val bpmWidth = bpmPlaceables.sumOf { it.width }
+                }.map { it.measure(unconstrained) }
+                val wBpm = bpmPlaceables.sumOf { it.width }
 
-            // Ajustes (Settings)
-            val settingsPlaceables = if (!isPerformanceMode && !isCompact) {
-                subcompose("SETTINGS") {
+                // Ajustes (Settings)
+                val settingsPlaceables = subcompose("SETTINGS") {
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -1490,12 +1492,10 @@ internal fun TopBar(
                         }
                     }
                 }.map { it.measure(unconstrained) }
-            } else emptyList()
-            val settingsWidth = settingsPlaceables.sumOf { it.width }
+                val wSettings = settingsPlaceables.sumOf { it.width }
 
-            // REC / PLAY
-            val recPlayPlaceables = if (!isPerformanceMode && !isCompact) {
-                subcompose("REC_PLAY") {
+                // REC / PLAY
+                val recPlayPlaceables = subcompose("REC_PLAY") {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1562,12 +1562,10 @@ internal fun TopBar(
                         }
                     }
                 }.map { it.measure(unconstrained) }
-            } else emptyList()
-            val recPlayWidth = recPlayPlaceables.sumOf { it.width }
+                val wRecPlay = recPlayPlaceables.sumOf { it.width }
 
-            // Export MIDI (Segundo MIDI)
-            val exportMidiPlaceables = if (!isPerformanceMode && !isCompact) {
-                subcompose("EXPORT_MIDI") {
+                // Export MIDI (Segundo MIDI)
+                val exportMidiPlaceables = subcompose("EXPORT_MIDI") {
                     Box(
                         modifier = Modifier
                             .height(32.dp)
@@ -1601,173 +1599,260 @@ internal fun TopBar(
                         }
                     }
                 }.map { it.measure(unconstrained) }
-            } else emptyList()
-            val exportMidiWidth = exportMidiPlaceables.sumOf { it.width }
+                val wExport = exportMidiPlaceables.sumOf { it.width }
 
-            // KEY / CAPAS
-            val keyCapasPlaceables = if (!isCompact && (tonalityText.isNotEmpty() || layerCountText.isNotEmpty())) {
-                subcompose("KEY_CAPAS") {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.onGloballyPositioned { onOtherPositioned?.invoke("KEY_CAPAS", it) }
-                    ) {
-                        if (tonalityText.isNotEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .height(28.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(SurfaceCard)
-                                    .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = tonalityText,
-                                    color = AccentLavender,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                // KEY / CAPAS
+                val keyCapasPlaceables = if (tonalityText.isNotEmpty() || layerCountText.isNotEmpty()) {
+                    subcompose("KEY_CAPAS") {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.onGloballyPositioned { onOtherPositioned?.invoke("KEY_CAPAS", it) }
+                        ) {
+                            if (tonalityText.isNotEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .height(28.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(SurfaceCard)
+                                        .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = tonalityText,
+                                        color = AccentLavender,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            if (layerCountText.isNotEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .height(28.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(SurfaceCard)
+                                        .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = layerCountText,
+                                        color = AccentPrimary,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
-                        if (layerCountText.isNotEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .height(28.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(SurfaceCard)
-                                    .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = layerCountText,
-                                    color = AccentPrimary,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
+                    }.map { it.measure(unconstrained) }
+                } else emptyList()
+                val wKeyCapas = keyCapasPlaceables.sumOf { it.width }
+
+                // CPU/RAM Mini (versión compacta con 2 números con color de estado, sin barras)
+                val cpuRamMiniPlaceables = subcompose("CPU_RAM_MINI") {
+                    Box(modifier = Modifier.onGloballyPositioned { onOtherPositioned?.invoke("CPU_RAM_MINI", it) }) {
+                        ResourceMonitorWidgetMini(stats = performanceStats)
                     }
                 }.map { it.measure(unconstrained) }
-            } else emptyList()
-            val keyCapasWidth = keyCapasPlaceables.sumOf { it.width }
+                val wCpuMini = cpuRamMiniPlaceables.sumOf { it.width }
 
-            // CPU / RAM
-            val cpuRamPlaceables = if (!isCompact) {
-                subcompose("CPU_RAM") {
-                    Box(modifier = Modifier.onGloballyPositioned { onOtherPositioned?.invoke("CPU_RAM", it) }) {
+                // CPU/RAM Full (versión completa con barras finas)
+                val cpuRamFullPlaceables = subcompose("CPU_RAM_FULL") {
+                    Box(modifier = Modifier.onGloballyPositioned { onOtherPositioned?.invoke("CPU_RAM_FULL", it) }) {
                         ResourceMonitorWidget(stats = performanceStats)
                     }
                 }.map { it.measure(unconstrained) }
-            } else emptyList()
-            val cpuRamWidth = cpuRamPlaceables.sumOf { it.width }
+                val wCpuFull = cpuRamFullPlaceables.sumOf { it.width }
 
-            // Cálculo exacto de espacio y colapso según orden de prioridad:
-            // Orden de colapso al faltar ancho (el primero se esconde antes):
-            // 1. CPU/RAM -> 2. KEY/CAPAS -> 3. segundo MIDI -> 4. REC/PLAY/export -> 5. Ajustes -> 6. BPM/TAP
-            val totalAllCenterWidth = (if (bpmWidth > 0) bpmWidth + spacingPx else 0) +
-                    (if (settingsWidth > 0) settingsWidth + spacingPx else 0) +
-                    (if (recPlayWidth > 0) recPlayWidth + spacingPx else 0) +
-                    (if (exportMidiWidth > 0) exportMidiWidth + spacingPx else 0) +
-                    (if (keyCapasWidth > 0) keyCapasWidth + spacingPx else 0) +
-                    (if (cpuRamWidth > 0) cpuRamWidth + spacingPx else 0)
+                // ── 5. SELECCIÓN ESTRICTA Y MONÓTONA DE ETAPA DE VISIBILIDAD ──
+                // Orden de prioridad de permanencia:
+                // BPM/TAP (Stage 1) -> Ajustes (Stage 2) -> REC/PLAY (Stage 3) -> segundo MIDI (Stage 4) -> KEY/CAPAS (Stage 5) -> CPU/RAM Mini (Stage 6) -> CPU/RAM Full (Stage 7)
+                val req1 = wBpm
+                val req2 = req1 + (if (wSettings > 0) spacingPx + wSettings else 0)
+                val req3 = req2 + (if (wRecPlay > 0) spacingPx + wRecPlay else 0)
+                val req4 = req3 + (if (wExport > 0) spacingPx + wExport else 0)
+                val req5 = req4 + (if (wKeyCapas > 0) spacingPx + wKeyCapas else 0)
+                val req6 = req5 + (if (wCpuMini > 0) spacingPx + wCpuMini else 0)
+                val req7 = req5 + (if (wCpuFull > 0) spacingPx + wCpuFull else 0)
 
-            val fitsAllWithoutOverflow = totalAllCenterWidth <= availableCenter
-            val showOverflow = !fitsAllWithoutOverflow
-            val effectiveSpaceForCenter = if (showOverflow) availableCenter - overflowWidth else availableCenter
+                val availNoOverflow = totalWidth - leftWidth - rightBaseWidth - (spacingPx * 2)
+                val availWithOverflow = totalWidth - leftWidth - rightBaseWidth - overflowWidth - (spacingPx * 3)
 
-            var spaceRemaining = effectiveSpaceForCenter
-            val showBpm = (bpmWidth > 0 && bpmWidth <= spaceRemaining).also { if (it) spaceRemaining -= (bpmWidth + spacingPx) }
-            val showSettings = showBpm && (settingsWidth > 0 && settingsWidth <= spaceRemaining).also { if (it) spaceRemaining -= (settingsWidth + spacingPx) }
-            val showRecPlay = showSettings && (recPlayWidth > 0 && recPlayWidth <= spaceRemaining).also { if (it) spaceRemaining -= (recPlayWidth + spacingPx) }
-            val showExportMidi = showRecPlay && (exportMidiWidth > 0 && exportMidiWidth <= spaceRemaining).also { if (it) spaceRemaining -= (exportMidiWidth + spacingPx) }
-            val showKeyCapas = showExportMidi && (keyCapasWidth > 0 && keyCapasWidth <= spaceRemaining).also { if (it) spaceRemaining -= (keyCapasWidth + spacingPx) }
-            val showCpuRam = showKeyCapas && (cpuRamWidth > 0 && cpuRamWidth <= spaceRemaining).also { if (it) spaceRemaining -= (cpuRamWidth + spacingPx) }
+                val stage: Int
+                val showOverflow: Boolean
 
-            // Guardar para el menú emergente
-            collapsedCpuRam = !showCpuRam
-            collapsedKeyCapas = !showKeyCapas
-            collapsedExportMidi = !showExportMidi
-            collapsedRecPlay = !showRecPlay
-            collapsedSettings = !showSettings
-            collapsedBpmTap = !showBpm
-
-            layout(totalWidth, totalHeight) {
-                // Colocar Ancla Izquierda
-                var leftX = 0
-                leftPlaceables.forEach { p ->
-                    p.placeRelative(leftX, (totalHeight - p.height) / 2)
-                    leftX += p.width + spacingPx
+                if (availNoOverflow >= req7) {
+                    stage = 7
+                    showOverflow = false
+                } else {
+                    showOverflow = true
+                    stage = when {
+                        availWithOverflow >= req6 -> 6
+                        availWithOverflow >= req5 -> 5
+                        availWithOverflow >= req4 -> 4
+                        availWithOverflow >= req3 -> 3
+                        availWithOverflow >= req2 -> 2
+                        availWithOverflow >= req1 -> 1
+                        else -> 0
+                    }
                 }
 
-                // Colocar Ancla Derecha: PANIC y CANDADO ANCLADOS A LA DERECHA (nunca desplazados ni recortados)
-                var rightX = totalWidth
-                panicPlaceables.forEach { p ->
-                    rightX -= p.width
-                    p.placeRelative(rightX, (totalHeight - p.height) / 2)
-                    rightX -= spacingPx
-                }
+                currentStage = stage
+                onStageComputed?.invoke(stage, showOverflow)
 
-                lockPlaceables.forEach { p ->
-                    rightX -= p.width
-                    p.placeRelative(rightX, (totalHeight - p.height) / 2)
-                    rightX -= spacingPx
-                }
+                val showBpm = stage >= 1
+                val showSettings = stage >= 2
+                val showRecPlay = stage >= 3
+                val showExportMidi = stage >= 4
+                val showKeyCapas = stage >= 5
+                val showCpuMini = stage == 6
+                val showCpuFull = stage == 7
 
-                perfPlaceables.forEach { p ->
-                    rightX -= p.width
-                    p.placeRelative(rightX, (totalHeight - p.height) / 2)
-                    rightX -= spacingPx
-                }
+                layout(totalWidth, totalHeight) {
+                    // Colocar Ancla Izquierda
+                    var leftX = 0
+                    leftPlaceables.forEach { p ->
+                        p.placeRelative(leftX, (totalHeight - p.height) / 2)
+                        leftX += p.width + spacingPx
+                    }
 
-                if (showOverflow) {
-                    overflowPlaceables.forEach { p ->
+                    // Colocar Ancla Derecha: PANIC, LOCK, (PERF_MODE) y OVERFLOW anclados a la derecha
+                    var rightX = totalWidth
+                    panicPlaceables.forEach { p ->
                         rightX -= p.width
                         p.placeRelative(rightX, (totalHeight - p.height) / 2)
                         rightX -= spacingPx
                     }
-                }
 
-                // Colocar Elementos Centrales Visibles
-                var centerX = leftX + spacingPx
-                if (showKeyCapas) {
-                    keyCapasPlaceables.forEach { p ->
-                        p.placeRelative(centerX, (totalHeight - p.height) / 2)
-                        centerX += p.width + spacingPx
+                    lockPlaceables.forEach { p ->
+                        rightX -= p.width
+                        p.placeRelative(rightX, (totalHeight - p.height) / 2)
+                        rightX -= spacingPx
                     }
-                }
-                if (showCpuRam) {
-                    cpuRamPlaceables.forEach { p ->
-                        p.placeRelative(centerX, (totalHeight - p.height) / 2)
-                        centerX += p.width + spacingPx
+
+                    perfPlaceables.forEach { p ->
+                        rightX -= p.width
+                        p.placeRelative(rightX, (totalHeight - p.height) / 2)
+                        rightX -= spacingPx
                     }
-                }
-                if (showBpm) {
-                    bpmPlaceables.forEach { p ->
-                        p.placeRelative(centerX, (totalHeight - p.height) / 2)
-                        centerX += p.width + spacingPx
+
+                    if (showOverflow) {
+                        overflowPlaceables.forEach { p ->
+                            rightX -= p.width
+                            p.placeRelative(rightX, (totalHeight - p.height) / 2)
+                            rightX -= spacingPx
+                        }
                     }
-                }
-                if (showRecPlay) {
-                    recPlayPlaceables.forEach { p ->
-                        p.placeRelative(centerX, (totalHeight - p.height) / 2)
-                        centerX += p.width + spacingPx
+
+                    // Colocar Elementos Centrales Visibles
+                    var centerX = leftX + spacingPx
+                    if (showKeyCapas) {
+                        keyCapasPlaceables.forEach { p ->
+                            p.placeRelative(centerX, (totalHeight - p.height) / 2)
+                            centerX += p.width + spacingPx
+                        }
                     }
-                }
-                if (showExportMidi) {
-                    exportMidiPlaceables.forEach { p ->
-                        p.placeRelative(centerX, (totalHeight - p.height) / 2)
-                        centerX += p.width + spacingPx
+                    if (showCpuFull) {
+                        cpuRamFullPlaceables.forEach { p ->
+                            p.placeRelative(centerX, (totalHeight - p.height) / 2)
+                            centerX += p.width + spacingPx
+                        }
+                    } else if (showCpuMini) {
+                        cpuRamMiniPlaceables.forEach { p ->
+                            p.placeRelative(centerX, (totalHeight - p.height) / 2)
+                            centerX += p.width + spacingPx
+                        }
                     }
-                }
-                if (showSettings) {
-                    settingsPlaceables.forEach { p ->
-                        p.placeRelative(centerX, (totalHeight - p.height) / 2)
-                        centerX += p.width + spacingPx
+                    if (showBpm) {
+                        bpmPlaceables.forEach { p ->
+                            p.placeRelative(centerX, (totalHeight - p.height) / 2)
+                            centerX += p.width + spacingPx
+                        }
+                    }
+                    if (showRecPlay) {
+                        recPlayPlaceables.forEach { p ->
+                            p.placeRelative(centerX, (totalHeight - p.height) / 2)
+                            centerX += p.width + spacingPx
+                        }
+                    }
+                    if (showExportMidi) {
+                        exportMidiPlaceables.forEach { p ->
+                            p.placeRelative(centerX, (totalHeight - p.height) / 2)
+                            centerX += p.width + spacingPx
+                        }
+                    }
+                    if (showSettings) {
+                        settingsPlaceables.forEach { p ->
+                            p.placeRelative(centerX, (totalHeight - p.height) / 2)
+                            centerX += p.width + spacingPx
+                        }
                     }
                 }
             }
+
+            // ── Barra de progreso a lo ancho de la barra superior al mantener para desbloquear ──
+            if (isStageLocked && unlockProgress > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.5.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(DarkPanel)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(unlockProgress)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(AccentPrimary, AccentLavender, StateOk)
+                                )
+                            )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResourceMonitorWidgetMini(
+    stats: PerformanceStats?,
+    modifier: Modifier = Modifier
+) {
+    val cpu = stats?.cpuPercent ?: 0
+    val ramPercent = stats?.ramPercent ?: ((stats?.ramMb ?: 0) * 100 / 512).coerceIn(0, 100)
+
+    val cpuColor = when {
+        cpu >= 80 -> StatusError
+        cpu >= 50 -> StatusWarning
+        else -> StateOk
+    }
+
+    val ramColor = when {
+        ramPercent >= 85 -> StatusError
+        ramPercent >= 65 -> StatusWarning
+        else -> AccentPrimary
+    }
+
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = SurfaceCard,
+        border = BorderStroke(1.dp, BorderHairline),
+        modifier = modifier.height(28.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text("C:", color = TextTertiary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Text("$cpu%", color = cpuColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text("•", color = TextTertiary, fontSize = 11.sp)
+            Text("R:", color = TextTertiary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Text("$ramPercent%", color = ramColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -2389,16 +2474,16 @@ private fun MixerPanel(
                         )
                     }
 
-                    // Fade derecho de 16dp solo si queda contenido para scrollear
+                    // Fade derecho de 24dp solo si queda contenido para scrollear
                     if (scrollState.value < scrollState.maxValue) {
                         Box(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .fillMaxHeight()
-                                .width(16.dp)
+                                .width(24.dp)
                                 .background(
                                     Brush.horizontalGradient(
-                                        listOf(Color.Transparent, DarkPanel)
+                                        listOf(Color.Transparent, DarkPanel.copy(alpha = 0.85f), DarkPanel)
                                     )
                                 )
                         )

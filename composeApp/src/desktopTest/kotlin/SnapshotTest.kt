@@ -1338,8 +1338,9 @@ class SnapshotTest {
     }
 
     @Test
-    fun testTopBarPanicAndLockBoundsAcrossAllWidths() {
+    fun testTopBarMonotonicityReachabilityAndBounds() {
         val widths = ((800..1920 step 40).toList() + listOf(960, 1024, 1280)).distinct().sorted()
+        val stagesByWidth = mutableMapOf<Int, Pair<Int, Boolean>>()
 
         for (w in widths) {
             var panicRect: Rect? = null
@@ -1378,7 +1379,8 @@ class SnapshotTest {
                         layerCountText = "2 CAPAS",
                         onPanicPositioned = { panicRect = it.boundsInRoot() },
                         onLockPositioned = { lockRect = it.boundsInRoot() },
-                        onOtherPositioned = { tag, coords -> otherRects[tag] = coords.boundsInRoot() }
+                        onOtherPositioned = { tag, coords -> otherRects[tag] = coords.boundsInRoot() },
+                        onStageComputed = { stage, showOverflow -> stagesByWidth[w] = Pair(stage, showOverflow) }
                     )
                 }
             }
@@ -1387,28 +1389,59 @@ class SnapshotTest {
             assertNotNull(panicRect, "PANIC debe existir para ancho $w")
             assertNotNull(lockRect, "Lock debe existir para ancho $w")
 
-            // 1. Completamente dentro de la ventana:
-            assertTrue(panicRect!!.left >= 0f, "PANIC left (${panicRect!!.left}) >= 0 para w=$w")
-            assertTrue(panicRect!!.right <= w.toFloat() + 0.5f, "PANIC right (${panicRect!!.right}) <= $w para w=$w")
-            assertTrue(lockRect!!.left >= 0f, "Lock left (${lockRect!!.left}) >= 0 para w=$w")
-            assertTrue(lockRect!!.right <= w.toFloat() + 0.5f, "Lock right (${lockRect!!.right}) <= $w para w=$w")
+            val pRect = panicRect!!
+            val lRect = lockRect!!
 
-            // 2. Área táctil >= 48dp (en desktop 1dp = 1px a density=1f):
-            assertTrue(panicRect!!.width >= 47.9f, "PANIC width (${panicRect!!.width}) >= 48dp para w=$w")
-            assertTrue(panicRect!!.height >= 47.9f, "PANIC height (${panicRect!!.height}) >= 48dp para w=$w")
-            assertTrue(lockRect!!.width >= 47.9f, "Lock width (${lockRect!!.width}) >= 48dp para w=$w")
-            assertTrue(lockRect!!.height >= 47.9f, "Lock height (${lockRect!!.height}) >= 48dp para w=$w")
+            // 1. Completamente dentro de la ventana:
+            assertTrue(pRect.left >= 0f, "PANIC left (${pRect.left}) >= 0 para w=$w")
+            assertTrue(pRect.right <= w.toFloat() + 0.5f, "PANIC right (${pRect.right}) <= $w para w=$w")
+            assertTrue(lRect.left >= 0f, "Lock left (${lRect.left}) >= 0 para w=$w")
+            assertTrue(lRect.right <= w.toFloat() + 0.5f, "Lock right (${lRect.right}) <= $w para w=$w")
+
+            // 2. Área táctil >= 48dp:
+            assertTrue(pRect.width >= 47.9f, "PANIC width (${pRect.width}) >= 48dp para w=$w")
+            assertTrue(pRect.height >= 47.9f, "PANIC height (${pRect.height}) >= 48dp para w=$w")
+            assertTrue(lRect.width >= 47.9f, "Lock width (${lRect.width}) >= 48dp para w=$w")
+            assertTrue(lRect.height >= 47.9f, "Lock height (${lRect.height}) >= 48dp para w=$w")
 
             // 3. No solapamiento entre PANIC y Lock:
-            assertFalse(rectsOverlap(panicRect!!, lockRect!!), "PANIC y Lock no deben solaparse para w=$w")
+            assertFalse(rectsOverlap(pRect, lRect), "PANIC y Lock no deben solaparse para w=$w")
 
             // 4. No solapamiento con ningún otro control:
             for ((tag, rect) in otherRects) {
-                assertFalse(rectsOverlap(panicRect!!, rect), "PANIC no debe solaparse con $tag para w=$w")
-                assertFalse(rectsOverlap(lockRect!!, rect), "Lock no debe solaparse con $tag para w=$w")
+                assertFalse(rectsOverlap(pRect, rect), "PANIC no debe solaparse con $tag para w=$w")
+                assertFalse(rectsOverlap(lRect, rect), "Lock no debe solaparse con $tag para w=$w")
             }
         }
-        println("TOPBAR_BOUNDS_ACROSS_ALL_WIDTHS_VERIFIED: Tested ${widths.size} widths from 800 to 1920dp.")
+
+        // a) MONOTONÍA: un ítem visible a ancho w debe seguir visible a todo ancho mayor
+        for (i in 0 until widths.size - 1) {
+            val w1 = widths[i]
+            val w2 = widths[i + 1]
+            val (st1, _) = stagesByWidth[w1]!!
+            val (st2, _) = stagesByWidth[w2]!!
+            assertTrue(
+                st1 <= st2,
+                "Monotonía violada: ancho w=$w1 tiene etapa $st1 mientras que ancho mayor w=$w2 tiene etapa menor $st2"
+            )
+        }
+
+        // b) ALCANZABILIDAD: cada acción de la barra está visible en la barra O en el menú "⋮"
+        for (w in widths) {
+            val (st, ov) = stagesByWidth[w]!!
+            if (st < 7) {
+                assertTrue(ov, "El menú overflow '⋮' debe estar visible si se colapsa algún elemento (stage $st < 7) en w=$w")
+            }
+            // Verificamos alcanzabilidad de las 8 acciones de la barra:
+            assertTrue(st >= 1 || ov, "BPM/TAP debe ser visible en la barra o en '⋮' para w=$w")
+            assertTrue(st >= 2 || ov, "Ajustes debe ser visible en la barra o en '⋮' para w=$w")
+            assertTrue(st >= 3 || ov, "REC/PLAY debe ser visible en la barra o en '⋮' para w=$w")
+            assertTrue(st >= 4 || ov, "Export MIDI debe ser visible en la barra o en '⋮' para w=$w")
+            assertTrue(st >= 5 || ov, "KEY/CAPAS debe ser visible en la barra o en '⋮' para w=$w")
+            assertTrue(st >= 6 || ov, "CPU/RAM Mini/Full debe ser visible en la barra o en '⋮' para w=$w")
+        }
+
+        println("TOPBAR_MONOTONICITY_REACHABILITY_AND_BOUNDS_VERIFIED: Tested ${widths.size} widths from 800 to 1920dp.")
     }
 
     @Test
@@ -1417,30 +1450,21 @@ class SnapshotTest {
         var fxClicked = false
         var addClicked = false
         var backClicked = false
+        var settingsClicked = false
+        var exportClicked = false
         var faderChanged = false
         var muteToggled = false
         var soloToggled = false
         var patchSelected = false
         var panicClicked = false
 
-        val channel = ChannelStripState(
-            id = 1,
-            name = "Piano",
-            sf2Name = "Yamaha CFX",
-            sf2Path = null,
-            volume = 0.8f,
-            isMuted = false,
-            isSoloed = false,
-            keyRangeStart = 21,
-            keyRangeEnd = 108,
-            colorHex = "#F5C542"
-        )
-
         // Verificamos comportamiento con stage lock = true:
         val onGear: () -> Unit = { gearClicked = true }
         val onFx: () -> Unit = { fxClicked = true }
         val onAdd: () -> Unit = { addClicked = true }
         val onBack: () -> Unit = { backClicked = true }
+        val onSettings: () -> Unit = { settingsClicked = true }
+        val onExport: () -> Unit = { exportClicked = true }
         val onVolChange: (Float) -> Unit = { faderChanged = true }
         val onMute: () -> Unit = { muteToggled = true }
         val onSolo: () -> Unit = { soloToggled = true }
@@ -1448,16 +1472,22 @@ class SnapshotTest {
         val onPanic: () -> Unit = { panicClicked = true }
 
         val isLocked = true
-        // Simulamos invocaciones directas a los handlers protegidos:
+        val hasRecording = true
+
+        // Acciones protegidas tanto en pantalla principal como dentro de "⋮":
         val guardedGear = { if (!isLocked) onGear() }
         val guardedFx = { if (!isLocked) onFx() }
         val guardedAdd = { if (!isLocked) onAdd() }
         val guardedBack = { if (!isLocked) onBack() }
+        val guardedSettings = { if (!isLocked) onSettings() }
+        val guardedExport = { if (!isLocked && hasRecording) onExport() }
 
         guardedGear()
         guardedFx()
         guardedAdd()
         guardedBack()
+        guardedSettings()
+        guardedExport()
 
         // Controles de actuación en vivo NO están bloqueados:
         onVolChange(0.5f)
@@ -1471,6 +1501,8 @@ class SnapshotTest {
         assertFalse(fxClicked, "Fx click no debe ejecutarse en stage lock")
         assertFalse(addClicked, "Add channel click no debe ejecutarse en stage lock")
         assertFalse(backClicked, "Back navigation click no debe ejecutarse en stage lock")
+        assertFalse(settingsClicked, "Settings click dentro de '⋮' no debe ejecutarse en stage lock")
+        assertFalse(exportClicked, "Export MIDI click dentro de '⋮' no debe ejecutarse en stage lock")
 
         // Assert que los controles de ejecución siguen funcionando:
         assertTrue(faderChanged, "Fader debe funcionar en stage lock")
@@ -1478,29 +1510,121 @@ class SnapshotTest {
         assertTrue(soloToggled, "Solo debe funcionar en stage lock")
         assertTrue(patchSelected, "Cambio de parche debe funcionar en stage lock")
         assertTrue(panicClicked, "PANIC debe funcionar en stage lock")
-        println("STAGE_LOCK_INTERACTIONS_VERIFIED_SUCCESSFULLY")
+        println("STAGE_LOCK_INTERACTIONS_AND_MENU_DISABLED_VERIFIED_SUCCESSFULLY")
     }
 
     @Test
     fun snapshotStageLockProgress() {
+        val concert = createStandardConcert()
         val bytes = renderScene(width = 1024, height = 720) {
-            TopBar(
-                concertName = "Domingo Noche - En Vivo",
-                currentPatchName = "01 Intro Worship",
+            val vuAnim = remember { concert.channels.map { Animatable(0.55f) } }
+            ConcertViewScreen(
+                concert = concert,
+                selectedPatchIndex = 0,
+                onSelectPatch = {},
+                onAddPatchClick = {},
+                onEditPatchClick = {},
+                onDeletePatch = {},
+                onExportPatchClick = {},
+                onImportPatchClick = {},
+                onToggleFavorite = {},
+                onMovePatch = { _, _ -> },
+                onBackClick = {},
+                onSettingsClick = {},
+                onPanicClick = {},
+                performanceStats = PerformanceStats(cpuPercent = 8, ramMb = 180, ramPercent = 18),
+                batteryLevel = 95,
+                batteryCharging = false,
+                audioDiagnostics = "48 kHz • 128 frames (2.7 ms)",
+                currentConnectedDevices = listOf("nanoKONTROL2", "Arturia KeyLab 88"),
+                midiActivityIndicator = true,
                 metronomeOn = true,
                 onMetronomeToggle = {},
-                metronomeTick = false,
                 metronomeBpm = 128,
                 onBpmChange = {},
                 onBpmChangeFinished = {},
                 onTapTempo = {},
+                metronomeVolume = 0.7f,
+                onMetronomeVolumeChange = {},
+                metronomeTick = false,
                 isRecording = false,
                 onRecordToggle = {},
                 isPlayingRecording = false,
                 onPlayRecordingClick = {},
                 hasRecording = false,
                 onExportMidiClick = {},
-                midiActive = true,
+                onVolumeChange = { _, _ -> },
+                onMuteToggle = {},
+                onSoloToggle = {},
+                onAddChannelClick = {},
+                onChannelGearClick = {},
+                onReverbChange = { _, _ -> },
+                onChorusChange = { _, _ -> },
+                onCutoffChange = { _, _ -> },
+                midiMappings = emptyMap(),
+                masterVolume = 0.82f,
+                masterPan = 0.5f,
+                isMasterLimiterActive = true,
+                onMasterVolumeChange = {},
+                onMasterPanChange = {},
+                masterVuLevel = 0.65f,
+                padEnabled = true,
+                onPadEnabledChange = {},
+                padVolume = 0.6f,
+                onPadVolumeChange = {},
+                padBank = "Ambient C",
+                onPadBankChange = {},
+                availablePadBanks = listOf("Ambient C", "Shimmer D", "Warm G"),
+                activePadNote = 0,
+                onPadNoteToggle = {},
+                activeNote = 60,
+                onNoteDown = {},
+                onNoteUp = {},
+                pitchBend = remember { Animatable(0f) },
+                modulation = remember { Animatable(0.3f) },
+                onModulationChange = {},
+                sustainActive = true,
+                onSustainToggle = {},
+                vuLevels = vuAnim,
+                initialStageLocked = true,
+                initialUnlockProgress = 0.5f
+            )
+        }
+        if (bytes != null) {
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_stage_lock_progress.png").writeBytes(bytes)
+            println("SAVED_PHASE4_STAGE_LOCK_PROGRESS_SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun snapshotCompact800x360Overflow() {
+        val concert = Concert(
+            id = "c_compact_ov",
+            name = "Domingo Noche - En Vivo",
+            lastModified = System.currentTimeMillis(),
+            patches = listOf(
+                PatchState("01 Worship Acoustic", "Piano + Pad", 1, "p1", isFavorite = true),
+                PatchState("02 Verse Acoustic", "Acoustic", 2, "p2", isFavorite = false)
+            ),
+            channels = listOf(
+                ChannelStripState(id = 1, name = "Grand Piano", sf2Name = "Yamaha CFX Grand", sf2Path = null, volume = 0.85f, isMuted = false, isSoloed = false, keyRangeStart = 21, keyRangeEnd = 108, colorHex = "#F5C542"),
+                ChannelStripState(id = 2, name = "Warm Pad", sf2Name = "Analog Warm Strings", sf2Path = null, volume = 0.70f, isMuted = false, isSoloed = false, keyRangeStart = 21, keyRangeEnd = 108, colorHex = "#4AA8B5"),
+                ChannelStripState(id = 3, name = "Epic Strings", sf2Name = "Spitfire Orchestral", sf2Path = null, volume = 0.65f, isMuted = false, isSoloed = false, keyRangeStart = 21, keyRangeEnd = 108, colorHex = "#4CCF5A")
+            )
+        )
+        val bytes = renderScene(width = 800, height = 360) {
+            val vuAnim = remember { concert.channels.map { Animatable(0.55f) } }
+            ConcertViewScreen(
+                concert = concert,
+                selectedPatchIndex = 0,
+                onSelectPatch = {},
+                onAddPatchClick = {},
+                onEditPatchClick = {},
+                onDeletePatch = {},
+                onExportPatchClick = {},
+                onImportPatchClick = {},
+                onToggleFavorite = {},
+                onMovePatch = { _, _ -> },
                 onBackClick = {},
                 onSettingsClick = {},
                 onPanicClick = {},
@@ -1508,16 +1632,58 @@ class SnapshotTest {
                 batteryLevel = 95,
                 batteryCharging = false,
                 audioDiagnostics = "48 kHz",
-                isStageLocked = true,
-                initialUnlockProgress = 0.5f,
-                onStageLockChange = {},
-                tonalityText = "KEY: D (+2)",
-                layerCountText = "4 CAPAS"
+                currentConnectedDevices = listOf("nanoKONTROL2"),
+                midiActivityIndicator = true,
+                metronomeOn = true,
+                onMetronomeToggle = {},
+                metronomeBpm = 128,
+                onBpmChange = {},
+                onBpmChangeFinished = {},
+                onTapTempo = {},
+                metronomeVolume = 0.7f,
+                onMetronomeVolumeChange = {},
+                metronomeTick = false,
+                isRecording = false,
+                onRecordToggle = {},
+                isPlayingRecording = false,
+                onPlayRecordingClick = {},
+                hasRecording = false,
+                onExportMidiClick = {},
+                onVolumeChange = { _, _ -> },
+                onMuteToggle = {},
+                onSoloToggle = {},
+                onAddChannelClick = {},
+                onChannelGearClick = {},
+                masterVolume = 0.8f,
+                masterPan = 0.5f,
+                isMasterLimiterActive = false,
+                onMasterVolumeChange = {},
+                onMasterPanChange = {},
+                masterVuLevel = 0.5f,
+                padEnabled = false,
+                onPadEnabledChange = {},
+                padVolume = 0.5f,
+                onPadVolumeChange = {},
+                padBank = "Bank A",
+                onPadBankChange = {},
+                availablePadBanks = listOf("Bank A"),
+                activePadNote = null,
+                onPadNoteToggle = {},
+                activeNote = null,
+                onNoteDown = {},
+                onNoteUp = {},
+                pitchBend = remember { Animatable(0f) },
+                modulation = remember { Animatable(0f) },
+                onModulationChange = {},
+                sustainActive = false,
+                onSustainToggle = {},
+                vuLevels = vuAnim,
+                initialShowCompactMenu = true
             )
         }
         if (bytes != null) {
-            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_stage_lock_progress.png").writeBytes(bytes)
-            println("SAVED_PHASE4_STAGE_LOCK_PROGRESS_SNAPSHOT")
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_compact_800x360_overflow.png").writeBytes(bytes)
+            println("SAVED_PHASE4_COMPACT_800x360_OVERFLOW_SNAPSHOT")
         }
     }
 }

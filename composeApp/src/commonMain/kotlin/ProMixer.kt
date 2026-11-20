@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -422,7 +423,7 @@ fun FaderScale(
         )
     }
 
-    BoxWithConstraints(modifier = modifier) {
+    BoxWithConstraints(modifier = modifier.clipToBounds()) {
         val totalH = maxHeight
         marks.forEach { (fraction, label) ->
             val yCenter = FaderMath.yCentroDp(fraction, totalH, capHeight)
@@ -444,7 +445,9 @@ fun FaderScale(
                     color = if (fraction == 1.0f) AccentLavender else TextTertiary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    fontFamily = FontFamily.Default
+                    fontFamily = FontFamily.Default,
+                    maxLines = 1,
+                    softWrap = false
                 )
                 Spacer(Modifier.width(if (isCondensed) 2.dp else 3.dp))
                 Box(
@@ -604,6 +607,7 @@ fun ProChannelStrip(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxHeight()
+            .clipToBounds()
             .clip(RoundedCornerShape(14.dp))
             .background(
                 Brush.verticalGradient(listOf(StripTop, StripBottom))
@@ -789,7 +793,7 @@ fun ProChannelStrip(
             ) {
                 FaderScale(
                     modifier = Modifier
-                        .width(if (isCompact) 20.dp else 28.dp)
+                        .width(28.dp)
                         .fillMaxHeight(),
                     capHeight = capH,
                     isCondensed = isCompact
@@ -886,6 +890,7 @@ fun ProMasterStrip(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxHeight()
+            .clipToBounds()
             .clip(RoundedCornerShape(14.dp))
             .background(
                 Brush.verticalGradient(listOf(StripTop, StripBottom))
@@ -1023,7 +1028,7 @@ fun ProMasterStrip(
             ) {
                 FaderScale(
                     modifier = Modifier
-                        .width(if (isCompact) 20.dp else 28.dp)
+                        .width(28.dp)
                         .fillMaxHeight(),
                     capHeight = capH,
                     isCondensed = isCompact
@@ -1126,6 +1131,7 @@ fun ProMetronomeStrip(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxHeight()
+            .clipToBounds()
             .clip(RoundedCornerShape(14.dp))
             .background(
                 Brush.verticalGradient(listOf(StripTop, StripBottom))
@@ -1267,7 +1273,7 @@ fun ProMetronomeStrip(
             ) {
                 FaderScale(
                     modifier = Modifier
-                        .width(if (isCompact) 20.dp else 28.dp)
+                        .width(28.dp)
                         .fillMaxHeight(),
                     capHeight = capH,
                     isCondensed = isCompact
