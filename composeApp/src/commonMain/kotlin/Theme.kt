@@ -30,6 +30,8 @@ val SurfacePanel     = Color(0xFF12151F) // Paneles principales
 val DarkPanel        = SurfacePanel      // Alias para compatibilidad
 val SurfaceElevated  = Color(0xFF181B2B) // Superficies elevadas / headers
 val SurfaceCard      = Color(0xFF141724) // Tarjetas, slots y paneles secundarios
+val SurfaceGroove    = Color(0xFF05070A) // Riel hundido de fader
+val MeterWellBg      = Color(0xFF0D0F17) // Fondo del pozo de medidores VU
 val StripTop         = Color(0xFF171B2B) // Fader strip degradado superior
 val StripBottom      = Color(0xFF10131C) // Fader strip degradado inferior
 val BorderHairline   = Color(0xFF222840) // Bordes 1dp hairline
@@ -65,6 +67,7 @@ val StateOk          = Color(0xFF3DDC84) // OK / Normal
 val StatusSuccess    = StateOk
 val StatusWarning    = StateSolo
 val StatusError      = StateClip
+val MeterSegmentOff  = Color(0xFF1B1F2E) // Segmento inactivo de VU meter y CLIP latch apagado
 
 // ─── Channel Identity Colors (para pastilla de nombre y meter) ────────────────
 val ChannelYellow    = Color(0xFFF5C542)

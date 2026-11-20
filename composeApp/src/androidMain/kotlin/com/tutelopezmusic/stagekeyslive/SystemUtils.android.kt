@@ -36,3 +36,10 @@ actual fun isBatteryCharging(): Boolean {
     val status: Int = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
     return status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
 }
+
+actual fun triggerHapticFeedback() {
+    val activity = MainActivity.instance ?: return
+    try {
+        activity.window?.decorView?.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+    } catch (_: Exception) {}
+}

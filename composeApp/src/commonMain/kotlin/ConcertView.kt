@@ -125,11 +125,14 @@ fun ConcertViewScreen(
         modifier = Modifier.fillMaxSize(),
         glowOpacityFactor = 0.5f
     ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val screenHeight = maxHeight
+            val mixerRowHeight = if (screenHeight < 450.dp) 220.dp else if (screenHeight < 600.dp) 280.dp else 380.dp
 
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
 
             // ─── TOP BAR ────────────────────────────────────────────────────────
             val nextPatchName = if (concert.patches.size > 1) {
@@ -189,6 +192,11 @@ fun ConcertViewScreen(
                         onChorusChange = onChorusChange,
                         onCutoffChange = onCutoffChange,
                         midiMappings = midiMappings,
+                        metronomeOn = metronomeOn,
+                        onMetronomeToggle = onMetronomeToggle,
+                        metronomeBpm = metronomeBpm,
+                        onTapTempo = onTapTempo,
+                        metronomeTick = metronomeTick,
                         padEnabled = padEnabled,
                         onPadEnabledChange = onPadEnabledChange,
                         padVolume = padVolume,
@@ -209,11 +217,11 @@ fun ConcertViewScreen(
                         .verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // ─── MAIN ROW: PATCHES + MIXER (HEIGHT 280dp like HTML mockup) ──────
+                    // ─── MAIN ROW: PATCHES + MIXER ───────────────────────────────────────
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(280.dp),
+                            .height(mixerRowHeight),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // PATCHES PANEL
@@ -253,7 +261,12 @@ fun ConcertViewScreen(
                             onChorusChange = onChorusChange,
                             onCutoffChange = onCutoffChange,
                             midiMappings = midiMappings,
-                            scrollState = rememberScrollState()
+                            scrollState = rememberScrollState(),
+                            metronomeOn = metronomeOn,
+                            onMetronomeToggle = onMetronomeToggle,
+                            metronomeBpm = metronomeBpm,
+                            onTapTempo = onTapTempo,
+                            metronomeTick = metronomeTick
                         )
                     }
 
@@ -335,8 +348,9 @@ fun ConcertViewScreen(
                     }
                 }
             }
-        } // End Column inside BoxWithConstraints
-    } // End AppBackground
+        } // End Column
+    } // End BoxWithConstraints
+} // End AppBackground
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -366,6 +380,11 @@ private fun PerformanceModeView(
     onChorusChange: (Int, Float) -> Unit = { _, _ -> },
     onCutoffChange: (Int, Float) -> Unit = { _, _ -> },
     midiMappings: Map<Int, MidiTarget> = emptyMap(),
+    metronomeOn: Boolean = false,
+    onMetronomeToggle: () -> Unit = {},
+    metronomeBpm: Int = 120,
+    onTapTempo: () -> Unit = {},
+    metronomeTick: Boolean = false,
     // Pads
     padEnabled: Boolean,
     onPadEnabledChange: (Boolean) -> Unit,
@@ -476,57 +495,87 @@ private fun PerformanceModeView(
             }
         }
 
-        // ── 2. CENTER: VIRTUAL nanoKONTROL MIXING SURFACE ─────────────────────
+        // ── 2. CENTER: VIRTUAL PRO MIXING SURFACE ─────────────────────
         Surface(
             shape = RoundedCornerShape(14.dp),
             color = DarkBackground.copy(alpha = 0.72f),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.04f)),
+            border = BorderStroke(1.dp, BorderHairline),
             modifier = Modifier.weight(1f).fillMaxWidth()
         ) {
             Row(
-                modifier = Modifier.fillMaxSize().padding(6.dp).horizontalScroll(mixerScrollState),
+                modifier = Modifier.fillMaxSize().padding(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                channels.forEach { chState ->
-                    val levelIdx = (chState.id - 1).coerceIn(0, 7)
-                    val animLevel = vuLevels.getOrNull(levelIdx)?.value ?: 0f
-                    val isRevMapped = midiMappings.values.any { it is MidiTarget.ChannelReverb && it.channelIndex == chState.id - 1 }
-                    val isChoMapped = midiMappings.values.any { it is MidiTarget.ChannelChorus && it.channelIndex == chState.id - 1 }
-                    val isCutMapped = midiMappings.values.any { it is MidiTarget.ChannelCutoff && it.channelIndex == chState.id - 1 }
-                    PerformanceChannelStripItem(
-                        state = chState,
-                        level = animLevel,
-                        onVolumeChange = { vol -> onVolumeChange(chState.id, vol) },
-                        onMuteToggle = { onMuteToggle(chState.id) },
-                        onSoloToggle = { onSoloToggle(chState.id) },
-                        onGearClick = { onChannelGearClick(chState) },
-                        onReverbChange = { v -> onReverbChange(chState.id, v) },
-                        onChorusChange = { v -> onChorusChange(chState.id, v) },
-                        onCutoffChange = { v -> onCutoffChange(chState.id, v) },
-                        isReverbMapped = isRevMapped,
-                        isChorusMapped = isChoMapped,
-                        isCutoffMapped = isCutMapped
+                // Canales con scroll horizontal y barra violeta fina abajo
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 6.dp)
+                            .horizontalScroll(mixerScrollState),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        channels.forEach { chState ->
+                            val levelIdx = (chState.id - 1).coerceIn(0, 7)
+                            val isRevMapped = midiMappings.values.any { it is MidiTarget.ChannelReverb && it.channelIndex == chState.id - 1 }
+                            val isChoMapped = midiMappings.values.any { it is MidiTarget.ChannelChorus && it.channelIndex == chState.id - 1 }
+                            val isCutMapped = midiMappings.values.any { it is MidiTarget.ChannelCutoff && it.channelIndex == chState.id - 1 }
+                            val isVolMapped = midiMappings.values.any { it is MidiTarget.ChannelVolume && it.channelIndex == chState.id - 1 }
+                            val isMapped = isRevMapped || isChoMapped || isCutMapped || isVolMapped
+
+                            ProChannelStrip(
+                                channel = chState,
+                                levelProvider = { vuLevels.getOrNull(levelIdx)?.value ?: 0f },
+                                onVolumeChange = { vol -> onVolumeChange(chState.id, vol) },
+                                onMuteToggle = { onMuteToggle(chState.id) },
+                                onSoloToggle = { onSoloToggle(chState.id) },
+                                onGearClick = { onChannelGearClick(chState) },
+                                onFxClick = { onChannelGearClick(chState) },
+                                onPanChange = {},
+                                modifier = Modifier.width(104.dp),
+                                isMidiMapped = isMapped
+                            )
+                        }
+                    }
+
+                    // Barra de scroll fina violeta abajo
+                    FineVioletScrollbar(
+                        scrollState = mixerScrollState,
+                        modifier = Modifier.align(Alignment.BottomCenter)
                     )
                 }
 
-                Spacer(Modifier.width(4.dp))
-                VerticalDividerLine()
-                Spacer(Modifier.width(4.dp))
-
-                PerformanceMetronomeChannelItem(
-                    volume = metronomeVolume,
-                    onVolumeChange = onMetronomeVolumeChange
+                // Separador vertical
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .fillMaxHeight()
+                        .background(BorderHairline)
                 )
 
-                Spacer(Modifier.width(4.dp))
+                // Metrónomo
+                ProMetronomeStrip(
+                    volume = metronomeVolume,
+                    onVolumeChange = onMetronomeVolumeChange,
+                    enabled = metronomeOn,
+                    onToggle = onMetronomeToggle,
+                    bpm = metronomeBpm,
+                    onTapTempo = onTapTempo,
+                    levelProvider = { if (metronomeTick) 0.8f else 0f },
+                    modifier = Modifier.width(104.dp)
+                )
 
-                PerformanceMasterChannelItem(
+                // Master anclado a la derecha fuera del scroll
+                ProMasterStrip(
                     volume = masterVolume,
-                    level = masterVuLevel,
-                    pan = masterPan,
-                    isLimiterActive = isLimiterActive,
                     onVolumeChange = onMasterVolumeChange,
-                    onPanChange = onMasterPanChange
+                    levelProvider = { masterVuLevel },
+                    isLimiterActive = isLimiterActive,
+                    onLimiterToggle = {},
+                    onMidiMapClick = onSettingsClick,
+                    modifier = Modifier.width(114.dp)
                 )
             }
         }
@@ -542,425 +591,6 @@ private fun PerformanceModeView(
             availableBanks = availablePadBanks,
             activePadNote = activePadNote,
             onPadNoteToggle = onPadNoteToggle
-        )
-    }
-}
-
-@Composable
-private fun PerformanceChannelStripItem(
-    state: ChannelStripState,
-    level: Float,
-    onVolumeChange: (Float) -> Unit,
-    onMuteToggle: () -> Unit,
-    onSoloToggle: () -> Unit,
-    onGearClick: () -> Unit,
-    onReverbChange: (Float) -> Unit,
-    onChorusChange: (Float) -> Unit,
-    onCutoffChange: (Float) -> Unit,
-    isReverbMapped: Boolean,
-    isChorusMapped: Boolean,
-    isCutoffMapped: Boolean
-) {
-    val accentColor = parseColorHex(state.colorHex)
-    var selectedFx by remember { mutableStateOf(FxKnobType.REVERB) }
-
-    Column(
-        modifier = Modifier
-            .width(84.dp)
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                Brush.verticalGradient(listOf(StripTop, StripBottom))
-            )
-            .border(
-                width = 1.dp,
-                color = BorderHairline,
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(horizontal = 4.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        // ── 1. Header: Color + Name + Gear ─────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(11.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(accentColor)
-            )
-
-            Text(
-                text = state.name.take(9).uppercase(),
-                color = accentColor,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).padding(horizontal = 2.dp)
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(18.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onGearClick),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    TablerIcons.Settings,
-                    contentDescription = "Configurar",
-                    tint = TextSecondary.copy(alpha = 0.7f),
-                    modifier = Modifier.size(11.dp)
-                )
-            }
-        }
-
-        // ── 2. FX Knobs Section (TOP, nanoKONTROL hardware layout) ──────────
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(1.dp)
-        ) {
-            // Mini selector tabs [R | C | T]
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(SurfaceCard)
-                    .padding(1.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                FxKnobType.entries.forEach { fxType ->
-                    val isSel = selectedFx == fxType
-                    val isMapped = when (fxType) {
-                        FxKnobType.REVERB -> isReverbMapped
-                        FxKnobType.CHORUS -> isChorusMapped
-                        FxKnobType.TONE -> isCutoffMapped
-                    }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(if (isSel) fxType.color.copy(alpha = 0.28f) else Color.Transparent)
-                            .clickable { selectedFx = fxType }
-                            .padding(vertical = 1.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = fxType.label.take(1),
-                                color = if (isSel) fxType.color else TextSecondary,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            if (isMapped) {
-                                Spacer(Modifier.width(1.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .size(2.5.dp)
-                                        .clip(CircleShape)
-                                        .background(AccentLavender)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Active Rotary Knob
-            when (selectedFx) {
-                FxKnobType.REVERB -> MainstageRotaryKnob(
-                    value = state.reverbSend,
-                    onValueChange = onReverbChange,
-                    type = FxKnobType.REVERB,
-                    isMidiMapped = isReverbMapped,
-                    knobSize = 30.dp,
-                    showLabel = false
-                )
-                FxKnobType.CHORUS -> MainstageRotaryKnob(
-                    value = state.chorusSend,
-                    onValueChange = onChorusChange,
-                    type = FxKnobType.CHORUS,
-                    isMidiMapped = isChorusMapped,
-                    knobSize = 30.dp,
-                    showLabel = false
-                )
-                FxKnobType.TONE -> MainstageRotaryKnob(
-                    value = state.filterCutoff,
-                    onValueChange = onCutoffChange,
-                    type = FxKnobType.TONE,
-                    isMidiMapped = isCutoffMapped,
-                    knobSize = 30.dp,
-                    showLabel = false
-                )
-            }
-        }
-
-        // ── 3. Mute / Solo Buttons ────────────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(20.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(if (state.isMuted) StateMute else SurfaceCard)
-                    .border(1.dp, if (state.isMuted) StateMute else BorderHairline, RoundedCornerShape(3.dp))
-                    .clickable(onClick = onMuteToggle),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "M",
-                    color = if (state.isMuted) Color.White else TextSecondary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(20.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(if (state.isSoloed) StateSolo else SurfaceCard)
-                    .border(1.dp, if (state.isSoloed) StateSolo else BorderHairline, RoundedCornerShape(3.dp))
-                    .clickable(onClick = onSoloToggle),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "S",
-                    color = if (state.isSoloed) Color.Black else TextSecondary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        // ── 4. Volume Fader + Level Meter (Full remaining height) ───────────
-        Row(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            VolumeFader(
-                value = state.volume,
-                accentColor = accentColor,
-                onValueChange = onVolumeChange,
-                modifier = Modifier.weight(1f).fillMaxHeight()
-            )
-            LevelMeter(
-                level = level,
-                accentColor = accentColor,
-                modifier = Modifier.width(5.dp).fillMaxHeight()
-            )
-        }
-
-        // ── 5. Volume % label ──────────────────────────────────────────────
-        Text(
-            text = "${(state.volume * 100).toInt()}%",
-            color = TextSecondary,
-            fontSize = 11.sp,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-private fun PerformanceMetronomeChannelItem(
-    volume: Float,
-    onVolumeChange: (Float) -> Unit
-) {
-    val accent = ChannelGreen
-    Column(
-        modifier = Modifier
-            .width(76.dp)
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                Brush.verticalGradient(listOf(StripTop, StripBottom))
-            )
-            .border(
-                1.dp,
-                BorderHairline,
-                RoundedCornerShape(12.dp)
-            )
-            .padding(horizontal = 4.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        // Icon + label
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(11.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(accent)
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                "CLICK",
-                color = StateOk,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.5.sp
-            )
-        }
-
-        Spacer(Modifier.height(48.dp)) // Aligns fader top with channel strips
-
-        // Fader
-        VolumeFader(
-            value = volume,
-            accentColor = accent,
-            onValueChange = onVolumeChange,
-            modifier = Modifier.weight(1f).fillMaxWidth()
-        )
-
-        Text(
-            "${(volume * 100).toInt()}%",
-            color = TextSecondary,
-            fontSize = 11.sp,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-private fun PerformanceMasterChannelItem(
-    volume: Float,
-    level: Float,
-    pan: Float = 0.5f,
-    isLimiterActive: Boolean = false,
-    onVolumeChange: (Float) -> Unit,
-    onPanChange: (Float) -> Unit = {}
-) {
-    val accent = AccentPurple
-    Column(
-        modifier = Modifier
-            .width(82.dp)
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(14.dp))
-            .background(
-                Brush.verticalGradient(listOf(StripTop, StripBottom))
-            )
-            .border(
-                1.dp,
-                BorderHairline,
-                RoundedCornerShape(14.dp)
-            )
-            .padding(horizontal = 4.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(3.dp)
-    ) {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(13.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(accent)
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                "MASTER",
-                color = AccentLavender,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.5.sp
-            )
-            if (isLimiterActive) {
-                Spacer(Modifier.width(3.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(StateSolo)
-                        .padding(horizontal = 2.dp, vertical = 0.5.dp)
-                ) {
-                    Text("LIM", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
-                }
-            }
-        }
-
-        // Master Pan Control
-        val panPercent = ((pan - 0.5f) * 200).toInt()
-        val panText = when {
-            panPercent == 0 -> "C"
-            panPercent < 0 -> "L${-panPercent}"
-            else -> "R${panPercent}"
-        }
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("PAN", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                Text(panText, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
-            Slider(
-                value = pan,
-                onValueChange = onPanChange,
-                valueRange = 0f..1f,
-                modifier = Modifier.fillMaxWidth().height(16.dp),
-                colors = SliderDefaults.colors(
-                    thumbColor = accent,
-                    activeTrackColor = accent,
-                    inactiveTrackColor = OutlineVariant
-                )
-            )
-        }
-
-        Spacer(Modifier.height(18.dp))
-
-        // Fader + Stereo LevelMeter
-        Row(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            VolumeFader(
-                value = volume,
-                accentColor = accent,
-                onValueChange = onVolumeChange,
-                modifier = Modifier.weight(1f).fillMaxHeight()
-            )
-            LevelMeter(
-                level = level,
-                accentColor = accent,
-                modifier = Modifier.width(6.dp).fillMaxHeight()
-            )
-        }
-
-        Text(
-            "${(volume * 100).toInt()}%",
-            color = TextSecondary,
-            fontSize = 11.sp,
-            textAlign = TextAlign.Center
         )
     }
 }
@@ -2004,72 +1634,102 @@ private fun MixerPanel(
     onChorusChange: (Int, Float) -> Unit = { _, _ -> },
     onCutoffChange: (Int, Float) -> Unit = { _, _ -> },
     midiMappings: Map<Int, MidiTarget> = emptyMap(),
-    scrollState: ScrollState
+    scrollState: ScrollState,
+    metronomeOn: Boolean = false,
+    onMetronomeToggle: () -> Unit = {},
+    metronomeBpm: Int = 120,
+    onTapTempo: () -> Unit = {},
+    metronomeTick: Boolean = false
 ) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(14.dp),
         color = DarkBackground.copy(alpha = 0.72f),
+        border = BorderStroke(1.dp, BorderHairline),
         modifier = modifier.fillMaxHeight()
     ) {
-        Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(6.dp)) {
             Text(
                 "MIXER",
                 color = OutlineVariant,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp,
-                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
             )
 
             Row(
-                modifier = Modifier.fillMaxSize().horizontalScroll(scrollState),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                channels.forEach { chState ->
-                    val levelIdx = (chState.id - 1).coerceIn(0, 7)
-                    val animLevel = vuLevels[levelIdx].value
-                    val isRevMapped = midiMappings.values.any { it is MidiTarget.ChannelReverb && it.channelIndex == chState.id - 1 }
-                    val isChoMapped = midiMappings.values.any { it is MidiTarget.ChannelChorus && it.channelIndex == chState.id - 1 }
-                    val isCutMapped = midiMappings.values.any { it is MidiTarget.ChannelCutoff && it.channelIndex == chState.id - 1 }
-                    ChannelStripItem(
-                        state = chState,
-                        level = animLevel,
-                        onVolumeChange = { vol -> onVolumeChange(chState.id, vol) },
-                        onMuteToggle = { onMuteToggle(chState.id) },
-                        onSoloToggle = { onSoloToggle(chState.id) },
-                        onGearClick = { onChannelGearClick(chState) },
-                        onReverbChange = { v -> onReverbChange(chState.id, v) },
-                        onChorusChange = { v -> onChorusChange(chState.id, v) },
-                        onCutoffChange = { v -> onCutoffChange(chState.id, v) },
-                        isReverbMapped = isRevMapped,
-                        isChorusMapped = isChoMapped,
-                        isCutoffMapped = isCutMapped
+                // Canales con scroll horizontal y barra fina violeta abajo
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 6.dp)
+                            .horizontalScroll(scrollState),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        channels.forEach { chState ->
+                            val levelIdx = (chState.id - 1).coerceIn(0, 7)
+                            val isRevMapped = midiMappings.values.any { it is MidiTarget.ChannelReverb && it.channelIndex == chState.id - 1 }
+                            val isChoMapped = midiMappings.values.any { it is MidiTarget.ChannelChorus && it.channelIndex == chState.id - 1 }
+                            val isCutMapped = midiMappings.values.any { it is MidiTarget.ChannelCutoff && it.channelIndex == chState.id - 1 }
+                            val isVolMapped = midiMappings.values.any { it is MidiTarget.ChannelVolume && it.channelIndex == chState.id - 1 }
+                            val isMapped = isRevMapped || isChoMapped || isCutMapped || isVolMapped
+
+                            ProChannelStrip(
+                                channel = chState,
+                                levelProvider = { vuLevels.getOrNull(levelIdx)?.value ?: 0f },
+                                onVolumeChange = { vol -> onVolumeChange(chState.id, vol) },
+                                onMuteToggle = { onMuteToggle(chState.id) },
+                                onSoloToggle = { onSoloToggle(chState.id) },
+                                onGearClick = { onChannelGearClick(chState) },
+                                onFxClick = { onChannelGearClick(chState) },
+                                onPanChange = {},
+                                modifier = Modifier.width(104.dp),
+                                isMidiMapped = isMapped
+                            )
+                        }
+
+                        if (channels.size < 8) {
+                            AddChannelButton(onClick = onAddChannelClick)
+                        }
+                    }
+
+                    FineVioletScrollbar(
+                        scrollState = scrollState,
+                        modifier = Modifier.align(Alignment.BottomCenter)
                     )
                 }
 
-                if (channels.size < 8) {
-                    AddChannelButton(onClick = onAddChannelClick)
-                }
-
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(2.dp))
                 VerticalDividerLine()
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(2.dp))
 
-                MetronomeChannelItem(
+                // Metrónomo
+                ProMetronomeStrip(
                     volume = metronomeVolume,
-                    onVolumeChange = onMetronomeVolumeChange
+                    onVolumeChange = onMetronomeVolumeChange,
+                    enabled = metronomeOn,
+                    onToggle = onMetronomeToggle,
+                    bpm = metronomeBpm,
+                    onTapTempo = onTapTempo,
+                    levelProvider = { if (metronomeTick) 0.8f else 0f },
+                    modifier = Modifier.width(104.dp)
                 )
 
-                Spacer(Modifier.width(4.dp))
-
-                MasterOutputChannelItem(
+                // Master anclado a la derecha fuera del scroll
+                ProMasterStrip(
                     volume = masterVolume,
-                    level = masterVuLevel,
-                    pan = masterPan,
-                    isLimiterActive = isLimiterActive,
                     onVolumeChange = onMasterVolumeChange,
-                    onPanChange = onMasterPanChange,
-                    onMidiMapClick = onSettingsClick
+                    levelProvider = { masterVuLevel },
+                    isLimiterActive = isLimiterActive,
+                    onLimiterToggle = {},
+                    onMidiMapClick = onSettingsClick,
+                    modifier = Modifier.width(114.dp)
                 )
             }
         }

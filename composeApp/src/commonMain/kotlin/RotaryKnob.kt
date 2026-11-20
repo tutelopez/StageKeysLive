@@ -1,4 +1,4 @@
-﻿package com.tutelopezmusic.stagekeyslive
+package com.tutelopezmusic.stagekeyslive
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background

@@ -387,13 +387,6 @@ fun DashboardScreen(
                                     fontSize = 14.sp
                                 )
                             }
-                                            color = Color.White,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
 
                             // Secondary Option: O importar concierto
                             TextButton(

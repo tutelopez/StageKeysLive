@@ -11,3 +11,7 @@ actual fun getBatteryLevel(): Int {
 actual fun isBatteryCharging(): Boolean {
     return true // Desktop stub
 }
+
+actual fun triggerHapticFeedback() {
+    // No-op for desktop
+}
