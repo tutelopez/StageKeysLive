@@ -414,6 +414,297 @@ class SnapshotTest {
         }
     }
 
+    private fun createStandardConcert(): Concert {
+        val channels = listOf(
+            ChannelStripState(id = 1, name = "Grand Piano", sf2Name = "Yamaha CFX Grand", sf2Path = null, volume = 0.85f, isMuted = false, isSoloed = false, keyRangeStart = 21, keyRangeEnd = 108, colorHex = "#F5C542", reverbSend = 0.25f, chorusSend = 0.10f, filterCutoff = 1.0f, pan = 0.5f),
+            ChannelStripState(id = 2, name = "Warm Pad", sf2Name = "Analog Warm Strings", sf2Path = null, volume = 0.70f, isMuted = false, isSoloed = false, keyRangeStart = 21, keyRangeEnd = 108, colorHex = "#4AA8B5", reverbSend = 0.60f, chorusSend = 0.40f, filterCutoff = 0.75f, pan = 0.65f),
+            ChannelStripState(id = 3, name = "Epic Strings", sf2Name = "Spitfire Orchestral", sf2Path = null, volume = 0.65f, isMuted = false, isSoloed = false, keyRangeStart = 21, keyRangeEnd = 108, colorHex = "#4CCF5A", reverbSend = 0.50f, chorusSend = 0.30f, filterCutoff = 0.85f, pan = 0.60f),
+            ChannelStripState(id = 4, name = "Synth Lead", sf2Name = "Moog Mini Solo", sf2Path = null, volume = 0.75f, isMuted = false, isSoloed = false, keyRangeStart = 36, keyRangeEnd = 96, colorHex = "#7C5CFF", reverbSend = 0.30f, chorusSend = 0.15f, filterCutoff = 0.90f, pan = 0.50f),
+            ChannelStripState(id = 5, name = "Rhodes MK I", sf2Name = "Vintage Suitcase 73", sf2Path = null, volume = 0.80f, isMuted = false, isSoloed = false, keyRangeStart = 28, keyRangeEnd = 103, colorHex = "#FF5C5C", reverbSend = 0.35f, chorusSend = 0.50f, filterCutoff = 0.95f, pan = 0.40f),
+            ChannelStripState(id = 6, name = "B3 Organ", sf2Name = "Hammond Classic", sf2Path = null, volume = 0.72f, isMuted = false, isSoloed = false, keyRangeStart = 36, keyRangeEnd = 96, colorHex = "#FBBF24", reverbSend = 0.40f, chorusSend = 0.45f, filterCutoff = 0.80f, pan = 0.55f),
+            ChannelStripState(id = 7, name = "French Horns", sf2Name = "Brass Ensemble", sf2Path = null, volume = 0.68f, isMuted = false, isSoloed = false, keyRangeStart = 40, keyRangeEnd = 88, colorHex = "#2DD4BF", reverbSend = 0.55f, chorusSend = 0.20f, filterCutoff = 0.88f, pan = 0.70f),
+            ChannelStripState(id = 8, name = "Acoustic Bass", sf2Name = "Upright Jazz Bass", sf2Path = null, volume = 0.78f, isMuted = false, isSoloed = false, keyRangeStart = 21, keyRangeEnd = 60, colorHex = "#F472B6", reverbSend = 0.15f, chorusSend = 0.05f, filterCutoff = 0.70f, pan = 0.50f)
+        )
+        val patches = listOf(
+            PatchState("01 Worship Acoustic", "Piano + Pad", 1, "p1", isFavorite = true),
+            PatchState("02 Verse Acoustic", "Acoustic", 2, "p2", isFavorite = false),
+            PatchState("03 Chorus Full", "Powerful", 3, "p3", isFavorite = true)
+        )
+        return Concert(id = "c1", name = "Domingo Noche - En Vivo", lastModified = System.currentTimeMillis(), patches = patches, channels = channels)
+    }
+
+    @Test
+    fun snapshotConcertView1024x720() {
+        val concert = createStandardConcert()
+        val bytes = renderScene(width = 1024, height = 720) {
+            val vuAnim = remember { concert.channels.map { Animatable(0.55f) } }
+            ConcertViewScreen(
+                concert = concert,
+                selectedPatchIndex = 0,
+                onSelectPatch = {},
+                onAddPatchClick = {},
+                onEditPatchClick = {},
+                onDeletePatch = {},
+                onExportPatchClick = {},
+                onImportPatchClick = {},
+                onToggleFavorite = {},
+                onMovePatch = { _, _ -> },
+                onBackClick = {},
+                onSettingsClick = {},
+                onPanicClick = {},
+                performanceStats = PerformanceStats(cpuPercent = 8, ramMb = 180, ramPercent = 18),
+                batteryLevel = 95,
+                batteryCharging = false,
+                audioDiagnostics = "48 kHz • 128 frames (2.7 ms)",
+                currentConnectedDevices = listOf("nanoKONTROL2", "Arturia KeyLab 88"),
+                midiActivityIndicator = true,
+                metronomeOn = true,
+                onMetronomeToggle = {},
+                metronomeBpm = 128,
+                onBpmChange = {},
+                onBpmChangeFinished = {},
+                onTapTempo = {},
+                metronomeVolume = 0.7f,
+                onMetronomeVolumeChange = {},
+                metronomeTick = false,
+                isRecording = false,
+                onRecordToggle = {},
+                isPlayingRecording = false,
+                onPlayRecordingClick = {},
+                hasRecording = false,
+                onExportMidiClick = {},
+                onVolumeChange = { _, _ -> },
+                onMuteToggle = {},
+                onSoloToggle = {},
+                onAddChannelClick = {},
+                onChannelGearClick = {},
+                onReverbChange = { _, _ -> },
+                onChorusChange = { _, _ -> },
+                onCutoffChange = { _, _ -> },
+                midiMappings = emptyMap(),
+                masterVolume = 0.82f,
+                masterPan = 0.5f,
+                isMasterLimiterActive = true,
+                onMasterVolumeChange = {},
+                onMasterPanChange = {},
+                masterVuLevel = 0.65f,
+                padEnabled = true,
+                onPadEnabledChange = {},
+                padVolume = 0.6f,
+                onPadVolumeChange = {},
+                padBank = "Ambient C",
+                onPadBankChange = {},
+                availablePadBanks = listOf("Ambient C", "Shimmer D", "Warm G"),
+                activePadNote = 0,
+                onPadNoteToggle = {},
+                activeNote = 60,
+                onNoteDown = {},
+                onNoteUp = {},
+                pitchBend = remember { Animatable(0f) },
+                modulation = remember { Animatable(0.3f) },
+                onModulationChange = {},
+                sustainActive = true,
+                onSustainToggle = {},
+                vuLevels = vuAnim
+            )
+        }
+        if (bytes != null) {
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase3_concert_1024x720.png").writeBytes(bytes)
+            println("SAVED_PHASE3_CONCERT_1024x720_SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun snapshotConcertView960x600() {
+        val concert = createStandardConcert()
+        val bytes = renderScene(width = 960, height = 600) {
+            val vuAnim = remember { concert.channels.map { Animatable(0.55f) } }
+            ConcertViewScreen(
+                concert = concert,
+                selectedPatchIndex = 0,
+                onSelectPatch = {},
+                onAddPatchClick = {},
+                onEditPatchClick = {},
+                onDeletePatch = {},
+                onExportPatchClick = {},
+                onImportPatchClick = {},
+                onToggleFavorite = {},
+                onMovePatch = { _, _ -> },
+                onBackClick = {},
+                onSettingsClick = {},
+                onPanicClick = {},
+                performanceStats = PerformanceStats(cpuPercent = 8, ramMb = 180, ramPercent = 18),
+                batteryLevel = 95,
+                batteryCharging = false,
+                audioDiagnostics = "48 kHz • 128 frames (2.7 ms)",
+                currentConnectedDevices = listOf("nanoKONTROL2", "Arturia KeyLab 88"),
+                midiActivityIndicator = true,
+                metronomeOn = true,
+                onMetronomeToggle = {},
+                metronomeBpm = 128,
+                onBpmChange = {},
+                onBpmChangeFinished = {},
+                onTapTempo = {},
+                metronomeVolume = 0.7f,
+                onMetronomeVolumeChange = {},
+                metronomeTick = false,
+                isRecording = false,
+                onRecordToggle = {},
+                isPlayingRecording = false,
+                onPlayRecordingClick = {},
+                hasRecording = false,
+                onExportMidiClick = {},
+                onVolumeChange = { _, _ -> },
+                onMuteToggle = {},
+                onSoloToggle = {},
+                onAddChannelClick = {},
+                onChannelGearClick = {},
+                onReverbChange = { _, _ -> },
+                onChorusChange = { _, _ -> },
+                onCutoffChange = { _, _ -> },
+                midiMappings = emptyMap(),
+                masterVolume = 0.82f,
+                masterPan = 0.5f,
+                isMasterLimiterActive = true,
+                onMasterVolumeChange = {},
+                onMasterPanChange = {},
+                masterVuLevel = 0.65f,
+                padEnabled = true,
+                onPadEnabledChange = {},
+                padVolume = 0.6f,
+                onPadVolumeChange = {},
+                padBank = "Ambient C",
+                onPadBankChange = {},
+                availablePadBanks = listOf("Ambient C", "Shimmer D", "Warm G"),
+                activePadNote = 0,
+                onPadNoteToggle = {},
+                activeNote = 60,
+                onNoteDown = {},
+                onNoteUp = {},
+                pitchBend = remember { Animatable(0f) },
+                modulation = remember { Animatable(0.3f) },
+                onModulationChange = {},
+                sustainActive = true,
+                onSustainToggle = {},
+                vuLevels = vuAnim
+            )
+        }
+        if (bytes != null) {
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase3_concert_960x600.png").writeBytes(bytes)
+            println("SAVED_PHASE3_CONCERT_960x600_SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun testFaderBoundsAndTravelCompliance() {
+        val testConfigs = listOf(
+            Triple(1280, 800, 160f),
+            Triple(1024, 720, 160f),
+            Triple(960, 600, 160f),
+            Triple(800, 360, 110f)
+        )
+
+        for ((width, height, minGrooveDp) in testConfigs) {
+            FaderBoundsTracker.clear()
+            FaderBoundsTracker.enabled = true
+
+            val concert = createStandardConcert()
+            renderScene(width = width, height = height) {
+                val vuAnim = remember { concert.channels.map { Animatable(0.5f) } }
+                ConcertViewScreen(
+                    concert = concert,
+                    selectedPatchIndex = 0,
+                    onSelectPatch = {},
+                    onAddPatchClick = {},
+                    onEditPatchClick = {},
+                    onDeletePatch = {},
+                    onExportPatchClick = {},
+                    onImportPatchClick = {},
+                    onToggleFavorite = {},
+                    onMovePatch = { _, _ -> },
+                    onBackClick = {},
+                    onSettingsClick = {},
+                    onPanicClick = {},
+                    performanceStats = null,
+                    batteryLevel = 100,
+                    batteryCharging = true,
+                    audioDiagnostics = "",
+                    currentConnectedDevices = emptyList(),
+                    midiActivityIndicator = false,
+                    metronomeOn = true,
+                    onMetronomeToggle = {},
+                    metronomeBpm = 120,
+                    onBpmChange = {},
+                    onBpmChangeFinished = {},
+                    onTapTempo = {},
+                    metronomeVolume = 0.7f,
+                    onMetronomeVolumeChange = {},
+                    metronomeTick = false,
+                    isRecording = false,
+                    onRecordToggle = {},
+                    isPlayingRecording = false,
+                    onPlayRecordingClick = {},
+                    hasRecording = false,
+                    onExportMidiClick = {},
+                    onVolumeChange = { _, _ -> },
+                    onMuteToggle = {},
+                    onSoloToggle = {},
+                    onAddChannelClick = {},
+                    onChannelGearClick = {},
+                    onReverbChange = { _, _ -> },
+                    onChorusChange = { _, _ -> },
+                    onCutoffChange = { _, _ -> },
+                    midiMappings = emptyMap(),
+                    masterVolume = 0.8f,
+                    masterPan = 0.5f,
+                    isMasterLimiterActive = false,
+                    onMasterVolumeChange = {},
+                    onMasterPanChange = {},
+                    masterVuLevel = 0.5f,
+                    padEnabled = false,
+                    onPadEnabledChange = {},
+                    padVolume = 0.5f,
+                    onPadVolumeChange = {},
+                    padBank = "Bank A",
+                    onPadBankChange = {},
+                    availablePadBanks = listOf("Bank A"),
+                    activePadNote = null,
+                    onPadNoteToggle = {},
+                    activeNote = null,
+                    onNoteDown = {},
+                    onNoteUp = {},
+                    pitchBend = remember { Animatable(0f) },
+                    modulation = remember { Animatable(0f) },
+                    onModulationChange = {},
+                    sustainActive = false,
+                    onSustainToggle = {},
+                    vuLevels = vuAnim
+                )
+            }
+
+            FaderBoundsTracker.enabled = false
+            val recorded = FaderBoundsTracker.entries.toList()
+            assert(recorded.isNotEmpty()) { "No se registraron faders para ${width}x${height}" }
+
+            println("VALIDATING FADER BOUNDS FOR ${width}x${height} (minGroove: ${minGrooveDp}dp, total faders: ${recorded.size}):")
+            for (entry in recorded) {
+                println("  [${entry.tag}] travel: ${entry.usableTravelDp}dp, bounds: ${entry.bounds}")
+
+                assert(entry.usableTravelDp >= minGrooveDp) {
+                    "Fader ${entry.tag} en ${width}x${height} tiene recorrido útil ${entry.usableTravelDp}dp < ${minGrooveDp}dp requerido!"
+                }
+
+                assert(entry.bounds.top >= 0f) {
+                    "Fader ${entry.tag} en ${width}x${height} sobresale por arriba: top=${entry.bounds.top}"
+                }
+                assert(entry.bounds.bottom <= height.toFloat()) {
+                    "Fader ${entry.tag} en ${width}x${height} sobresale por abajo: bottom=${entry.bounds.bottom} > windowHeight=$height"
+                }
+            }
+        }
+    }
+
+
     @Test
     fun testMixer16ChannelsRecompositionPerformance() {
         val stripRecompositionCounts = IntArray(16) { 0 }
