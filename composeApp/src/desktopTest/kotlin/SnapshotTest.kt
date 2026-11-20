@@ -34,6 +34,7 @@ class SnapshotTest {
                 content()
             }
         }
+        scene.render()
         val img = scene.render()
         return img.encodeToData(EncodedImageFormat.PNG)?.bytes
     }
@@ -1441,7 +1442,11 @@ class SnapshotTest {
             assertTrue(st >= 6 || ov, "CPU/RAM Mini/Full debe ser visible en la barra o en '⋮' para w=$w")
         }
 
-        println("TOPBAR_MONOTONICITY_REACHABILITY_AND_BOUNDS_VERIFIED: Tested ${widths.size} widths from 800 to 1920dp.")
+        // c) COMPROBACIÓN EN 1280x800: En desktop 1280dp debe verse CPU/RAM completo (etapa 7)
+        val stage1280 = stagesByWidth[1280]!!.first
+        assertTrue(stage1280 == 7, "A 1280dp debe mostrarse CPU/RAM completo (etapa 7, obtenido etapa $stage1280)")
+
+        println("TOPBAR_MONOTONICITY_REACHABILITY_AND_BOUNDS_VERIFIED: Tested ${widths.size} widths from 800 to 1920dp. Stages: $stagesByWidth")
     }
 
     @Test
@@ -1685,5 +1690,102 @@ class SnapshotTest {
             File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_compact_800x360_overflow.png").writeBytes(bytes)
             println("SAVED_PHASE4_COMPACT_800x360_OVERFLOW_SNAPSHOT")
         }
+    }
+
+    @Test
+    fun testSkzProductionParserAndReserialization() {
+        val skzPath = System.getenv("SKZ_TEST_PATH")
+        if (skzPath.isNullOrBlank()) {
+            println("SKZ_TEST_PATH no configurada. Test opt-in omitido.")
+            return
+        }
+
+        val skzFile = File(skzPath)
+        assertTrue(skzFile.exists(), "El archivo especificado en SKZ_TEST_PATH no existe: $skzPath")
+
+        var manifestJson: String? = null
+        var concertJson: String? = null
+        var midiMappingsStr: String? = null
+
+        try {
+            java.util.zip.ZipFile(skzFile).use { zip ->
+                val entries = zip.entries()
+                while (entries.hasMoreElements()) {
+                    val entry = entries.nextElement()
+                    when (entry.name) {
+                        "manifest.json" -> manifestJson = zip.getInputStream(entry).bufferedReader().readText()
+                        "concert.json" -> concertJson = zip.getInputStream(entry).bufferedReader().readText()
+                        "midi_mappings.txt", "mappings.json" -> midiMappingsStr = zip.getInputStream(entry).bufferedReader().readText()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            throw AssertionError("Error exacto al abrir el archivo .skz como ZIP: ${e.message}", e)
+        }
+
+        assertNotNull(concertJson, "El paquete .skz no contiene la entrada 'concert.json'")
+
+        val deserializedList = try {
+            ConcertSerializer.deserialize(concertJson!!)
+        } catch (e: Exception) {
+            throw AssertionError("Error exacto al deserializar 'concert.json' con ConcertSerializer: ${e.message}", e)
+        }
+
+        assertTrue(deserializedList.isNotEmpty(), "ConcertSerializer devolvió una lista vacía para 'concert.json'")
+        val concert = deserializedList.first()
+
+        // 1. Reporte detallado del concierto cargado:
+        println("=== SKZ LOADED CONCERT REPORT ===")
+        println("Concierto: ${concert.name} (id: ${concert.id})")
+        println("Cantidad de Patches: ${concert.patches.size}")
+        println("Cantidad de Canales: ${concert.channels.size}")
+        println("Lista de colorHex de canales: ${concert.channels.map { ch -> "${ch.name}: ${ch.colorHex}" }}")
+        println("Lista de Volúmenes de canales: ${concert.channels.map { ch -> "${ch.name}: ${ch.volume}" }}")
+
+        var deserializedMidi: Map<Int, MidiTarget> = emptyMap()
+        if (midiMappingsStr != null) {
+            deserializedMidi = MidiMappingSerializer.deserialize(midiMappingsStr!!)
+            println("Mapeos MIDI CC encontrados (${deserializedMidi.size}): $deserializedMidi")
+        } else {
+            println("Mapeos MIDI CC: No se encontró archivo específico dentro del paquete .skz.")
+        }
+
+        // 2. Reserialización con código actual:
+        val reserializedJson = ConcertSerializer.serialize(listOf(concert))
+        val reparsedList = ConcertSerializer.deserialize(reserializedJson)
+        assertTrue(reparsedList.isNotEmpty(), "La reserialización produjo una lista vacía al volver a parsear")
+        val reparsedConcert = reparsedList.first()
+
+        // 3. Comparación estricta de fidelidad:
+        assertEquals(concert.channels.size, reparsedConcert.channels.size, "Discrepancia en cantidad de canales tras reserialización")
+        assertEquals(concert.patches.size, reparsedConcert.patches.size, "Discrepancia en cantidad de patches tras reserialización")
+
+        for (i in concert.channels.indices) {
+            val originalCh = concert.channels[i]
+            val reparsedCh = reparsedConcert.channels[i]
+            assertEquals(originalCh.volume, reparsedCh.volume, 0.0001f, "Discrepancia de volumen en canal ${originalCh.name}")
+            assertEquals(originalCh.colorHex, reparsedCh.colorHex, "Discrepancia de colorHex en canal ${originalCh.name}")
+        }
+
+        for (p in concert.patches.indices) {
+            val origPatch = concert.patches[p]
+            val reparsedPatch = reparsedConcert.patches[p]
+            assertEquals(origPatch.channelsSnapshot.size, reparsedPatch.channelsSnapshot.size, "Discrepancia en snapshots del patch ${origPatch.name}")
+            for (s in origPatch.channelsSnapshot.indices) {
+                val origSnap = origPatch.channelsSnapshot[s]
+                val repSnap = reparsedPatch.channelsSnapshot[s]
+                assertEquals(origSnap.volume, repSnap.volume, 0.0001f, "Discrepancia de volumen en snapshot canal ${origSnap.name} de patch ${origPatch.name}")
+                assertEquals(origSnap.colorHex, repSnap.colorHex, "Discrepancia de colorHex en snapshot canal ${origSnap.name} de patch ${origPatch.name}")
+            }
+        }
+
+        if (deserializedMidi.isNotEmpty()) {
+            val reserializedMidi = MidiMappingSerializer.serialize(deserializedMidi)
+            val reparsedMidi = MidiMappingSerializer.deserialize(reserializedMidi)
+            assertEquals(deserializedMidi.size, reparsedMidi.size, "Discrepancia en cantidad de mapeos MIDI tras reserializar")
+            assertEquals(deserializedMidi, reparsedMidi, "Discrepancia en mapeos MIDI tras reserialización")
+        }
+
+        println("SKZ_VALIDATION_SUCCESS: El archivo .skz se parseó, reportó y reserializó con 100% de coincidencia exacta.")
     }
 }

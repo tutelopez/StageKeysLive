@@ -149,6 +149,8 @@ fun ConcertViewScreen(
 
             // Stage Lock (Bloqueo de escenario en vivo - NO persistido)
             var isStageLocked by remember { mutableStateOf(initialStageLocked) }
+            var showCompactMenu by rememberSaveable(initialShowCompactMenu) { mutableStateOf(initialShowCompactMenu) }
+            var topBarStage by remember(isCompactScreen) { mutableStateOf(if (isCompactScreen) 2 else 7) }
 
             // Datos existentes para chips de TopBar
             val currentPatch = concert.patches.getOrNull(selectedPatchIndex)
@@ -210,7 +212,9 @@ fun ConcertViewScreen(
                     onPrevPatch = if (prevPatchIndex != null) { { onSelectPatch(prevPatchIndex) } } else null,
                     onNextPatch = if (nextPatchIndex != null) { { onSelectPatch(nextPatchIndex) } } else null,
                     initialUnlockProgress = initialUnlockProgress,
-                    initialShowCompactMenu = initialShowCompactMenu
+                    isMenuExpanded = showCompactMenu,
+                    onMenuExpandedChange = { showCompactMenu = it },
+                    onStageComputed = { st, _ -> topBarStage = st }
                 )
 
                 if (isPerformanceMode) {
@@ -451,6 +455,50 @@ fun ConcertViewScreen(
                             isStageLocked = isStageLocked,
                             modifier = Modifier.fillMaxSize()
                         )
+                    }
+                }
+            }
+            // Overlay para menú desplegable "⋮" (accesible en todos los tamaños y headless rendering)
+            if (showCompactMenu) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null
+                        ) { showCompactMenu = false }
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = DarkPanel,
+                        border = BorderStroke(1.dp, OutlineVariant.copy(alpha = 0.5f)),
+                        tonalElevation = 8.dp,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = if (isCompactScreen) 44.dp else 52.dp, end = 56.dp)
+                            .width(220.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                            TopBarOverflowMenuItems(
+                                currentStage = topBarStage,
+                                performanceStats = performanceStats,
+                                tonalityText = tonalityText,
+                                layerCountText = layerCountText,
+                                hasRecording = hasRecording,
+                                isStageLocked = isStageLocked,
+                                isRecording = isRecording,
+                                isPlayingRecording = isPlayingRecording,
+                                metronomeBpm = metronomeBpm,
+                                metronomeOn = metronomeOn,
+                                onExportMidiClick = onExportMidiClick,
+                                onRecordToggle = onRecordToggle,
+                                onPlayRecordingClick = onPlayRecordingClick,
+                                onSettingsClick = onSettingsClick,
+                                onMetronomeToggle = onMetronomeToggle,
+                                onTapTempo = onTapTempo,
+                                onDismiss = { showCompactMenu = false }
+                            )
+                        }
                     }
                 }
             }
@@ -949,6 +997,8 @@ internal fun TopBar(
     modifier: Modifier = Modifier,
     initialUnlockProgress: Float = 0f,
     initialShowCompactMenu: Boolean = false,
+    isMenuExpanded: Boolean? = null,
+    onMenuExpandedChange: ((Boolean) -> Unit)? = null,
     onPanicPositioned: ((LayoutCoordinates) -> Unit)? = null,
     onLockPositioned: ((LayoutCoordinates) -> Unit)? = null,
     onOtherPositioned: ((String, LayoutCoordinates) -> Unit)? = null,
@@ -987,7 +1037,13 @@ internal fun TopBar(
         }
     }
 
-    var showCompactMenu by remember(initialShowCompactMenu) { mutableStateOf(initialShowCompactMenu) }
+    var internalShowCompactMenu by remember(initialShowCompactMenu) { mutableStateOf(initialShowCompactMenu) }
+    val showCompactMenu = isMenuExpanded ?: internalShowCompactMenu
+    val setShowCompactMenu: (Boolean) -> Unit = { expanded ->
+        internalShowCompactMenu = expanded
+        onMenuExpandedChange?.invoke(expanded)
+    }
+
     var tapPulse by remember { mutableStateOf(false) }
     LaunchedEffect(tapPulse) {
         if (tapPulse) {
@@ -1200,7 +1256,7 @@ internal fun TopBar(
 
                         Column(
                             modifier = Modifier
-                                .widthIn(max = if (isCompact) 130.dp else 180.dp)
+                                .widthIn(max = if (isCompact) 130.dp else 160.dp)
                                 .onGloballyPositioned { onOtherPositioned?.invoke("TITLE", it) }
                         ) {
                             Text(
@@ -1269,7 +1325,7 @@ internal fun TopBar(
                         contentAlignment = Alignment.Center
                     ) {
                         IconButton(
-                            onClick = { showCompactMenu = true },
+                            onClick = { setShowCompactMenu(true) },
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
@@ -1282,99 +1338,28 @@ internal fun TopBar(
 
                         DropdownMenu(
                             expanded = showCompactMenu,
-                            onDismissRequest = { showCompactMenu = false },
+                            onDismissRequest = { setShowCompactMenu(false) },
                             modifier = Modifier.background(DarkPanel)
                         ) {
-                            // Monitor CPU/RAM (siempre presente en menú si no está la versión completa en la barra)
-                            if (currentStage < 7 && performanceStats != null) {
-                                val cpu = performanceStats.cpuPercent
-                                val ram = performanceStats.ramPercent ?: ((performanceStats.ramMb) * 100 / 512).coerceIn(0, 100)
-                                DropdownMenuItem(
-                                    text = { Text("CPU: $cpu% | RAM: $ram%", color = AccentLavender, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                                    onClick = {},
-                                    enabled = false
-                                )
-                            }
-                            // KEY / CAPAS
-                            if (currentStage < 5 && (tonalityText.isNotEmpty() || layerCountText.isNotEmpty())) {
-                                DropdownMenuItem(
-                                    text = { Text("$tonalityText  •  $layerCountText", color = AccentPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                                    onClick = {},
-                                    enabled = false
-                                )
-                            }
-                            // Segundo MIDI / Export
-                            if (currentStage < 4) {
-                                DropdownMenuItem(
-                                    text = { Text("Exportar como MIDI", color = if (isStageLocked || !hasRecording) TextSecondary.copy(alpha = 0.4f) else AccentPurple, fontSize = 11.sp) },
-                                    enabled = !isStageLocked && hasRecording,
-                                    onClick = {
-                                        if (!isStageLocked) {
-                                            showCompactMenu = false
-                                            onExportMidiClick()
-                                        }
-                                    },
-                                    leadingIcon = {
-                                        Icon(TablerIcons.Share, contentDescription = null, tint = if (isStageLocked || !hasRecording) TextSecondary.copy(alpha = 0.4f) else AccentPurple, modifier = Modifier.size(14.dp))
-                                    }
-                                )
-                            }
-                            // REC / PLAY
-                            if (currentStage < 3) {
-                                DropdownMenuItem(
-                                    text = { Text(if (isRecording) "Detener Grabación" else "Grabar (REC)", color = StatusError, fontSize = 11.sp) },
-                                    onClick = {
-                                        showCompactMenu = false
-                                        onRecordToggle()
-                                    },
-                                    leadingIcon = {
-                                        Box(Modifier.size(8.dp).clip(CircleShape).background(StatusError))
-                                    }
-                                )
-                                if (hasRecording || isPlayingRecording) {
-                                    DropdownMenuItem(
-                                        text = { Text(if (isPlayingRecording) "Detener Reproducción" else "Reproducir Grabación", color = StateOk, fontSize = 11.sp) },
-                                        onClick = {
-                                            showCompactMenu = false
-                                            onPlayRecordingClick()
-                                        },
-                                        leadingIcon = {
-                                            Icon(if (isPlayingRecording) TablerIcons.PlayerStop else TablerIcons.PlayerPlay, contentDescription = null, tint = StateOk, modifier = Modifier.size(14.dp))
-                                        }
-                                    )
-                                }
-                            }
-                            // Ajustes (Settings)
-                            if (currentStage < 2) {
-                                DropdownMenuItem(
-                                    text = { Text("Ajustes", color = if (isStageLocked) TextSecondary.copy(alpha = 0.4f) else TextPrimary, fontSize = 11.sp) },
-                                    enabled = !isStageLocked,
-                                    onClick = {
-                                        if (!isStageLocked) {
-                                            showCompactMenu = false
-                                            onSettingsClick()
-                                        }
-                                    },
-                                    leadingIcon = {
-                                        Icon(TablerIcons.Settings, contentDescription = null, tint = if (isStageLocked) TextSecondary.copy(alpha = 0.4f) else TextSecondary, modifier = Modifier.size(14.dp))
-                                    }
-                                )
-                            }
-                            // BPM / TAP
-                            if (currentStage < 1) {
-                                DropdownMenuItem(
-                                    text = { Text("Metrónomo: $metronomeBpm BPM (${if (metronomeOn) "ON" else "OFF"})", color = if (metronomeOn) StateOk else TextPrimary, fontSize = 11.sp) },
-                                    onClick = {
-                                        onMetronomeToggle()
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("TAP Tempo", color = AccentSky, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                                    onClick = {
-                                        onTapTempo()
-                                    }
-                                )
-                            }
+                            TopBarOverflowMenuItems(
+                                currentStage = currentStage,
+                                performanceStats = performanceStats,
+                                tonalityText = tonalityText,
+                                layerCountText = layerCountText,
+                                hasRecording = hasRecording,
+                                isStageLocked = isStageLocked,
+                                isRecording = isRecording,
+                                isPlayingRecording = isPlayingRecording,
+                                metronomeBpm = metronomeBpm,
+                                metronomeOn = metronomeOn,
+                                onExportMidiClick = onExportMidiClick,
+                                onRecordToggle = onRecordToggle,
+                                onPlayRecordingClick = onPlayRecordingClick,
+                                onSettingsClick = onSettingsClick,
+                                onMetronomeToggle = onMetronomeToggle,
+                                onTapTempo = onTapTempo,
+                                onDismiss = { setShowCompactMenu(false) }
+                            )
                         }
                     }
                 }.map { it.measure(childConstraints) }
@@ -1884,14 +1869,14 @@ private fun ResourceMonitorWidget(
         modifier = modifier.height(32.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             // CPU Indicator
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = "CPU",
@@ -1909,7 +1894,7 @@ private fun ResourceMonitorWidget(
                 // Micro CPU bar
                 Box(
                     modifier = Modifier
-                        .width(22.dp)
+                        .width(18.dp)
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
                         .background(BorderHairline)
@@ -1935,7 +1920,7 @@ private fun ResourceMonitorWidget(
             // RAM Indicator
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = "RAM",
@@ -1953,7 +1938,7 @@ private fun ResourceMonitorWidget(
                 // Micro RAM bar
                 Box(
                     modifier = Modifier
-                        .width(22.dp)
+                        .width(18.dp)
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
                         .background(BorderHairline)
@@ -1968,6 +1953,118 @@ private fun ResourceMonitorWidget(
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun TopBarOverflowMenuItems(
+    currentStage: Int,
+    performanceStats: PerformanceStats?,
+    tonalityText: String,
+    layerCountText: String,
+    hasRecording: Boolean,
+    isStageLocked: Boolean,
+    isRecording: Boolean,
+    isPlayingRecording: Boolean,
+    metronomeBpm: Int,
+    metronomeOn: Boolean,
+    onExportMidiClick: () -> Unit,
+    onRecordToggle: () -> Unit,
+    onPlayRecordingClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onMetronomeToggle: () -> Unit,
+    onTapTempo: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    // Monitor CPU/RAM (siempre presente en menú si no está la versión completa en la barra)
+    if (currentStage < 7 && performanceStats != null) {
+        val cpu = performanceStats.cpuPercent
+        val ram = performanceStats.ramPercent ?: ((performanceStats.ramMb) * 100 / 512).coerceIn(0, 100)
+        DropdownMenuItem(
+            text = { Text("CPU: $cpu% | RAM: $ram%", color = AccentLavender, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+            onClick = {},
+            enabled = false
+        )
+    }
+    // KEY / CAPAS
+    if (currentStage < 5 && (tonalityText.isNotEmpty() || layerCountText.isNotEmpty())) {
+        DropdownMenuItem(
+            text = { Text("$tonalityText  •  $layerCountText", color = AccentPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+            onClick = {},
+            enabled = false
+        )
+    }
+    // Segundo MIDI / Export
+    if (currentStage < 4) {
+        DropdownMenuItem(
+            text = { Text("Exportar como MIDI", color = if (isStageLocked || !hasRecording) TextSecondary.copy(alpha = 0.4f) else AccentPurple, fontSize = 11.sp) },
+            enabled = !isStageLocked && hasRecording,
+            onClick = {
+                if (!isStageLocked) {
+                    onDismiss()
+                    onExportMidiClick()
+                }
+            },
+            leadingIcon = {
+                Icon(TablerIcons.Share, contentDescription = null, tint = if (isStageLocked || !hasRecording) TextSecondary.copy(alpha = 0.4f) else AccentPurple, modifier = Modifier.size(14.dp))
+            }
+        )
+    }
+    // REC / PLAY
+    if (currentStage < 3) {
+        DropdownMenuItem(
+            text = { Text(if (isRecording) "Detener Grabación" else "Grabar (REC)", color = StatusError, fontSize = 11.sp) },
+            onClick = {
+                onDismiss()
+                onRecordToggle()
+            },
+            leadingIcon = {
+                Box(Modifier.size(8.dp).clip(CircleShape).background(StatusError))
+            }
+        )
+        if (hasRecording || isPlayingRecording) {
+            DropdownMenuItem(
+                text = { Text(if (isPlayingRecording) "Detener Reproducción" else "Reproducir Grabación", color = StateOk, fontSize = 11.sp) },
+                onClick = {
+                    onDismiss()
+                    onPlayRecordingClick()
+                },
+                leadingIcon = {
+                    Icon(if (isPlayingRecording) TablerIcons.PlayerStop else TablerIcons.PlayerPlay, contentDescription = null, tint = StateOk, modifier = Modifier.size(14.dp))
+                }
+            )
+        }
+    }
+    // Ajustes (Settings)
+    if (currentStage < 2) {
+        DropdownMenuItem(
+            text = { Text("Ajustes", color = if (isStageLocked) TextSecondary.copy(alpha = 0.4f) else TextPrimary, fontSize = 11.sp) },
+            enabled = !isStageLocked,
+            onClick = {
+                if (!isStageLocked) {
+                    onDismiss()
+                    onSettingsClick()
+                }
+            },
+            leadingIcon = {
+                Icon(TablerIcons.Settings, contentDescription = null, tint = if (isStageLocked) TextSecondary.copy(alpha = 0.4f) else TextSecondary, modifier = Modifier.size(14.dp))
+            }
+        )
+    }
+    // BPM / TAP
+    if (currentStage < 1) {
+        DropdownMenuItem(
+            text = { Text("Metrónomo: $metronomeBpm BPM (${if (metronomeOn) "ON" else "OFF"})", color = if (metronomeOn) StateOk else TextPrimary, fontSize = 11.sp) },
+            onClick = {
+                onMetronomeToggle()
+            }
+        )
+        DropdownMenuItem(
+            text = { Text("TAP Tempo", color = AccentSky, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+            onClick = {
+                onTapTempo()
+            }
+        )
     }
 }
 
