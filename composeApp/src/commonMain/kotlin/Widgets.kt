@@ -23,9 +23,13 @@ import compose.icons.tablericons.*
 import androidx.compose.ui.Alignment
 
 @Composable
-fun AddChannelButton(onClick: () -> Unit) {
+fun AddChannelButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .width(72.dp)
             .fillMaxHeight()
             .clip(RoundedCornerShape(14.dp))
@@ -37,7 +41,7 @@ fun AddChannelButton(onClick: () -> Unit) {
                 ),
                 shape = RoundedCornerShape(14.dp)
             )
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -101,13 +105,14 @@ fun PitchBendWheel(
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("PB", color = TextSecondary, fontSize = 11.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(2.dp))
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(DarkPanel)
-                .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(6.dp))
+                .background(SurfacePanel)
+                .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = { onRelease() },
@@ -119,20 +124,24 @@ fun PitchBendWheel(
                 },
             contentAlignment = Alignment.Center
         ) {
-            // Center line
+            // Center detent notch
             Box(
-                modifier = Modifier.fillMaxWidth().height(1.dp)
+                modifier = Modifier.fillMaxWidth().height(1.5.dp)
                     .background(BorderHairline)
             )
-            // Filled portion
+            // Filled portion from center
             val clipped = (value + 1f) / 2f
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.7f)
+                    .fillMaxWidth(0.75f)
                     .fillMaxHeight(clipped.coerceIn(0.01f, 1f))
                     .align(Alignment.BottomCenter)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(AccentPrimary.copy(alpha = 0.35f))
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(AccentLavender.copy(alpha = 0.6f), AccentPrimary.copy(alpha = 0.85f))
+                        )
+                    )
             )
         }
     }
@@ -149,13 +158,14 @@ fun ModulationWheel(
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("MOD", color = TextSecondary, fontSize = 11.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(2.dp))
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(DarkPanel)
-                .border(1.dp, BorderHairline, RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(6.dp))
+                .background(SurfacePanel)
+                .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
                 .pointerInput(Unit) {
                     detectDragGestures { change, _ ->
                         val newVal = 1f - (change.position.y / size.height).coerceIn(0f, 1f)
@@ -166,12 +176,12 @@ fun ModulationWheel(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.7f)
+                    .fillMaxWidth(0.75f)
                     .fillMaxHeight(value.coerceIn(0.01f, 1f))
-                    .clip(RoundedCornerShape(4.dp))
+                    .clip(RoundedCornerShape(3.dp))
                     .background(
                         Brush.verticalGradient(
-                            listOf(AccentLavender.copy(alpha = 0.6f), AccentPrimary.copy(alpha = 0.3f))
+                            listOf(AccentLavender.copy(alpha = 0.7f), AccentPrimary.copy(alpha = 0.9f))
                         )
                     )
             )

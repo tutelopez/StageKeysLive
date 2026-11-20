@@ -16,7 +16,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -399,19 +401,29 @@ fun ProFader(
 @Composable
 fun FaderScale(
     modifier: Modifier = Modifier,
-    capHeight: Dp = FaderMath.CAP_HEIGHT_DP
+    capHeight: Dp = FaderMath.CAP_HEIGHT_DP,
+    isCondensed: Boolean = false
 ) {
-    val marks = listOf(
-        1.0f to "0",
-        5f / 6f to "-10",
-        4f / 6f to "-20",
-        3f / 6f to "-30",
-        2f / 6f to "-40",
-        1f / 6f to "-50",
-        0.0f to "-∞"
-    )
+    val marks = if (isCondensed) {
+        listOf(
+            1.0f to "0",
+            4f / 6f to "-20",
+            2f / 6f to "-40",
+            0.0f to "-∞"
+        )
+    } else {
+        listOf(
+            1.0f to "0",
+            5f / 6f to "-10",
+            4f / 6f to "-20",
+            3f / 6f to "-30",
+            2f / 6f to "-40",
+            1f / 6f to "-50",
+            0.0f to "-∞"
+        )
+    }
 
-    BoxWithConstraints(modifier = modifier) {
+    BoxWithConstraints(modifier = modifier.clipToBounds()) {
         val totalH = maxHeight
         marks.forEach { (fraction, label) ->
             val yCenter = FaderMath.yCentroDp(fraction, totalH, capHeight)
@@ -433,12 +445,14 @@ fun FaderScale(
                     color = if (fraction == 1.0f) AccentLavender else TextTertiary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    fontFamily = FontFamily.Default
+                    fontFamily = FontFamily.Default,
+                    maxLines = 1,
+                    softWrap = false
                 )
-                Spacer(Modifier.width(3.dp))
+                Spacer(Modifier.width(if (isCondensed) 2.dp else 3.dp))
                 Box(
                     modifier = Modifier
-                        .width(4.dp)
+                        .width(if (isCondensed) 3.dp else 4.dp)
                         .height(1.dp)
                         .background(if (fraction == 1.0f) AccentLavender else BorderHairline)
                 )
@@ -584,7 +598,8 @@ fun ProChannelStrip(
     onPanChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     isCondensed: Boolean = false,
-    isMidiMapped: Boolean = false
+    isMidiMapped: Boolean = false,
+    isStageLocked: Boolean = false
 ) {
     val channelColor = parseColorHex(channel.colorHex)
     var isClipped by remember { mutableStateOf(false) }
@@ -592,6 +607,7 @@ fun ProChannelStrip(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxHeight()
+            .clipToBounds()
             .clip(RoundedCornerShape(14.dp))
             .background(
                 Brush.verticalGradient(listOf(StripTop, StripBottom))
@@ -609,14 +625,14 @@ fun ProChannelStrip(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(if (isCompact) 2.dp else 4.dp)
         ) {
-            // 1. Pastilla de Nombre con color de canal
+            // 1. Pastilla de Nombre con color de canal (atenuada si el escenario está bloqueado)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(if (isCompact) 24.dp else 28.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(channelColor)
-                    .clickable(onClick = onGearClick)
+                    .clickable(enabled = !isStageLocked, onClick = onGearClick)
                     .padding(horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -642,21 +658,22 @@ fun ProChannelStrip(
                 Icon(
                     TablerIcons.Settings,
                     contentDescription = "Configuración",
-                    tint = BgDark.copy(alpha = 0.8f),
-                    modifier = Modifier.size(11.dp)
+                    tint = BgDark.copy(alpha = if (isStageLocked) 0.35f else 0.8f),
+                    modifier = Modifier.size(11.dp).alpha(if (isStageLocked) 0.4f else 1f)
                 )
             }
 
             if (!isCompact) {
-                // 2. Selector de Sonido / SF2
+                // 2. Selector de Sonido / SF2 (atenuado a 40% y deshabilitado si está bloqueado)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(26.dp)
                         .clip(RoundedCornerShape(6.dp))
+                        .alpha(if (isStageLocked) 0.4f else 1f)
                         .background(SurfaceCard)
                         .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
-                        .clickable(onClick = onGearClick)
+                        .clickable(enabled = !isStageLocked, onClick = onGearClick)
                         .padding(horizontal = 6.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
@@ -670,15 +687,16 @@ fun ProChannelStrip(
                     )
                 }
 
-                // 3. Botón FX
+                // 3. Botón FX (atenuado a 40% y deshabilitado si está bloqueado)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(24.dp)
                         .clip(RoundedCornerShape(6.dp))
+                        .alpha(if (isStageLocked) 0.4f else 1f)
                         .background(SurfaceCard)
                         .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
-                        .clickable(onClick = onFxClick)
+                        .clickable(enabled = !isStageLocked, onClick = onFxClick)
                         .padding(horizontal = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -773,13 +791,13 @@ fun ProChannelStrip(
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!isCompact) {
-                    FaderScale(
-                        modifier = Modifier
-                            .width(28.dp)
-                            .fillMaxHeight()
-                    )
-                }
+                FaderScale(
+                    modifier = Modifier
+                        .width(28.dp)
+                        .fillMaxHeight(),
+                    capHeight = capH,
+                    isCondensed = isCompact
+                )
 
                 ProFader(
                     volume = channel.volume,
@@ -862,14 +880,17 @@ fun ProMasterStrip(
     levelProvider: () -> Float,
     isLimiterActive: Boolean,
     onLimiterToggle: (Boolean) -> Unit,
+    isCondensed: Boolean = false,
     modifier: Modifier = Modifier,
-    onMidiMapClick: () -> Unit = {}
+    onMidiMapClick: () -> Unit = {},
+    isStageLocked: Boolean = false
 ) {
     var isClipped by remember { mutableStateOf(false) }
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxHeight()
+            .clipToBounds()
             .clip(RoundedCornerShape(14.dp))
             .background(
                 Brush.verticalGradient(listOf(StripTop, StripBottom))
@@ -877,7 +898,7 @@ fun ProMasterStrip(
             .border(1.2.dp, AccentPrimary.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
             .padding(6.dp)
     ) {
-        val isCompact = maxWidth < 100.dp || maxHeight < 320.dp
+        val isCompact = isCondensed || maxWidth < 84.dp || maxHeight < 260.dp
         val capH = if (isCompact) 24.dp else FaderMath.CAP_HEIGHT_DP
 
         Column(
@@ -885,7 +906,7 @@ fun ProMasterStrip(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(if (isCompact) 2.dp else 4.dp)
         ) {
-            // Cabecera Violeta
+            // 1. Cabecera Violeta
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -903,15 +924,16 @@ fun ProMasterStrip(
                 )
             }
 
-            // Switch Limiter
+            // 2. Switch Limiter (deshabilitado si stage lock activo)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(if (isCompact) 24.dp else 26.dp)
                     .clip(RoundedCornerShape(6.dp))
+                    .alpha(if (isStageLocked) 0.4f else 1f)
                     .background(SurfaceCard)
                     .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
-                    .clickable { onLimiterToggle(!isLimiterActive) }
+                    .clickable(enabled = !isStageLocked) { onLimiterToggle(!isLimiterActive) }
                     .padding(horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -925,6 +947,76 @@ fun ProMasterStrip(
                 )
             }
 
+            if (!isCompact) {
+                // 3. Botón MIDI MAP (deshabilitado si stage lock activo)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .alpha(if (isStageLocked) 0.4f else 1f)
+                        .background(SurfaceCard)
+                        .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
+                        .clickable(enabled = !isStageLocked, onClick = onMidiMapClick)
+                        .padding(horizontal = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "MIDI MAP",
+                        color = AccentPrimary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Icon(
+                        TablerIcons.Adjustments,
+                        contentDescription = "Midi Map",
+                        tint = AccentLavender,
+                        modifier = Modifier.size(13.dp)
+                    )
+                }
+
+                // 4. Perilla de Balance Master L·C·R
+                var masterBalance by remember { mutableStateOf(0.5f) }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(vertical = 2.dp)
+                ) {
+                    RotaryKnob(
+                        value = masterBalance,
+                        onValueChange = { masterBalance = it },
+                        size = 32.dp,
+                        accentColor = AccentPrimary
+                    )
+                    Text(
+                        text = "L · C · R",
+                        color = TextTertiary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                // 5. Botón DIM / MUTE Master
+                var isDimmed by remember { mutableStateOf(false) }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(28.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isDimmed) StateSolo.copy(alpha = 0.25f) else SurfaceCard)
+                        .border(1.dp, if (isDimmed) StateSolo else BorderHairline, RoundedCornerShape(6.dp))
+                        .clickable { isDimmed = !isDimmed },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isDimmed) "DIM -20dB" else "OUT 1-2",
+                        color = if (isDimmed) StateSolo else TextSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
             // Fader y Medidor Dual
             Row(
                 modifier = Modifier
@@ -934,13 +1026,13 @@ fun ProMasterStrip(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!isCompact) {
-                    FaderScale(
-                        modifier = Modifier
-                            .width(28.dp)
-                            .fillMaxHeight()
-                    )
-                }
+                FaderScale(
+                    modifier = Modifier
+                        .width(28.dp)
+                        .fillMaxHeight(),
+                    capHeight = capH,
+                    isCondensed = isCompact
+                )
 
                 ProFader(
                     volume = volume,
@@ -1015,25 +1107,6 @@ fun ProMasterStrip(
                         fontWeight = FontWeight.ExtraBold
                     )
                 }
-
-                // Botón MIDI MAP
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(24.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(SurfaceCard)
-                        .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
-                        .clickable(onClick = onMidiMapClick),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "MIDI MAP",
-                        color = TextSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
         }
     }
@@ -1051,11 +1124,14 @@ fun ProMetronomeStrip(
     bpm: Int,
     onTapTempo: () -> Unit,
     levelProvider: () -> Float,
-    modifier: Modifier = Modifier
+    isCondensed: Boolean = false,
+    modifier: Modifier = Modifier,
+    isStageLocked: Boolean = false
 ) {
     BoxWithConstraints(
         modifier = modifier
             .fillMaxHeight()
+            .clipToBounds()
             .clip(RoundedCornerShape(14.dp))
             .background(
                 Brush.verticalGradient(listOf(StripTop, StripBottom))
@@ -1063,7 +1139,7 @@ fun ProMetronomeStrip(
             .border(1.dp, BorderHairline, RoundedCornerShape(14.dp))
             .padding(6.dp)
     ) {
-        val isCompact = maxWidth < 96.dp || maxHeight < 320.dp
+        val isCompact = isCondensed || maxWidth < 84.dp || maxHeight < 260.dp
         val capH = if (isCompact) 24.dp else FaderMath.CAP_HEIGHT_DP
 
         Column(
@@ -1071,7 +1147,7 @@ fun ProMetronomeStrip(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(if (isCompact) 2.dp else 4.dp)
         ) {
-            // Cabecera CLICK
+            // 1. Cabecera CLICK
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1090,21 +1166,100 @@ fun ProMetronomeStrip(
                 )
             }
 
-            // BPM & TAP
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(if (isCompact) 24.dp else 26.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(SurfaceCard)
-                    .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
-                    .clickable(onClick = onTapTempo)
-                    .padding(horizontal = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("$bpm", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                Text("TAP", color = AccentPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            if (!isCompact) {
+                // 2. BPM pill
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(26.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(SurfaceCard)
+                        .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "$bpm BPM",
+                        color = TextPrimary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // 3. Botón TAP TEMPO
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(SurfaceCard)
+                        .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
+                        .clickable(onClick = onTapTempo)
+                        .padding(horizontal = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "TAP TEMPO",
+                        color = AccentPrimary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // 4. Perilla de Pitch / Tono Click
+                var clickPitch by remember { mutableStateOf(0.5f) }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(vertical = 2.dp)
+                ) {
+                    RotaryKnob(
+                        value = clickPitch,
+                        onValueChange = { clickPitch = it },
+                        size = 32.dp,
+                        accentColor = StateOk
+                    )
+                    Text(
+                        text = "PITCH",
+                        color = TextTertiary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                // 5. Compás / Accent
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(28.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(SurfaceCard)
+                        .border(1.dp, BorderHairline, RoundedCornerShape(6.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "4 / 4 BEAT",
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            } else {
+                // BPM & TAP condensado en compacto
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(SurfaceCard)
+                        .border(1.dp, BorderHairline, RoundedCornerShape(6.dp))
+                        .clickable(onClick = onTapTempo)
+                        .padding(horizontal = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("$bpm", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("TAP", color = AccentPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
             // Fader y Medidor
@@ -1116,13 +1271,13 @@ fun ProMetronomeStrip(
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!isCompact) {
-                    FaderScale(
-                        modifier = Modifier
-                            .width(26.dp)
-                            .fillMaxHeight()
-                    )
-                }
+                FaderScale(
+                    modifier = Modifier
+                        .width(28.dp)
+                        .fillMaxHeight(),
+                    capHeight = capH,
+                    isCondensed = isCompact
+                )
 
                 ProFader(
                     volume = volume,
@@ -1148,6 +1303,26 @@ fun ProMetronomeStrip(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            if (!isCompact) {
+                // Pastilla TICK status alineada con CLIP latch
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(SurfaceCard)
+                        .border(1.dp, BorderHairline, RoundedCornerShape(4.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "TICK",
+                        color = if (enabled) StateOk else TextTertiary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }

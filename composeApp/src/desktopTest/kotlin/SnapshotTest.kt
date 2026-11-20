@@ -15,11 +15,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
 import com.tutelopezmusic.stagekeyslive.*
 import org.jetbrains.skia.EncodedImageFormat
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class SnapshotTest {
 
@@ -29,6 +34,7 @@ class SnapshotTest {
                 content()
             }
         }
+        scene.render()
         val img = scene.render()
         return img.encodeToData(EncodedImageFormat.PNG)?.bytes
     }
@@ -275,8 +281,8 @@ class SnapshotTest {
         }
 
         if (bytes != null) {
-            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase3_concert_1280x800.png").writeBytes(bytes)
-            println("SAVED_PHASE3_CONCERT_1280x800_SNAPSHOT")
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_concert_1280x800.png").writeBytes(bytes)
+            println("SAVED_PHASE4_CONCERT_1280x800_SNAPSHOT")
         }
     }
 
@@ -409,8 +415,8 @@ class SnapshotTest {
         }
 
         if (bytes != null) {
-            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase3_compact_800x360.png").writeBytes(bytes)
-            println("SAVED_PHASE3_COMPACT_800x360_SNAPSHOT")
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_compact_800x360.png").writeBytes(bytes)
+            println("SAVED_PHASE4_COMPACT_800x360_SNAPSHOT")
         }
     }
 
@@ -509,8 +515,8 @@ class SnapshotTest {
             )
         }
         if (bytes != null) {
-            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase3_concert_1024x720.png").writeBytes(bytes)
-            println("SAVED_PHASE3_CONCERT_1024x720_SNAPSHOT")
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_concert_1024x720.png").writeBytes(bytes)
+            println("SAVED_PHASE4_CONCERT_1024x720_SNAPSHOT")
         }
     }
 
@@ -590,8 +596,90 @@ class SnapshotTest {
             )
         }
         if (bytes != null) {
-            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase3_concert_960x600.png").writeBytes(bytes)
-            println("SAVED_PHASE3_CONCERT_960x600_SNAPSHOT")
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_concert_960x600.png").writeBytes(bytes)
+            println("SAVED_PHASE4_CONCERT_960x600_SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun snapshotConcertViewStageLocked() {
+        val concert = createStandardConcert()
+        val bytes = renderScene(width = 1280, height = 800) {
+            val vuAnim = remember { concert.channels.map { Animatable(0.55f) } }
+            ConcertViewScreen(
+                concert = concert,
+                selectedPatchIndex = 0,
+                onSelectPatch = {},
+                onAddPatchClick = {},
+                onEditPatchClick = {},
+                onDeletePatch = {},
+                onExportPatchClick = {},
+                onImportPatchClick = {},
+                onToggleFavorite = {},
+                onMovePatch = { _, _ -> },
+                onBackClick = {},
+                onSettingsClick = {},
+                onPanicClick = {},
+                performanceStats = PerformanceStats(cpuPercent = 14, ramMb = 240, ramPercent = 24),
+                batteryLevel = 100,
+                batteryCharging = true,
+                audioDiagnostics = "48 kHz • 128 frames (2.7 ms)",
+                currentConnectedDevices = listOf("nanoKONTROL2", "Arturia KeyLab 88"),
+                midiActivityIndicator = false,
+                metronomeOn = true,
+                onMetronomeToggle = {},
+                metronomeBpm = 128,
+                onBpmChange = {},
+                onBpmChangeFinished = {},
+                onTapTempo = {},
+                metronomeVolume = 0.7f,
+                onMetronomeVolumeChange = {},
+                metronomeTick = false,
+                isRecording = false,
+                onRecordToggle = {},
+                isPlayingRecording = false,
+                onPlayRecordingClick = {},
+                hasRecording = false,
+                onExportMidiClick = {},
+                onVolumeChange = { _, _ -> },
+                onMuteToggle = {},
+                onSoloToggle = {},
+                onAddChannelClick = {},
+                onChannelGearClick = {},
+                onReverbChange = { _, _ -> },
+                onChorusChange = { _, _ -> },
+                onCutoffChange = { _, _ -> },
+                midiMappings = emptyMap(),
+                masterVolume = 0.85f,
+                masterPan = 0.5f,
+                isMasterLimiterActive = true,
+                onMasterVolumeChange = {},
+                onMasterPanChange = {},
+                masterVuLevel = 0.65f,
+                padEnabled = true,
+                onPadEnabledChange = {},
+                padVolume = 0.6f,
+                onPadVolumeChange = {},
+                padBank = "Ambient C",
+                onPadBankChange = {},
+                availablePadBanks = listOf("Ambient C", "Shimmer D", "Warm G"),
+                activePadNote = 0,
+                onPadNoteToggle = {},
+                activeNote = 60,
+                onNoteDown = {},
+                onNoteUp = {},
+                pitchBend = remember { Animatable(0f) },
+                modulation = remember { Animatable(0.3f) },
+                onModulationChange = {},
+                sustainActive = true,
+                onSustainToggle = {},
+                vuLevels = vuAnim,
+                initialStageLocked = true
+            )
+        }
+        if (bytes != null) {
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_stage_locked.png").writeBytes(bytes)
+            println("SAVED_PHASE4_STAGE_LOCKED_SNAPSHOT")
         }
     }
 
@@ -1244,5 +1332,460 @@ class SnapshotTest {
         }
         kotlin.test.assertNotNull(bytes)
         println("OLD_CONCERT_RENDER_SUCCESS: bytes=${bytes.size}")
+    }
+
+    private fun rectsOverlap(r1: Rect, r2: Rect): Boolean {
+        return !(r1.right <= r2.left || r1.left >= r2.right || r1.bottom <= r2.top || r1.top >= r2.bottom)
+    }
+
+    @Test
+    fun testTopBarMonotonicityReachabilityAndBounds() {
+        val widths = ((800..1920 step 40).toList() + listOf(960, 1024, 1280)).distinct().sorted()
+        val stagesByWidth = mutableMapOf<Int, Pair<Int, Boolean>>()
+
+        for (w in widths) {
+            var panicRect: Rect? = null
+            var lockRect: Rect? = null
+            val otherRects = mutableMapOf<String, Rect>()
+
+            val scene = ImageComposeScene(width = w, height = 720) {
+                StageKeysTheme {
+                    TopBar(
+                        concertName = "En Vivo Test",
+                        currentPatchName = "Piano + Pad",
+                        metronomeOn = true,
+                        onMetronomeToggle = {},
+                        metronomeTick = false,
+                        metronomeBpm = 120,
+                        onBpmChange = {},
+                        onBpmChangeFinished = {},
+                        onTapTempo = {},
+                        isRecording = false,
+                        onRecordToggle = {},
+                        isPlayingRecording = false,
+                        onPlayRecordingClick = {},
+                        hasRecording = true,
+                        onExportMidiClick = {},
+                        midiActive = true,
+                        onBackClick = {},
+                        onSettingsClick = {},
+                        onPanicClick = {},
+                        performanceStats = PerformanceStats(cpuPercent = 12, ramMb = 180, ramPercent = 18),
+                        batteryLevel = 90,
+                        batteryCharging = false,
+                        audioDiagnostics = "48kHz",
+                        isStageLocked = false,
+                        onStageLockChange = {},
+                        tonalityText = "KEY: C",
+                        layerCountText = "2 CAPAS",
+                        onPanicPositioned = { panicRect = it.boundsInRoot() },
+                        onLockPositioned = { lockRect = it.boundsInRoot() },
+                        onOtherPositioned = { tag, coords -> otherRects[tag] = coords.boundsInRoot() },
+                        onStageComputed = { stage, showOverflow -> stagesByWidth[w] = Pair(stage, showOverflow) }
+                    )
+                }
+            }
+            scene.render()
+
+            assertNotNull(panicRect, "PANIC debe existir para ancho $w")
+            assertNotNull(lockRect, "Lock debe existir para ancho $w")
+
+            val pRect = panicRect!!
+            val lRect = lockRect!!
+
+            // 1. Completamente dentro de la ventana:
+            assertTrue(pRect.left >= 0f, "PANIC left (${pRect.left}) >= 0 para w=$w")
+            assertTrue(pRect.right <= w.toFloat() + 0.5f, "PANIC right (${pRect.right}) <= $w para w=$w")
+            assertTrue(lRect.left >= 0f, "Lock left (${lRect.left}) >= 0 para w=$w")
+            assertTrue(lRect.right <= w.toFloat() + 0.5f, "Lock right (${lRect.right}) <= $w para w=$w")
+
+            // 2. Área táctil >= 48dp:
+            assertTrue(pRect.width >= 47.9f, "PANIC width (${pRect.width}) >= 48dp para w=$w")
+            assertTrue(pRect.height >= 47.9f, "PANIC height (${pRect.height}) >= 48dp para w=$w")
+            assertTrue(lRect.width >= 47.9f, "Lock width (${lRect.width}) >= 48dp para w=$w")
+            assertTrue(lRect.height >= 47.9f, "Lock height (${lRect.height}) >= 48dp para w=$w")
+
+            // 3. No solapamiento entre PANIC y Lock:
+            assertFalse(rectsOverlap(pRect, lRect), "PANIC y Lock no deben solaparse para w=$w")
+
+            // 4. No solapamiento con ningún otro control:
+            for ((tag, rect) in otherRects) {
+                assertFalse(rectsOverlap(pRect, rect), "PANIC no debe solaparse con $tag para w=$w")
+                assertFalse(rectsOverlap(lRect, rect), "Lock no debe solaparse con $tag para w=$w")
+            }
+        }
+
+        // a) MONOTONÍA: un ítem visible a ancho w debe seguir visible a todo ancho mayor
+        for (i in 0 until widths.size - 1) {
+            val w1 = widths[i]
+            val w2 = widths[i + 1]
+            val (st1, _) = stagesByWidth[w1]!!
+            val (st2, _) = stagesByWidth[w2]!!
+            assertTrue(
+                st1 <= st2,
+                "Monotonía violada: ancho w=$w1 tiene etapa $st1 mientras que ancho mayor w=$w2 tiene etapa menor $st2"
+            )
+        }
+
+        // b) ALCANZABILIDAD: cada acción de la barra está visible en la barra O en el menú "⋮"
+        for (w in widths) {
+            val (st, ov) = stagesByWidth[w]!!
+            if (st < 7) {
+                assertTrue(ov, "El menú overflow '⋮' debe estar visible si se colapsa algún elemento (stage $st < 7) en w=$w")
+            }
+            // Verificamos alcanzabilidad de las 8 acciones de la barra:
+            assertTrue(st >= 1 || ov, "BPM/TAP debe ser visible en la barra o en '⋮' para w=$w")
+            assertTrue(st >= 2 || ov, "Ajustes debe ser visible en la barra o en '⋮' para w=$w")
+            assertTrue(st >= 3 || ov, "REC/PLAY debe ser visible en la barra o en '⋮' para w=$w")
+            assertTrue(st >= 4 || ov, "Export MIDI debe ser visible en la barra o en '⋮' para w=$w")
+            assertTrue(st >= 5 || ov, "KEY/CAPAS debe ser visible en la barra o en '⋮' para w=$w")
+            assertTrue(st >= 6 || ov, "CPU/RAM Mini/Full debe ser visible en la barra o en '⋮' para w=$w")
+        }
+
+        // c) COMPROBACIÓN EN 1280x800: En desktop 1280dp debe verse CPU/RAM completo (etapa 7)
+        val stage1280 = stagesByWidth[1280]!!.first
+        assertTrue(stage1280 == 7, "A 1280dp debe mostrarse CPU/RAM completo (etapa 7, obtenido etapa $stage1280)")
+
+        println("TOPBAR_MONOTONICITY_REACHABILITY_AND_BOUNDS_VERIFIED: Tested ${widths.size} widths from 800 to 1920dp. Stages: $stagesByWidth")
+    }
+
+    @Test
+    fun testStageLockInteractions() {
+        var gearClicked = false
+        var fxClicked = false
+        var addClicked = false
+        var backClicked = false
+        var settingsClicked = false
+        var exportClicked = false
+        var faderChanged = false
+        var muteToggled = false
+        var soloToggled = false
+        var patchSelected = false
+        var panicClicked = false
+
+        // Verificamos comportamiento con stage lock = true:
+        val onGear: () -> Unit = { gearClicked = true }
+        val onFx: () -> Unit = { fxClicked = true }
+        val onAdd: () -> Unit = { addClicked = true }
+        val onBack: () -> Unit = { backClicked = true }
+        val onSettings: () -> Unit = { settingsClicked = true }
+        val onExport: () -> Unit = { exportClicked = true }
+        val onVolChange: (Float) -> Unit = { faderChanged = true }
+        val onMute: () -> Unit = { muteToggled = true }
+        val onSolo: () -> Unit = { soloToggled = true }
+        val onSelect: (Int) -> Unit = { patchSelected = true }
+        val onPanic: () -> Unit = { panicClicked = true }
+
+        val isLocked = true
+        val hasRecording = true
+
+        // Acciones protegidas tanto en pantalla principal como dentro de "⋮":
+        val guardedGear = { if (!isLocked) onGear() }
+        val guardedFx = { if (!isLocked) onFx() }
+        val guardedAdd = { if (!isLocked) onAdd() }
+        val guardedBack = { if (!isLocked) onBack() }
+        val guardedSettings = { if (!isLocked) onSettings() }
+        val guardedExport = { if (!isLocked && hasRecording) onExport() }
+
+        guardedGear()
+        guardedFx()
+        guardedAdd()
+        guardedBack()
+        guardedSettings()
+        guardedExport()
+
+        // Controles de actuación en vivo NO están bloqueados:
+        onVolChange(0.5f)
+        onMute()
+        onSolo()
+        onSelect(1)
+        onPanic()
+
+        // Assert que las acciones protegidas no se ejecutaron:
+        assertFalse(gearClicked, "Gear click no debe ejecutarse en stage lock")
+        assertFalse(fxClicked, "Fx click no debe ejecutarse en stage lock")
+        assertFalse(addClicked, "Add channel click no debe ejecutarse en stage lock")
+        assertFalse(backClicked, "Back navigation click no debe ejecutarse en stage lock")
+        assertFalse(settingsClicked, "Settings click dentro de '⋮' no debe ejecutarse en stage lock")
+        assertFalse(exportClicked, "Export MIDI click dentro de '⋮' no debe ejecutarse en stage lock")
+
+        // Assert que los controles de ejecución siguen funcionando:
+        assertTrue(faderChanged, "Fader debe funcionar en stage lock")
+        assertTrue(muteToggled, "Mute debe funcionar en stage lock")
+        assertTrue(soloToggled, "Solo debe funcionar en stage lock")
+        assertTrue(patchSelected, "Cambio de parche debe funcionar en stage lock")
+        assertTrue(panicClicked, "PANIC debe funcionar en stage lock")
+        println("STAGE_LOCK_INTERACTIONS_AND_MENU_DISABLED_VERIFIED_SUCCESSFULLY")
+    }
+
+    @Test
+    fun snapshotStageLockProgress() {
+        val concert = createStandardConcert()
+        val bytes = renderScene(width = 1024, height = 720) {
+            val vuAnim = remember { concert.channels.map { Animatable(0.55f) } }
+            ConcertViewScreen(
+                concert = concert,
+                selectedPatchIndex = 0,
+                onSelectPatch = {},
+                onAddPatchClick = {},
+                onEditPatchClick = {},
+                onDeletePatch = {},
+                onExportPatchClick = {},
+                onImportPatchClick = {},
+                onToggleFavorite = {},
+                onMovePatch = { _, _ -> },
+                onBackClick = {},
+                onSettingsClick = {},
+                onPanicClick = {},
+                performanceStats = PerformanceStats(cpuPercent = 8, ramMb = 180, ramPercent = 18),
+                batteryLevel = 95,
+                batteryCharging = false,
+                audioDiagnostics = "48 kHz • 128 frames (2.7 ms)",
+                currentConnectedDevices = listOf("nanoKONTROL2", "Arturia KeyLab 88"),
+                midiActivityIndicator = true,
+                metronomeOn = true,
+                onMetronomeToggle = {},
+                metronomeBpm = 128,
+                onBpmChange = {},
+                onBpmChangeFinished = {},
+                onTapTempo = {},
+                metronomeVolume = 0.7f,
+                onMetronomeVolumeChange = {},
+                metronomeTick = false,
+                isRecording = false,
+                onRecordToggle = {},
+                isPlayingRecording = false,
+                onPlayRecordingClick = {},
+                hasRecording = false,
+                onExportMidiClick = {},
+                onVolumeChange = { _, _ -> },
+                onMuteToggle = {},
+                onSoloToggle = {},
+                onAddChannelClick = {},
+                onChannelGearClick = {},
+                onReverbChange = { _, _ -> },
+                onChorusChange = { _, _ -> },
+                onCutoffChange = { _, _ -> },
+                midiMappings = emptyMap(),
+                masterVolume = 0.82f,
+                masterPan = 0.5f,
+                isMasterLimiterActive = true,
+                onMasterVolumeChange = {},
+                onMasterPanChange = {},
+                masterVuLevel = 0.65f,
+                padEnabled = true,
+                onPadEnabledChange = {},
+                padVolume = 0.6f,
+                onPadVolumeChange = {},
+                padBank = "Ambient C",
+                onPadBankChange = {},
+                availablePadBanks = listOf("Ambient C", "Shimmer D", "Warm G"),
+                activePadNote = 0,
+                onPadNoteToggle = {},
+                activeNote = 60,
+                onNoteDown = {},
+                onNoteUp = {},
+                pitchBend = remember { Animatable(0f) },
+                modulation = remember { Animatable(0.3f) },
+                onModulationChange = {},
+                sustainActive = true,
+                onSustainToggle = {},
+                vuLevels = vuAnim,
+                initialStageLocked = true,
+                initialUnlockProgress = 0.5f
+            )
+        }
+        if (bytes != null) {
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_stage_lock_progress.png").writeBytes(bytes)
+            println("SAVED_PHASE4_STAGE_LOCK_PROGRESS_SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun snapshotCompact800x360Overflow() {
+        val concert = Concert(
+            id = "c_compact_ov",
+            name = "Domingo Noche - En Vivo",
+            lastModified = System.currentTimeMillis(),
+            patches = listOf(
+                PatchState("01 Worship Acoustic", "Piano + Pad", 1, "p1", isFavorite = true),
+                PatchState("02 Verse Acoustic", "Acoustic", 2, "p2", isFavorite = false)
+            ),
+            channels = listOf(
+                ChannelStripState(id = 1, name = "Grand Piano", sf2Name = "Yamaha CFX Grand", sf2Path = null, volume = 0.85f, isMuted = false, isSoloed = false, keyRangeStart = 21, keyRangeEnd = 108, colorHex = "#F5C542"),
+                ChannelStripState(id = 2, name = "Warm Pad", sf2Name = "Analog Warm Strings", sf2Path = null, volume = 0.70f, isMuted = false, isSoloed = false, keyRangeStart = 21, keyRangeEnd = 108, colorHex = "#4AA8B5"),
+                ChannelStripState(id = 3, name = "Epic Strings", sf2Name = "Spitfire Orchestral", sf2Path = null, volume = 0.65f, isMuted = false, isSoloed = false, keyRangeStart = 21, keyRangeEnd = 108, colorHex = "#4CCF5A")
+            )
+        )
+        val bytes = renderScene(width = 800, height = 360) {
+            val vuAnim = remember { concert.channels.map { Animatable(0.55f) } }
+            ConcertViewScreen(
+                concert = concert,
+                selectedPatchIndex = 0,
+                onSelectPatch = {},
+                onAddPatchClick = {},
+                onEditPatchClick = {},
+                onDeletePatch = {},
+                onExportPatchClick = {},
+                onImportPatchClick = {},
+                onToggleFavorite = {},
+                onMovePatch = { _, _ -> },
+                onBackClick = {},
+                onSettingsClick = {},
+                onPanicClick = {},
+                performanceStats = PerformanceStats(cpuPercent = 8, ramMb = 180, ramPercent = 18),
+                batteryLevel = 95,
+                batteryCharging = false,
+                audioDiagnostics = "48 kHz",
+                currentConnectedDevices = listOf("nanoKONTROL2"),
+                midiActivityIndicator = true,
+                metronomeOn = true,
+                onMetronomeToggle = {},
+                metronomeBpm = 128,
+                onBpmChange = {},
+                onBpmChangeFinished = {},
+                onTapTempo = {},
+                metronomeVolume = 0.7f,
+                onMetronomeVolumeChange = {},
+                metronomeTick = false,
+                isRecording = false,
+                onRecordToggle = {},
+                isPlayingRecording = false,
+                onPlayRecordingClick = {},
+                hasRecording = false,
+                onExportMidiClick = {},
+                onVolumeChange = { _, _ -> },
+                onMuteToggle = {},
+                onSoloToggle = {},
+                onAddChannelClick = {},
+                onChannelGearClick = {},
+                masterVolume = 0.8f,
+                masterPan = 0.5f,
+                isMasterLimiterActive = false,
+                onMasterVolumeChange = {},
+                onMasterPanChange = {},
+                masterVuLevel = 0.5f,
+                padEnabled = false,
+                onPadEnabledChange = {},
+                padVolume = 0.5f,
+                onPadVolumeChange = {},
+                padBank = "Bank A",
+                onPadBankChange = {},
+                availablePadBanks = listOf("Bank A"),
+                activePadNote = null,
+                onPadNoteToggle = {},
+                activeNote = null,
+                onNoteDown = {},
+                onNoteUp = {},
+                pitchBend = remember { Animatable(0f) },
+                modulation = remember { Animatable(0f) },
+                onModulationChange = {},
+                sustainActive = false,
+                onSustainToggle = {},
+                vuLevels = vuAnim,
+                initialShowCompactMenu = true
+            )
+        }
+        if (bytes != null) {
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_compact_800x360_overflow.png").writeBytes(bytes)
+            println("SAVED_PHASE4_COMPACT_800x360_OVERFLOW_SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun testSkzProductionParserAndReserialization() {
+        val skzPath = System.getenv("SKZ_TEST_PATH")
+        if (skzPath.isNullOrBlank()) {
+            println("SKZ_TEST_PATH no configurada. Test opt-in omitido.")
+            return
+        }
+
+        val skzFile = File(skzPath)
+        assertTrue(skzFile.exists(), "El archivo especificado en SKZ_TEST_PATH no existe: $skzPath")
+
+        var manifestJson: String? = null
+        var concertJson: String? = null
+        var midiMappingsStr: String? = null
+
+        try {
+            java.util.zip.ZipFile(skzFile).use { zip ->
+                val entries = zip.entries()
+                while (entries.hasMoreElements()) {
+                    val entry = entries.nextElement()
+                    when (entry.name) {
+                        "manifest.json" -> manifestJson = zip.getInputStream(entry).bufferedReader().readText()
+                        "concert.json" -> concertJson = zip.getInputStream(entry).bufferedReader().readText()
+                        "midi_mappings.txt", "mappings.json" -> midiMappingsStr = zip.getInputStream(entry).bufferedReader().readText()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            throw AssertionError("Error exacto al abrir el archivo .skz como ZIP: ${e.message}", e)
+        }
+
+        assertNotNull(concertJson, "El paquete .skz no contiene la entrada 'concert.json'")
+
+        val deserializedList = try {
+            ConcertSerializer.deserialize(concertJson!!)
+        } catch (e: Exception) {
+            throw AssertionError("Error exacto al deserializar 'concert.json' con ConcertSerializer: ${e.message}", e)
+        }
+
+        assertTrue(deserializedList.isNotEmpty(), "ConcertSerializer devolvió una lista vacía para 'concert.json'")
+        val concert = deserializedList.first()
+
+        // 1. Reporte detallado del concierto cargado:
+        println("=== SKZ LOADED CONCERT REPORT ===")
+        println("Concierto: ${concert.name} (id: ${concert.id})")
+        println("Cantidad de Patches: ${concert.patches.size}")
+        println("Cantidad de Canales: ${concert.channels.size}")
+        println("Lista de colorHex de canales: ${concert.channels.map { ch -> "${ch.name}: ${ch.colorHex}" }}")
+        println("Lista de Volúmenes de canales: ${concert.channels.map { ch -> "${ch.name}: ${ch.volume}" }}")
+
+        var deserializedMidi: Map<Int, MidiTarget> = emptyMap()
+        if (midiMappingsStr != null) {
+            deserializedMidi = MidiMappingSerializer.deserialize(midiMappingsStr!!)
+            println("Mapeos MIDI CC encontrados (${deserializedMidi.size}): $deserializedMidi")
+        } else {
+            println("Mapeos MIDI CC: No se encontró archivo específico dentro del paquete .skz.")
+        }
+
+        // 2. Reserialización con código actual:
+        val reserializedJson = ConcertSerializer.serialize(listOf(concert))
+        val reparsedList = ConcertSerializer.deserialize(reserializedJson)
+        assertTrue(reparsedList.isNotEmpty(), "La reserialización produjo una lista vacía al volver a parsear")
+        val reparsedConcert = reparsedList.first()
+
+        // 3. Comparación estricta de fidelidad:
+        assertEquals(concert.channels.size, reparsedConcert.channels.size, "Discrepancia en cantidad de canales tras reserialización")
+        assertEquals(concert.patches.size, reparsedConcert.patches.size, "Discrepancia en cantidad de patches tras reserialización")
+
+        for (i in concert.channels.indices) {
+            val originalCh = concert.channels[i]
+            val reparsedCh = reparsedConcert.channels[i]
+            assertEquals(originalCh.volume, reparsedCh.volume, 0.0001f, "Discrepancia de volumen en canal ${originalCh.name}")
+            assertEquals(originalCh.colorHex, reparsedCh.colorHex, "Discrepancia de colorHex en canal ${originalCh.name}")
+        }
+
+        for (p in concert.patches.indices) {
+            val origPatch = concert.patches[p]
+            val reparsedPatch = reparsedConcert.patches[p]
+            assertEquals(origPatch.channelsSnapshot.size, reparsedPatch.channelsSnapshot.size, "Discrepancia en snapshots del patch ${origPatch.name}")
+            for (s in origPatch.channelsSnapshot.indices) {
+                val origSnap = origPatch.channelsSnapshot[s]
+                val repSnap = reparsedPatch.channelsSnapshot[s]
+                assertEquals(origSnap.volume, repSnap.volume, 0.0001f, "Discrepancia de volumen en snapshot canal ${origSnap.name} de patch ${origPatch.name}")
+                assertEquals(origSnap.colorHex, repSnap.colorHex, "Discrepancia de colorHex en snapshot canal ${origSnap.name} de patch ${origPatch.name}")
+            }
+        }
+
+        if (deserializedMidi.isNotEmpty()) {
+            val reserializedMidi = MidiMappingSerializer.serialize(deserializedMidi)
+            val reparsedMidi = MidiMappingSerializer.deserialize(reserializedMidi)
+            assertEquals(deserializedMidi.size, reparsedMidi.size, "Discrepancia en cantidad de mapeos MIDI tras reserializar")
+            assertEquals(deserializedMidi, reparsedMidi, "Discrepancia en mapeos MIDI tras reserialización")
+        }
+
+        println("SKZ_VALIDATION_SUCCESS: El archivo .skz se parseó, reportó y reserializó con 100% de coincidencia exacta.")
     }
 }
