@@ -275,8 +275,8 @@ class SnapshotTest {
         }
 
         if (bytes != null) {
-            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase3_concert_1280x800.png").writeBytes(bytes)
-            println("SAVED_PHASE3_CONCERT_1280x800_SNAPSHOT")
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_concert_1280x800.png").writeBytes(bytes)
+            println("SAVED_PHASE4_CONCERT_1280x800_SNAPSHOT")
         }
     }
 
@@ -409,8 +409,8 @@ class SnapshotTest {
         }
 
         if (bytes != null) {
-            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase3_compact_800x360.png").writeBytes(bytes)
-            println("SAVED_PHASE3_COMPACT_800x360_SNAPSHOT")
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_compact_800x360.png").writeBytes(bytes)
+            println("SAVED_PHASE4_COMPACT_800x360_SNAPSHOT")
         }
     }
 
@@ -509,8 +509,8 @@ class SnapshotTest {
             )
         }
         if (bytes != null) {
-            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase3_concert_1024x720.png").writeBytes(bytes)
-            println("SAVED_PHASE3_CONCERT_1024x720_SNAPSHOT")
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_concert_1024x720.png").writeBytes(bytes)
+            println("SAVED_PHASE4_CONCERT_1024x720_SNAPSHOT")
         }
     }
 
@@ -590,8 +590,90 @@ class SnapshotTest {
             )
         }
         if (bytes != null) {
-            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase3_concert_960x600.png").writeBytes(bytes)
-            println("SAVED_PHASE3_CONCERT_960x600_SNAPSHOT")
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_concert_960x600.png").writeBytes(bytes)
+            println("SAVED_PHASE4_CONCERT_960x600_SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun snapshotConcertViewStageLocked() {
+        val concert = createStandardConcert()
+        val bytes = renderScene(width = 1280, height = 800) {
+            val vuAnim = remember { concert.channels.map { Animatable(0.55f) } }
+            ConcertViewScreen(
+                concert = concert,
+                selectedPatchIndex = 0,
+                onSelectPatch = {},
+                onAddPatchClick = {},
+                onEditPatchClick = {},
+                onDeletePatch = {},
+                onExportPatchClick = {},
+                onImportPatchClick = {},
+                onToggleFavorite = {},
+                onMovePatch = { _, _ -> },
+                onBackClick = {},
+                onSettingsClick = {},
+                onPanicClick = {},
+                performanceStats = PerformanceStats(cpuPercent = 14, ramMb = 240, ramPercent = 24),
+                batteryLevel = 100,
+                batteryCharging = true,
+                audioDiagnostics = "48 kHz • 128 frames (2.7 ms)",
+                currentConnectedDevices = listOf("nanoKONTROL2", "Arturia KeyLab 88"),
+                midiActivityIndicator = false,
+                metronomeOn = true,
+                onMetronomeToggle = {},
+                metronomeBpm = 128,
+                onBpmChange = {},
+                onBpmChangeFinished = {},
+                onTapTempo = {},
+                metronomeVolume = 0.7f,
+                onMetronomeVolumeChange = {},
+                metronomeTick = false,
+                isRecording = false,
+                onRecordToggle = {},
+                isPlayingRecording = false,
+                onPlayRecordingClick = {},
+                hasRecording = false,
+                onExportMidiClick = {},
+                onVolumeChange = { _, _ -> },
+                onMuteToggle = {},
+                onSoloToggle = {},
+                onAddChannelClick = {},
+                onChannelGearClick = {},
+                onReverbChange = { _, _ -> },
+                onChorusChange = { _, _ -> },
+                onCutoffChange = { _, _ -> },
+                midiMappings = emptyMap(),
+                masterVolume = 0.85f,
+                masterPan = 0.5f,
+                isMasterLimiterActive = true,
+                onMasterVolumeChange = {},
+                onMasterPanChange = {},
+                masterVuLevel = 0.65f,
+                padEnabled = true,
+                onPadEnabledChange = {},
+                padVolume = 0.6f,
+                onPadVolumeChange = {},
+                padBank = "Ambient C",
+                onPadBankChange = {},
+                availablePadBanks = listOf("Ambient C", "Shimmer D", "Warm G"),
+                activePadNote = 0,
+                onPadNoteToggle = {},
+                activeNote = 60,
+                onNoteDown = {},
+                onNoteUp = {},
+                pitchBend = remember { Animatable(0f) },
+                modulation = remember { Animatable(0.3f) },
+                onModulationChange = {},
+                sustainActive = true,
+                onSustainToggle = {},
+                vuLevels = vuAnim,
+                initialStageLocked = true
+            )
+        }
+        if (bytes != null) {
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase4_stage_locked.png").writeBytes(bytes)
+            println("SAVED_PHASE4_STAGE_LOCKED_SNAPSHOT")
         }
     }
 
