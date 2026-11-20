@@ -198,7 +198,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                 }
 
                 // Right: Siguiente / ¡Empezar! Button
-                Button(
+                SkButton(
                     onClick = {
                         if (currentPage < totalPages - 1) {
                             currentPage++
@@ -206,16 +206,12 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                             onFinish()
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentSky,
-                        contentColor = Color.Black
-                    ),
-                    shape = RoundedCornerShape(12.dp)
+                    variant = SkButtonVariant.Primary
                 ) {
                     Text(
                         text = if (currentPage < totalPages - 1) "Siguiente" else "¡Empezar!",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.5.sp
+                        fontSize = 14.sp
                     )
                 }
             }

@@ -1753,16 +1753,12 @@ private fun PatchesPanel(
                             textAlign = TextAlign.Center
                         )
                         Spacer(Modifier.height(2.dp))
-                        Button(
+                        SkButton(
                             onClick = onAdd,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(28.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AccentSky),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
-                            shape = RoundedCornerShape(6.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            variant = SkButtonVariant.Primary
                         ) {
-                            Text("+ Agregar", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("+ Agregar", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

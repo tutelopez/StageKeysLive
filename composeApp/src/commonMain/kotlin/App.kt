@@ -4040,19 +4040,16 @@ fun WhatsNewDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Bottom Action
-                Button(
+                SkButton(
                     onClick = onDismiss,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentSky),
-                    shape = RoundedCornerShape(10.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    variant = SkButtonVariant.Primary
                 ) {
                     Text(
                         "¡Entendido, Continuar!",
-                        color = Color.Black,
+                        color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.5.sp
+                        fontSize = 14.sp
                     )
                 }
             }

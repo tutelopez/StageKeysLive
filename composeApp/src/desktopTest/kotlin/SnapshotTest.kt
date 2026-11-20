@@ -1,6 +1,14 @@
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.ImageComposeScene
 import com.tutelopezmusic.stagekeyslive.*
 import org.jetbrains.skia.EncodedImageFormat
@@ -246,6 +254,96 @@ class SnapshotTest {
         if (bytes != null) {
             File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase1_dashboard.png").writeBytes(bytes)
             println("SAVED_DASHBOARD_SNAPSHOT")
+        }
+    }
+
+    @Test
+    fun snapshotBaseComponents() {
+        val bytes = renderScene(width = 800, height = 700) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(BgDark)
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    "Showcase Componentes Base (Fase 2)",
+                    color = TextPrimary,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // Buttons Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    SkButton(onClick = {}, variant = SkButtonVariant.Primary) {
+                        Text("Primary")
+                    }
+                    SkButton(onClick = {}, variant = SkButtonVariant.Secondary) {
+                        Text("Secondary")
+                    }
+                    SkButton(onClick = {}, variant = SkButtonVariant.Outline) {
+                        Text("Outline")
+                    }
+                    SkButton(onClick = {}, variant = SkButtonVariant.Danger) {
+                        Text("Danger")
+                    }
+                }
+
+                // Chips Row
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SkChip(selected = true, onClick = {}, label = "Piano CFX")
+                    SkChip(selected = false, onClick = {}, label = "Strings Pad")
+                    SkChip(selected = false, onClick = {}, label = "Moog Lead")
+                }
+
+                // Switch Row
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    SkSwitch(checked = true, onCheckedChange = {})
+                    Text("Limiter Activo", color = TextPrimary, fontSize = 13.sp)
+
+                    Spacer(Modifier.width(20.dp))
+
+                    SkSwitch(checked = false, onCheckedChange = {})
+                    Text("Auto-Backup Inactivo", color = TextSecondary, fontSize = 13.sp)
+                }
+
+                // Card with ListItems
+                SkCard(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "Lista de Dispositivos & Entradas",
+                        color = TextPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SkListItem(
+                            headlineText = "Nord Stage 3 Compact",
+                            supportingText = "MIDI USB · Canal 1 · Conectado",
+                            onClick = {}
+                        )
+                        SkListItem(
+                            headlineText = "Korg NanoKontrol 2",
+                            supportingText = "8 Faders · 8 Pots · Mapeado",
+                            onClick = {}
+                        )
+                    }
+                }
+            }
+        }
+
+        if (bytes != null) {
+            File("/Users/mac/.gemini/antigravity/brain/3ecf3b9c-68b4-45bb-b6d1-9de99142ec8c/desktop_phase2_base_components.png").writeBytes(bytes)
+            println("SAVED_BASE_COMPONENTS_SNAPSHOT")
         }
     }
 
